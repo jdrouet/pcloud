@@ -8,7 +8,7 @@ pub mod size;
 
 const MAX_BLOCK_SIZE: usize = 1024 * 64;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "protected"))]
 mod tests {
     use crate::binary::BinaryClient;
     use crate::credentials::Credentials;

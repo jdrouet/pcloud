@@ -341,11 +341,13 @@ impl BinaryClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::credentials::Credentials;
-    use crate::region::Region;
 
     #[tokio::test]
+    #[cfg(feature = "protected")]
     async fn execute_list_root() {
+        use crate::credentials::Credentials;
+        use crate::region::Region;
+
         let creds = Credentials::from_env();
         let mut protocol = BinaryClient::new(creds, Region::eu()).unwrap();
         let params: Vec<(&str, Value)> = vec![("folderid", Value::Number(0))];

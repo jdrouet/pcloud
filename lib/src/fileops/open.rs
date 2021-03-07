@@ -65,7 +65,7 @@ impl BinaryClient {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "protected"))]
 mod tests {
     use super::Params;
     use crate::binary::BinaryClient;

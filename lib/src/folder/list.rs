@@ -112,7 +112,6 @@ impl BinaryClient {
 #[cfg(test)]
 mod tests {
     use super::Params;
-    use crate::binary::BinaryClient;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;
     use crate::region::Region;
@@ -175,7 +174,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "protected")]
     fn binary_success() {
+        use crate::binary::BinaryClient;
+
         let mut client = BinaryClient::new(Credentials::from_env(), Region::eu()).unwrap();
         let res = client.list_folder(&Params::new(0)).unwrap();
         assert_eq!(res.base.name, "/");

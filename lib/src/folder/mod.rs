@@ -59,7 +59,7 @@ impl FolderIdentifier {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "protected"))]
 mod tests {
     use crate::binary::BinaryClient;
     use crate::credentials::Credentials;

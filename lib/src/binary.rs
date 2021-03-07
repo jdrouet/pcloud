@@ -412,7 +412,7 @@ mod tests {
 
     #[test]
     fn build_command_number() {
-        let params: Vec<(&str, Value)> = vec![("folderid".into(), Value::Number(0))];
+        let params: Vec<(&str, Value)> = vec![("folderid", Value::Number(0))];
         let result = BinaryClient::build_command("listfolder", &params, &Vec::new());
         let expected: Vec<u8> = vec![
             0x1D, 0x00, 0x0A, 0x6C, 0x69, 0x73, 0x74, 0x66, 0x6F, 0x6C, 0x64, 0x65, 0x72, 0x01,
@@ -425,7 +425,7 @@ mod tests {
     #[test]
     fn build_command_text() {
         let params: Vec<(&str, Value)> = vec![(
-            "auth".into(),
+            "auth",
             Value::Text("Ec7QkEjFUnzZ7Z8W2YH1qLgxY7gGvTe09AH0i7V3kX".into()),
         )];
         let result = BinaryClient::build_command("listfolder", &params, &Vec::new());
@@ -443,10 +443,10 @@ mod tests {
     fn build_command_multiple() {
         let params: Vec<(&str, Value)> = vec![
             (
-                "auth".into(),
+                "auth",
                 Value::Text("Ec7QkEjFUnzZ7Z8W2YH1qLgxY7gGvTe09AH0i7V3kX".into()),
             ),
-            ("folderid".into(), Value::Number(0)),
+            ("folderid", Value::Number(0)),
         ];
         let result = BinaryClient::build_command("listfolder", &params, &Vec::new());
         let expected: Vec<u8> = vec![

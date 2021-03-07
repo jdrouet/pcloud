@@ -1,0 +1,16 @@
+stages:
+  - test
+
+lint-and-test:
+  stage: test
+  image: rust:bullseye
+  before_script:
+    - apt-get update
+    - apt-get install -y libfuse-dev pkg-config
+    - rustup component add clippy
+    - rustup component add rustfmt
+  script:
+    - cargo fmt --all -- --check
+    - cargo clippy --tests -- -D warnings
+    - cargo test
+

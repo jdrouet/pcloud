@@ -9,19 +9,19 @@ pub struct Payload {
 
 #[derive(Debug)]
 pub struct Params<'d> {
-    fd: usize,
+    fd: u64,
     offset: usize,
     data: &'d [u8],
 }
 
 impl<'d> Params<'d> {
-    pub fn new(fd: usize, offset: usize, data: &'d [u8]) -> Self {
+    pub fn new(fd: u64, offset: usize, data: &'d [u8]) -> Self {
         Self { fd, offset, data }
     }
 
     fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
         vec![
-            ("fd", BinaryValue::Number(self.fd as u64)),
+            ("fd", BinaryValue::Number(self.fd)),
             ("offset", BinaryValue::Number(self.offset as u64)),
         ]
     }

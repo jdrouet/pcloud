@@ -9,7 +9,7 @@ use pcloud::http::HttpClient;
 #[derive(Parser)]
 pub struct Command {
     #[clap(default_value = "0")]
-    folder_id: usize,
+    folder_id: u64,
     #[clap(subcommand)]
     subcommand: SubCommand,
 }
@@ -29,7 +29,7 @@ enum SubCommand {
 }
 
 impl SubCommand {
-    pub async fn execute(&self, pcloud: HttpClient, folder_id: usize) {
+    pub async fn execute(&self, pcloud: HttpClient, folder_id: u64) {
         match self {
             Self::Create(cmd) => cmd.execute(pcloud, folder_id).await,
             Self::Delete(cmd) => cmd.execute(pcloud, folder_id).await,

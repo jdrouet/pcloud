@@ -10,19 +10,19 @@ pub struct Payload {
 
 #[derive(Debug)]
 pub struct Params {
-    fd: usize,
+    fd: u64,
     count: usize,
     offset: usize,
 }
 
 impl Params {
-    pub fn new(fd: usize, count: usize, offset: usize) -> Self {
+    pub fn new(fd: u64, count: usize, offset: usize) -> Self {
         Self { fd, count, offset }
     }
 
     fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
         vec![
-            ("fd", BinaryValue::Number(self.fd as u64)),
+            ("fd", BinaryValue::Number(self.fd)),
             (
                 "count",
                 BinaryValue::Number(super::MAX_BLOCK_SIZE.min(self.count) as u64),

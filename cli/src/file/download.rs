@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 #[derive(Parser)]
 pub struct Command {
-    file_id: usize,
+    file_id: u64,
     path: PathBuf,
 }
 

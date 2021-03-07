@@ -9,7 +9,7 @@ pub struct Command {
 
 impl Command {
     #[tracing::instrument(skip_all)]
-    pub async fn execute(&self, pcloud: HttpClient, folder_id: usize) {
+    pub async fn execute(&self, pcloud: HttpClient, folder_id: u64) {
         let result = if self.recursive {
             pcloud
                 .delete_folder_recursive(folder_id)

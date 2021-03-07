@@ -8,12 +8,12 @@ use std::io::Read;
 #[derive(Debug)]
 pub struct Params<'a> {
     filename: &'a str,
-    folder_id: usize,
+    folder_id: u64,
     no_partial: bool,
 }
 
 impl<'a> Params<'a> {
-    pub fn new(filename: &'a str, folder_id: usize) -> Self {
+    pub fn new(filename: &'a str, folder_id: u64) -> Self {
         Self {
             filename,
             folder_id,
@@ -30,7 +30,7 @@ impl<'a> Params<'a> {
 #[derive(Debug, serde::Deserialize)]
 struct CreateUploadPayload {
     #[serde(rename = "uploadid")]
-    upload_id: usize,
+    upload_id: u64,
 }
 
 struct ChunkReader<R> {
@@ -71,7 +71,7 @@ impl<R: Read> ChunkReader<R> {
 }
 
 impl HttpClient {
-    async fn create_upload_file(&self, no_partial: bool) -> Result<usize, Error> {
+    async fn create_upload_file(&self, no_partial: bool) -> Result<u64, Error> {
         let params = if no_partial {
             vec![("nopartial", 1.to_string())]
         } else {
@@ -94,9 +94,9 @@ impl HttpClient {
 
     async fn save_file(
         &self,
-        upload_id: usize,
+        upload_id: u64,
         filename: &str,
-        folder_id: usize,
+        folder_id: u64,
     ) -> Result<File, Error> {
         let params = vec![
             ("uploadid", upload_id.to_string()),
@@ -135,7 +135,7 @@ impl HttpClient {
             self.write_chunk_file(&params, chunk).await?;
         }
 
-        self.save_file(upload_id, &params.filename, params.folder_id)
+        self.save_file(upload_id, params.filename, params.folder_id)
             .await
     }
 }

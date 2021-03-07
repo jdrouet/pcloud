@@ -8,7 +8,7 @@ pub struct Command {
     #[clap(long, about = "Name of the created remote file.")]
     filename: Option<String>,
     #[clap(long, default_value = "0", about = "Folder to store the file in.")]
-    folder_id: usize,
+    folder_id: u64,
     #[clap(long, about = "Keep partial file if upload fails.")]
     allow_partial_upload: bool,
     path: PathBuf,

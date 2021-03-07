@@ -3,7 +3,7 @@ use pcloud::credentials::Credentials;
 use pcloud::http::HttpClient;
 use pcloud::region::Region;
 
-async fn http_download_file() -> (usize, Vec<u8>) {
+async fn http_download_file() -> (u64, Vec<u8>) {
     let client = HttpClient::from_env();
     let params = pcloud::folder::list::Params::new(0);
     let folder = client.list_folder(&params).await.unwrap();

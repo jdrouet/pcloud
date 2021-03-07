@@ -106,7 +106,7 @@ impl Filesystem for PCloudFs {
     ) {
         let name = parse_str!(name, reply);
         let parent = resolve!(self.service.get_folder(parent), reply);
-        let entries = parent.contents.clone().unwrap_or_default();
+        let entries = parent.contents.unwrap_or_default();
         let entry = entries.iter().find(|item| item.base().name == name);
 
         if let Some(entry) = entry {
@@ -308,7 +308,7 @@ impl Filesystem for PCloudFs {
         let handle = resolve!(self.service.create_file(parent_id, name), reply);
         let parent = resolve!(self.service.fetch_folder(parent_id), reply);
         if let Some(file) = parent.find_file(name) {
-            let file_attr = create_file_attrs(&file);
+            let file_attr = create_file_attrs(file);
 
             reply.created(
                 &self.fuse_duration,

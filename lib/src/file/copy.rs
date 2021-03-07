@@ -7,12 +7,12 @@ use crate::request::Response;
 
 #[derive(Debug)]
 pub struct Params {
-    file_id: usize,
-    to_folder_id: usize,
+    file_id: u64,
+    to_folder_id: u64,
 }
 
 impl Params {
-    pub fn new(file_id: usize, to_folder_id: usize) -> Self {
+    pub fn new(file_id: u64, to_folder_id: u64) -> Self {
         Self {
             file_id,
             to_folder_id,
@@ -28,8 +28,8 @@ impl Params {
 
     fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
         vec![
-            ("fileid", BinaryValue::Number(self.file_id as u64)),
-            ("tofolderid", BinaryValue::Number(self.to_folder_id as u64)),
+            ("fileid", BinaryValue::Number(self.file_id)),
+            ("tofolderid", BinaryValue::Number(self.to_folder_id)),
         ]
     }
 }

@@ -8,7 +8,7 @@ pub struct EntryBase {
     #[serde(with = "crate::date")]
     pub modified: DateTime<Utc>,
     #[serde(rename = "parentfolderid")]
-    pub parent_folder_id: Option<usize>,
+    pub parent_folder_id: Option<u64>,
     pub icon: String,
     pub id: String,
     pub name: String,
@@ -25,7 +25,7 @@ pub struct File {
     #[serde(flatten)]
     pub base: EntryBase,
     #[serde(rename = "fileid")]
-    pub file_id: usize,
+    pub file_id: u64,
     pub size: Option<usize>,
     pub hash: Option<usize>,
     #[serde(rename = "contenttype")]
@@ -57,7 +57,7 @@ pub struct Folder {
     #[serde(flatten)]
     pub base: EntryBase,
     #[serde(rename = "folderid")]
-    pub folder_id: usize,
+    pub folder_id: u64,
     pub contents: Option<Vec<Entry>>,
 }
 
@@ -153,7 +153,7 @@ impl Entry {
         }
     }
 
-    pub fn file_id(&self) -> Option<usize> {
+    pub fn file_id(&self) -> Option<u64> {
         match self {
             Self::File(item) => Some(item.file_id),
             _ => None,
@@ -178,7 +178,7 @@ impl Entry {
         }
     }
 
-    pub fn folder_id(&self) -> Option<usize> {
+    pub fn folder_id(&self) -> Option<u64> {
         match self {
             Self::Folder(item) => Some(item.folder_id),
             _ => None,
@@ -208,7 +208,7 @@ impl Entry {
 mod tests {
     use super::*;
 
-    fn create_file(id: usize, name: &str) -> File {
+    fn create_file(id: u64, name: &str) -> File {
         File {
             base: EntryBase {
                 created: Utc::now(),
@@ -229,7 +229,7 @@ mod tests {
         }
     }
 
-    fn create_folder(id: usize, name: &str) -> Folder {
+    fn create_folder(id: u64, name: &str) -> Folder {
         Folder {
             base: EntryBase {
                 created: Utc::now(),

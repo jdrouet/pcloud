@@ -16,7 +16,6 @@ impl Credentials {
     }
 }
 
-#[cfg(test)]
 impl Credentials {
     pub fn from_env() -> Self {
         if let Ok(access_token) = std::env::var("PCLOUD_ACCESS_TOKEN") {

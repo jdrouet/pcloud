@@ -1,23 +1,23 @@
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct RemoteFile {
     // TODO replace by chrono
-    created: String,
+    pub created: String,
     #[serde(rename = "isfolder")]
-    is_folder: bool,
+    pub is_folder: bool,
     #[serde(rename = "parentfolderid")]
-    parent_folder_id: Option<usize>,
-    icon: String,
-    id: String,
-    path: Option<String>,
+    pub parent_folder_id: Option<usize>,
+    pub icon: String,
+    pub id: String,
+    pub path: Option<String>,
     // TODO replace by chrono
-    modified: String,
-    thumb: bool,
+    pub modified: String,
+    pub thumb: bool,
     #[serde(rename = "folderid")]
-    folder_id: Option<usize>,
+    pub folder_id: Option<usize>,
     #[serde(rename = "isshared")]
-    is_shared: bool,
+    pub is_shared: bool,
     #[serde(rename = "ismine")]
-    is_mine: bool,
-    name: String,
-    contents: Option<Vec<RemoteFile>>,
+    pub is_mine: bool,
+    pub name: String,
+    pub contents: Option<Vec<RemoteFile>>,
 }

@@ -105,3 +105,71 @@ impl PCloudApi {
         result.metadata()
     }
 }
+
+impl PCloudApi {
+    pub async fn delete_folder(&self, folder_id: usize) -> Result<RemoteFile, RequestError> {
+        let folder_id = folder_id.to_string();
+        let params = vec![("folderid", folder_id.as_str())];
+        let result: Response = self.get_request("deletefolder", &params).await?;
+        result.metadata()
+    }
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct ResponseDeleteRecursive {
+    result: u16,
+    deletedfiles: Option<usize>,
+    deletedfolders: Option<usize>,
+}
+
+impl ResponseDeleteRecursive {
+    fn metadata(self) -> Result<(usize, usize), RequestError> {
+        if let (Some(deletedfiles), Some(deletedfolders)) = (self.deletedfiles, self.deletedfolders)
+        {
+            Ok((deletedfiles, deletedfolders))
+        } else {
+            Err(RequestError::Payload(self.result))
+        }
+    }
+}
+
+impl PCloudApi {
+    pub async fn delete_folder_recursive(
+        &self,
+        folder_id: usize,
+    ) -> Result<(usize, usize), RequestError> {
+        let folder_id = folder_id.to_string();
+        let params = vec![("folderid", folder_id.as_str())];
+        let result: ResponseDeleteRecursive =
+            self.get_request("deletefolderrecursive", &params).await?;
+        result.metadata()
+    }
+}
+
+impl PCloudApi {
+    pub async fn rename_folder(
+        &self,
+        folder_id: usize,
+        name: &str,
+    ) -> Result<RemoteFile, RequestError> {
+        let folder_id = folder_id.to_string();
+        let params = vec![("folderid", folder_id.as_str()), ("toname", name)];
+        let result: Response = self.get_request("renamefolder", &params).await?;
+        result.metadata()
+    }
+
+    pub async fn move_folder(
+        &self,
+        folder_id: usize,
+        to_folder_id: usize,
+    ) -> Result<RemoteFile, RequestError> {
+        let folder_id = folder_id.to_string();
+        let to_folder_id = to_folder_id.to_string();
+        let params = vec![
+            ("folderid", folder_id.as_str()),
+            ("tofolderid", to_folder_id.as_str()),
+        ];
+        let result: Response = self.get_request("renamefolder", &params).await?;
+        result.metadata()
+    }
+}

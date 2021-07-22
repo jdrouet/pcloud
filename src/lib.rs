@@ -31,18 +31,3 @@ impl PCloudApi {
         Self::new(credentials, data_center::DataCenter::UnitedStates)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn it_works() {
-        let client = PCloudApi::new_eu(credentials::Credentials::from_env());
-        let params = folder::ListFolderParams::default().recursive(true);
-        let result = client
-            .list_folder_with_params(crate::folder::ROOT, &params)
-            .await;
-        assert!(result.is_ok());
-    }
-}

@@ -19,5 +19,9 @@ pub struct RemoteFile {
     #[serde(rename = "ismine")]
     pub is_mine: bool,
     pub name: String,
+    pub size: Option<usize>,
+    pub hash: Option<usize>,
+    #[serde(rename = "contenttype")]
+    pub content_type: Option<String>,
     pub contents: Option<Vec<RemoteFile>>,
 }

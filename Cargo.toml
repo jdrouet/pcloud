@@ -7,10 +7,12 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+log = { version = "^0.4" }
 reqwest = { default-features = false, features = ["json", "rustls-tls"], version = "^0.11" }
 serde = { features = ["derive"], version = "^1.0" }
 serde_json = { version = "^1.0" }
 
 [dev-dependencies]
+env_logger = { version = "^0.9" }
 rand = { version = "^0.8" }
 tokio = { version = "*", features = ["macros", "rt"] }

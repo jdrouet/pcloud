@@ -1,38 +1,20 @@
-use super::PCloudApi;
 use crate::common::RemoteFile;
-use crate::request::Error as RequestError;
-use serde_json::Value as JsonValue;
+use crate::request::{Error, Response};
+use crate::PCloudApi;
 
 pub const ROOT: usize = 0;
 
 #[derive(Debug, serde::Deserialize)]
-pub struct Response {
-    result: u16,
-    metadata: Option<RemoteFile>,
-    #[serde(flatten)]
-    extra: JsonValue,
-}
-
-impl Response {
-    fn metadata(self) -> Result<RemoteFile, RequestError> {
-        if let Some(content) = self.metadata {
-            Ok(content)
-        } else {
-            Err(RequestError::Payload(self.result))
-        }
-    }
+pub struct FolderResponse {
+    metadata: RemoteFile,
 }
 
 impl PCloudApi {
-    pub async fn create_folder(
-        &self,
-        name: &str,
-        parent_id: usize,
-    ) -> Result<RemoteFile, RequestError> {
+    pub async fn create_folder(&self, name: &str, parent_id: usize) -> Result<RemoteFile, Error> {
         let parent_id = parent_id.to_string();
         let params = vec![("name", name), ("folderid", parent_id.as_str())];
-        let result: Response = self.get_request("createfolder", &params).await?;
-        result.metadata()
+        let result: Response<FolderResponse> = self.get_request("createfolder", &params).await?;
+        result.payload().map(|item| item.metadata)
     }
 }
 
@@ -88,7 +70,7 @@ impl ListFolderParams {
 }
 
 impl PCloudApi {
-    pub async fn list_folder(&self, folder_id: usize) -> Result<RemoteFile, RequestError> {
+    pub async fn list_folder(&self, folder_id: usize) -> Result<RemoteFile, Error> {
         self.list_folder_with_params(folder_id, &ListFolderParams::default())
             .await
     }
@@ -97,79 +79,66 @@ impl PCloudApi {
         &self,
         folder_id: usize,
         params: &ListFolderParams,
-    ) -> Result<RemoteFile, RequestError> {
+    ) -> Result<RemoteFile, Error> {
         let folder_id = folder_id.to_string();
         let mut local_params = vec![("folderid", folder_id.as_str())];
         local_params.extend(&params.to_vec());
-        let result: Response = self.get_request("listfolder", &local_params).await?;
-        result.metadata()
+        let result: Response<FolderResponse> =
+            self.get_request("listfolder", &local_params).await?;
+        result.payload().map(|item| item.metadata)
     }
 }
 
 impl PCloudApi {
-    pub async fn delete_folder(&self, folder_id: usize) -> Result<RemoteFile, RequestError> {
+    pub async fn delete_folder(&self, folder_id: usize) -> Result<RemoteFile, Error> {
         let folder_id = folder_id.to_string();
         let params = vec![("folderid", folder_id.as_str())];
-        let result: Response = self.get_request("deletefolder", &params).await?;
-        result.metadata()
+        let result: Response<FolderResponse> = self.get_request("deletefolder", &params).await?;
+        result.payload().map(|item| item.metadata)
     }
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct ResponseDeleteRecursive {
-    result: u16,
-    deletedfiles: Option<usize>,
-    deletedfolders: Option<usize>,
-}
-
-impl ResponseDeleteRecursive {
-    fn metadata(self) -> Result<(usize, usize), RequestError> {
-        if let (Some(deletedfiles), Some(deletedfolders)) = (self.deletedfiles, self.deletedfolders)
-        {
-            Ok((deletedfiles, deletedfolders))
-        } else {
-            Err(RequestError::Payload(self.result))
-        }
-    }
+pub struct DeleteFolderRecursiveResponse {
+    #[serde(rename = "deletedfiles")]
+    pub deleted_files: usize,
+    #[serde(rename = "deletedfolders")]
+    pub deleted_folders: usize,
 }
 
 impl PCloudApi {
     pub async fn delete_folder_recursive(
         &self,
         folder_id: usize,
-    ) -> Result<(usize, usize), RequestError> {
+    ) -> Result<DeleteFolderRecursiveResponse, Error> {
         let folder_id = folder_id.to_string();
         let params = vec![("folderid", folder_id.as_str())];
-        let result: ResponseDeleteRecursive =
+        let result: Response<DeleteFolderRecursiveResponse> =
             self.get_request("deletefolderrecursive", &params).await?;
-        result.metadata()
+        result.payload()
     }
 }
 
 impl PCloudApi {
-    pub async fn rename_folder(
-        &self,
-        folder_id: usize,
-        name: &str,
-    ) -> Result<RemoteFile, RequestError> {
+    pub async fn rename_folder(&self, folder_id: usize, name: &str) -> Result<RemoteFile, Error> {
         let folder_id = folder_id.to_string();
         let params = vec![("folderid", folder_id.as_str()), ("toname", name)];
-        let result: Response = self.get_request("renamefolder", &params).await?;
-        result.metadata()
+        let result: Response<FolderResponse> = self.get_request("renamefolder", &params).await?;
+        result.payload().map(|item| item.metadata)
     }
 
     pub async fn move_folder(
         &self,
         folder_id: usize,
         to_folder_id: usize,
-    ) -> Result<RemoteFile, RequestError> {
+    ) -> Result<RemoteFile, Error> {
         let folder_id = folder_id.to_string();
         let to_folder_id = to_folder_id.to_string();
         let params = vec![
             ("folderid", folder_id.as_str()),
             ("tofolderid", to_folder_id.as_str()),
         ];
-        let result: Response = self.get_request("renamefolder", &params).await?;
-        result.metadata()
+        let result: Response<FolderResponse> = self.get_request("renamefolder", &params).await?;
+        result.payload().map(|item| item.metadata)
     }
 }

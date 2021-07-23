@@ -5,7 +5,7 @@ pub const ROOT_FOLDER: usize = 0;
 
 #[derive(Debug)]
 pub enum Error {
-    Payload(u16),
+    Payload(u16, String),
     Reqwest(reqwest::Error),
     ResponseFormat,
     Upload(std::io::Error),
@@ -18,18 +18,24 @@ impl From<reqwest::Error> for Error {
 }
 
 #[derive(Debug, serde::Deserialize)]
-pub struct Response<T> {
-    result: u16,
-    #[serde(flatten)]
-    payload: T,
+#[serde(untagged)]
+pub enum Response<T> {
+    Error {
+        result: u16,
+        error: String,
+    },
+    Success {
+        result: u16,
+        #[serde(flatten)]
+        payload: T,
+    },
 }
 
 impl<T> Response<T> {
     pub fn payload(self) -> Result<T, Error> {
-        if self.result != 0 {
-            Err(Error::Payload(self.result))
-        } else {
-            Ok(self.payload)
+        match self {
+            Self::Error { result, error } => Err(Error::Payload(result, error)),
+            Self::Success { payload, .. } => Ok(payload),
         }
     }
 }
@@ -55,10 +61,10 @@ impl PCloudApi {
         local_params.extend_from_slice(params);
         let uri = self.build_url(method);
         let req = self.client.get(uri).query(&local_params).send().await?;
-        req.json::<T>().await.map_err(Error::from)
-        // let body = req.text().await?;
-        // println!("body: {}", body);
-        // Ok(serde_json::from_str(&body).unwrap())
+        // req.json::<T>().await.map_err(Error::from)
+        let body = req.text().await?;
+        println!("GET {}: {}", method, body);
+        Ok(serde_json::from_str(&body).unwrap())
     }
 
     pub(crate) async fn put_request_data<T: serde::de::DeserializeOwned>(
@@ -77,6 +83,9 @@ impl PCloudApi {
             .body(payload)
             .send()
             .await?;
-        req.json::<T>().await.map_err(Error::from)
+        // req.json::<T>().await.map_err(Error::from)
+        let body = req.text().await?;
+        println!("PUT {}: {}", method, body);
+        Ok(serde_json::from_str(&body).unwrap())
     }
 }

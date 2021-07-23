@@ -29,7 +29,7 @@ fn create_filename(ext: &str) -> String {
 }
 
 #[tokio::test]
-async fn folder() {
+async fn complete() {
     init();
     let folder_name = create_folder();
     let renamed_name = create_folder();
@@ -58,10 +58,12 @@ async fn folder() {
     let filename = create_filename("bin");
     let filecontent = create_file(1024 * 1024 * 10); // 10Mo
     let cursor = Cursor::new(filecontent);
-    let file = client
+    let _file = client
         .upload_file(cursor, &filename, folder.folder_id.unwrap())
         .await
         .unwrap();
+    // get file link
+    //
     // create other folder
     let child = client
         .create_folder(&child_name, folder.folder_id.unwrap())

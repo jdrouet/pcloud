@@ -14,5 +14,6 @@ serde_json = { version = "^1.0" }
 
 [dev-dependencies]
 env_logger = { version = "^0.9" }
+mockito = { version = "^0.30" }
 rand = { version = "^0.8" }
 tokio = { version = "*", features = ["macros", "rt"] }

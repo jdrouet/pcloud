@@ -142,3 +142,107 @@ impl PCloudApi {
         result.payload().map(|item| item.metadata)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::credentials::Credentials;
+    use crate::data_center::DataCenter;
+    use crate::PCloudApi;
+    use mockito::{mock, Matcher};
+
+    #[tokio::test]
+    async fn create_folder_success() {
+        crate::tests::init();
+        let m = mock("GET", "/createfolder")
+            .match_query(Matcher::AllOf(vec![
+                Matcher::UrlEncoded("access_token".into(), "access-token".into()),
+                Matcher::UrlEncoded("folderid".into(), "0".into()),
+                Matcher::UrlEncoded("name".into(), "testing".into()),
+            ]))
+            .with_status(200)
+            .with_body(
+                r#"{
+    "result": 0,
+    "metadata": {
+        "path": "\/testing",
+        "name": "testing",
+        "created": "Fri, 23 Jul 2021 19:39:09 +0000",
+        "ismine": true,
+        "thumb": false,
+        "modified": "Fri, 23 Jul 2021 19:39:09 +0000",
+        "id": "d10",
+        "isshared": false,
+        "icon": "folder",
+        "isfolder": true,
+        "parentfolderid": 0,
+        "folderid": 10
+    }
+}"#,
+            )
+            .create();
+        let creds = Credentials::AccessToken("access-token".into());
+        let dc = DataCenter::Test;
+        let api = PCloudApi::new(creds, dc);
+        let result = api.create_folder("testing", 0).await.unwrap();
+        assert_eq!(result.name, "testing");
+        m.assert();
+    }
+
+    #[tokio::test]
+    async fn create_folder_error() {
+        crate::tests::init();
+        let m = mock("GET", "/createfolder")
+            .match_query(Matcher::AllOf(vec![
+                Matcher::UrlEncoded("access_token".into(), "access-token".into()),
+                Matcher::UrlEncoded("folderid".into(), "0".into()),
+                Matcher::UrlEncoded("name".into(), "testing".into()),
+            ]))
+            .with_status(200)
+            .with_body(r#"{ "result": 1020, "error": "something went wrong" }"#)
+            .create();
+        let creds = Credentials::AccessToken("access-token".into());
+        let dc = DataCenter::Test;
+        let api = PCloudApi::new(creds, dc);
+        let error = api.create_folder("testing", 0).await.unwrap_err();
+        assert!(matches!(error, crate::request::Error::Payload(_, _)));
+        m.assert();
+    }
+
+    #[tokio::test]
+    async fn delete_folder_success() {
+        crate::tests::init();
+        let m = mock("GET", "/deletefolder")
+            .match_query(Matcher::AllOf(vec![
+                Matcher::UrlEncoded("access_token".into(), "access-token".into()),
+                Matcher::UrlEncoded("folderid".into(), "42".into()),
+            ]))
+            .with_status(200)
+            .with_body(
+                r#"{
+    "result": 0,
+    "metadata": {
+        "name": "testing",
+        "created": "Fri, 23 Jul 2021 19:39:09 +0000",
+        "ismine": true,
+        "thumb": false,
+        "modified": "Fri, 23 Jul 2021 19:39:09 +0000",
+        "isdeleted": true,
+        "comments": 0,
+        "id": "d1073906688",
+        "isshared": false,
+        "icon": "folder",
+        "isfolder": true,
+        "parentfolderid": 0,
+        "folderid": 42
+    }
+}"#,
+            )
+            .create();
+        let creds = Credentials::AccessToken("access-token".into());
+        let dc = DataCenter::Test;
+        let api = PCloudApi::new(creds, dc);
+        let result = api.delete_folder(42).await.unwrap();
+        assert_eq!(result.name, "testing");
+        m.assert();
+    }
+}

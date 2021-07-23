@@ -12,7 +12,8 @@ impl DataCenter {
             Self::Europe => "https://eapi.pcloud.com",
             Self::UnitedStates => "https://api.pcloud.com",
             #[cfg(test)]
-            Self::Test => "http://127.0.0.1:1234",
+            #[allow(deprecated)]
+            Self::Test => mockito::SERVER_URL,
         }
     }
 }

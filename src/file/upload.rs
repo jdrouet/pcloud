@@ -4,7 +4,7 @@ use crate::PCloudApi;
 use std::io::Read;
 
 #[derive(Debug, serde::Deserialize)]
-struct CreateUploadFilePayload {
+struct Payload {
     #[serde(rename = "uploadid")]
     upload_id: usize,
 }
@@ -52,10 +52,9 @@ struct ResponseUploadFile {
 }
 
 impl PCloudApi {
-    async fn create_upload_file(&self) -> Result<CreateUploadFilePayload, Error> {
-        let result: Response<CreateUploadFilePayload> =
-            self.get_request("upload_create", &Vec::new()).await?;
-        result.payload()
+    async fn create_upload_file(&self) -> Result<usize, Error> {
+        let result: Response<Payload> = self.get_request("upload_create", &Vec::new()).await?;
+        result.payload().map(|item| item.upload_id)
     }
 
     async fn write_chunk_file(&self, params: &[(&str, &str)], chunk: Vec<u8>) -> Result<(), Error> {
@@ -87,42 +86,20 @@ impl PCloudApi {
         filename: &str,
         folder_id: usize,
     ) -> Result<RemoteFile, Error> {
-        let upload = self.create_upload_file().await?;
+        let upload_id = self.create_upload_file().await?;
         let mut reader = ChunkReader::new(input, self.upload_part_size);
 
-        let upload_id = upload.upload_id.to_string();
+        let upload_id_str = upload_id.to_string();
 
         while let (offset, Some(chunk)) = reader.next_chunk()? {
             let offset = offset.to_string();
             let params = vec![
-                ("uploadid", upload_id.as_str()),
+                ("uploadid", upload_id_str.as_str()),
                 ("uploadoffset", offset.as_str()),
             ];
             self.write_chunk_file(&params, chunk).await?;
         }
 
-        self.save_file(upload.upload_id, filename, folder_id).await
-    }
-}
-
-#[derive(Debug, serde::Deserialize)]
-struct GetLinkResponse {
-    hosts: Vec<String>,
-    path: String,
-}
-
-impl GetLinkResponse {
-    fn to_url(&self) -> String {
-        let host = self.hosts.get(0).unwrap();
-        format!("https://{}{}", host, self.path)
-    }
-}
-
-impl PCloudApi {
-    pub async fn get_link_file(&self, file_id: usize) -> Result<String, Error> {
-        let file_id = file_id.to_string();
-        let params = vec![("fileid", file_id.as_str())];
-        let result: Response<GetLinkResponse> = self.get_request("getfilelink", &params).await?;
-        result.payload().map(|res| res.to_url())
+        self.save_file(upload_id, filename, folder_id).await
     }
 }

@@ -12,6 +12,8 @@ pub struct RemoteFile {
     // TODO replace by chrono
     pub modified: String,
     pub thumb: bool,
+    #[serde(rename = "fileid")]
+    pub file_id: Option<usize>,
     #[serde(rename = "folderid")]
     pub folder_id: Option<usize>,
     #[serde(rename = "isshared")]

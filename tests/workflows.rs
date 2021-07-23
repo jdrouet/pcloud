@@ -58,12 +58,12 @@ async fn complete() {
     let filename = create_filename("bin");
     let filecontent = create_file(1024 * 1024 * 10); // 10Mo
     let cursor = Cursor::new(filecontent);
-    let _file = client
+    let file = client
         .upload_file(cursor, &filename, folder.folder_id.unwrap())
         .await
         .unwrap();
     // get file link
-    //
+    let _file_link = client.get_link_file(file.file_id.unwrap()).await.unwrap();
     // create other folder
     let child = client
         .create_folder(&child_name, folder.folder_id.unwrap())

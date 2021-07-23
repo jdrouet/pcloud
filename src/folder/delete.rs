@@ -4,6 +4,12 @@ use crate::request::{Error, Response};
 use crate::PCloudApi;
 
 impl PCloudApi {
+    /// Delete a folder
+    ///
+    /// # Arguments
+    ///
+    /// * `folder_id` - ID of the folder to delete.
+    ///
     pub async fn delete_folder(&self, folder_id: usize) -> Result<RemoteFile, Error> {
         let folder_id = folder_id.to_string();
         let params = vec![("folderid", folder_id.as_str())];
@@ -21,6 +27,12 @@ pub struct RecursivePayload {
 }
 
 impl PCloudApi {
+    /// Delete a folder recursively
+    ///
+    /// # Arguments
+    ///
+    /// * `folder_id` - ID of the folder to delete.
+    ///
     pub async fn delete_folder_recursive(
         &self,
         folder_id: usize,

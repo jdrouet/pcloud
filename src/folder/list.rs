@@ -55,6 +55,12 @@ impl Params {
 }
 
 impl PCloudApi {
+    /// List a folder's content
+    ///
+    /// # Arguments
+    ///
+    /// * `folder_id` - ID of the folder.
+    ///
     pub async fn list_folder(&self, folder_id: usize) -> Result<RemoteFile, Error> {
         self.list_folder_with_params(folder_id, &Params::default())
             .await

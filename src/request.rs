@@ -36,7 +36,7 @@ impl PCloudApi {
     }
 
     fn build_url(&self, method: &str) -> String {
-        format!("{}/{}", self.data_center.base_url(), method)
+        format!("{}/{}", self.region.base_url(), method)
     }
 
     pub(crate) async fn get_request<T: serde::de::DeserializeOwned>(

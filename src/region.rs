@@ -1,12 +1,12 @@
 #[derive(Copy, Clone, Debug)]
-pub enum DataCenter {
+pub enum Region {
     Europe,
     UnitedStates,
     #[cfg(test)]
     Test,
 }
 
-impl DataCenter {
+impl Region {
     pub fn base_url(&self) -> &str {
         match self {
             Self::Europe => "https://eapi.pcloud.com",
@@ -18,15 +18,15 @@ impl DataCenter {
     }
 }
 
-impl Default for DataCenter {
+impl Default for Region {
     fn default() -> Self {
         Self::Europe
     }
 }
 
-impl DataCenter {
+impl Region {
     pub fn from_env() -> Self {
-        if let Ok(value) = std::env::var("PCLOUD_DATA_CENTER") {
+        if let Ok(value) = std::env::var("PCLOUD_REGION") {
             match value.as_str() {
                 "eu" => Self::Europe,
                 "us" => Self::UnitedStates,

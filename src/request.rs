@@ -8,6 +8,7 @@ pub enum Error {
     Payload(u16, String),
     Reqwest(reqwest::Error),
     ResponseFormat,
+    Download(std::io::Error),
     Upload(std::io::Error),
 }
 

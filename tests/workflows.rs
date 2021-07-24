@@ -56,14 +56,22 @@ async fn complete() {
     assert!(folder.is_folder);
     // create file in folder
     let filename = create_filename("bin");
-    let filecontent = create_file(1024 * 1024 * 10); // 10Mo
-    let cursor = Cursor::new(filecontent);
+    let mut filecontent = create_file(1024 * 1024 * 10); // 10Mo
+    let cursor = Cursor::new(&mut filecontent);
     let file = client
         .upload_file(cursor, &filename, folder.folder_id.unwrap())
         .await
         .unwrap();
     // get file link
     let _file_link = client.get_link_file(file.file_id.unwrap()).await.unwrap();
+    // download file
+    let mut buffer: Vec<u8> = Vec::with_capacity(1024 * 1024 * 10);
+    let cursor = Cursor::new(&mut buffer);
+    let _size = client
+        .download_file(file.file_id.unwrap(), cursor)
+        .await
+        .unwrap();
+    assert_eq!(buffer, filecontent);
     // create other folder
     let child = client
         .create_folder(&child_name, folder.folder_id.unwrap())

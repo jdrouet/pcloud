@@ -1,4 +1,4 @@
-use crate::request::Error;
+use crate::error::Error;
 use crate::PCloudApi;
 use std::io::Write;
 

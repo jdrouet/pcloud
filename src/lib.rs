@@ -1,6 +1,7 @@
 mod common;
 pub mod credentials;
 pub mod data_center;
+pub mod error;
 pub mod file;
 pub mod folder;
 pub mod request;

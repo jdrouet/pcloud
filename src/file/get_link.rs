@@ -1,4 +1,5 @@
-use crate::request::{Error, Response};
+use crate::error::Error;
+use crate::request::Response;
 use crate::PCloudApi;
 
 #[derive(Debug, serde::Deserialize)]

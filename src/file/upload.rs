@@ -1,6 +1,7 @@
 use super::FileResponse;
 use crate::common::RemoteFile;
-use crate::request::{Error, Response};
+use crate::error::Error;
+use crate::request::Response;
 use crate::PCloudApi;
 use std::io::Read;
 

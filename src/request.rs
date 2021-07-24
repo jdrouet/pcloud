@@ -1,22 +1,8 @@
-use super::PCloudApi;
+use crate::error::Error;
+use crate::PCloudApi;
 
 const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
 pub const ROOT_FOLDER: usize = 0;
-
-#[derive(Debug)]
-pub enum Error {
-    Payload(u16, String),
-    Reqwest(reqwest::Error),
-    ResponseFormat,
-    Download(std::io::Error),
-    Upload(std::io::Error),
-}
-
-impl From<reqwest::Error> for Error {
-    fn from(err: reqwest::Error) -> Self {
-        Self::Reqwest(err)
-    }
-}
 
 #[derive(Debug, serde::Deserialize)]
 #[serde(untagged)]

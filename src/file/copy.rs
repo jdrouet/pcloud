@@ -1,11 +1,7 @@
+use super::FileResponse;
 use crate::common::RemoteFile;
 use crate::request::{Error, Response};
 use crate::PCloudApi;
-
-#[derive(Debug, serde::Deserialize)]
-pub struct FileResponse {
-    metadata: RemoteFile,
-}
 
 impl PCloudApi {
     /// Copy a file

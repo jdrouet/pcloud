@@ -1,13 +1,13 @@
-mod create;
-mod delete;
-mod list;
-mod rename;
+pub mod create;
+pub mod delete;
+pub mod list;
+pub mod rename;
 
 use crate::common::RemoteFile;
 
 pub const ROOT: usize = 0;
 
 #[derive(Debug, serde::Deserialize)]
-pub struct FolderResponse {
+pub(crate) struct FolderResponse {
     metadata: RemoteFile,
 }

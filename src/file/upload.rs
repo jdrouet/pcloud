@@ -1,3 +1,4 @@
+use super::FileResponse;
 use crate::common::RemoteFile;
 use crate::request::{Error, Response};
 use crate::PCloudApi;
@@ -46,11 +47,6 @@ impl<R: Read> ChunkReader<R> {
     }
 }
 
-#[derive(Debug, serde::Deserialize)]
-struct ResponseUploadFile {
-    metadata: RemoteFile,
-}
-
 impl PCloudApi {
     async fn create_upload_file(&self) -> Result<usize, Error> {
         let result: Response<CreateUploadPayload> =
@@ -77,7 +73,7 @@ impl PCloudApi {
             ("name", filename),
             ("folderid", folder_id.as_str()),
         ];
-        let result: Response<ResponseUploadFile> = self.get_request("upload_save", &params).await?;
+        let result: Response<FileResponse> = self.get_request("upload_save", &params).await?;
         result.payload().map(|item| item.metadata)
     }
 

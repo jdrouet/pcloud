@@ -7,6 +7,7 @@ pub mod request;
 
 pub const DEFAULT_PART_SIZE: usize = 10485760;
 
+/// Client for the pCloud REST API
 #[derive(Clone, Debug)]
 pub struct PCloudApi {
     client: reqwest::Client,
@@ -16,6 +17,16 @@ pub struct PCloudApi {
 }
 
 impl PCloudApi {
+    /// Create new client for the pCloud REST API
+    ///
+    /// # Arguments
+    ///
+    /// * `credentials` - Credentials to use to connect.
+    /// * `data_center` - Data Center (or Region) to connect to.
+    ///
+    /// # Returns
+    ///
+    /// A new instance of the client
     pub fn new(
         credentials: credentials::Credentials,
         data_center: data_center::DataCenter,

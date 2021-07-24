@@ -1,9 +1,9 @@
-mod copy;
-mod download;
-mod get_info;
-mod get_link;
-mod rename;
-mod upload;
+pub mod copy;
+pub mod download;
+pub mod get_info;
+pub mod get_link;
+pub mod rename;
+pub mod upload;
 
 use crate::common::RemoteFile;
 

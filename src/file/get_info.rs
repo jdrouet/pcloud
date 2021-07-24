@@ -1,4 +1,4 @@
-use crate::entry::RemoteEntry;
+use crate::entry::Entry;
 use crate::error::Error;
 use crate::request::Response;
 use crate::PCloudApi;
@@ -7,7 +7,7 @@ use crate::PCloudApi;
 pub struct CheckSumFile {
     pub sha256: String,
     pub sha1: String,
-    pub metadata: RemoteEntry,
+    pub metadata: Entry,
 }
 
 impl PCloudApi {

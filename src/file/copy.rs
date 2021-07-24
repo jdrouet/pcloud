@@ -1,5 +1,5 @@
 use super::FileResponse;
-use crate::entry::RemoteEntry;
+use crate::entry::File;
 use crate::error::Error;
 use crate::request::Response;
 use crate::PCloudApi;
@@ -12,11 +12,7 @@ impl PCloudApi {
     /// * `file_id` - ID of the file to rename.
     /// * `to_folder_id` - ID of the folder to copy to.
     ///
-    pub async fn copy_file(
-        &self,
-        file_id: usize,
-        to_folder_id: usize,
-    ) -> Result<RemoteEntry, Error> {
+    pub async fn copy_file(&self, file_id: usize, to_folder_id: usize) -> Result<File, Error> {
         let file_id = file_id.to_string();
         let to_folder_id = to_folder_id.to_string();
         let params = vec![

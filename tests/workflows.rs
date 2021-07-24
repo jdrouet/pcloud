@@ -37,7 +37,6 @@ async fn complete() {
     let client = PCloudApi::new_eu(Credentials::from_env());
     // create folder
     let folder = client.create_folder(&folder_name, ROOT).await.unwrap();
-    assert!(folder.is_folder);
     // rename folder
     let renamed = client
         .rename_folder(folder.folder_id.unwrap(), &renamed_name)
@@ -53,7 +52,6 @@ async fn complete() {
     assert_eq!(deleted.folder_id, folder.folder_id);
     // create folder
     let folder = client.create_folder(&folder_name, ROOT).await.unwrap();
-    assert!(folder.is_folder);
     // create file in folder
     let filename = create_filename("bin");
     let mut filecontent = create_file(1024 * 1024 * 10); // 10Mo
@@ -64,7 +62,7 @@ async fn complete() {
         .unwrap();
     // get file info
     let file_info = client.get_info_file(file.file_id.unwrap()).await.unwrap();
-    assert_eq!(file_info.metadata.file_id, file.file_id);
+    assert_eq!(file_info.metadata.file_id(), file.file_id);
     // get file link
     let _file_link = client.get_link_file(file.file_id.unwrap()).await.unwrap();
     // download file

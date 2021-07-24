@@ -1,5 +1,5 @@
 use super::FolderResponse;
-use crate::entry::RemoteEntry;
+use crate::entry::Folder;
 use crate::error::Error;
 use crate::request::Response;
 use crate::PCloudApi;
@@ -11,7 +11,7 @@ impl PCloudApi {
     ///
     /// * `folder_id` - ID of the folder to delete.
     ///
-    pub async fn delete_folder(&self, folder_id: usize) -> Result<RemoteEntry, Error> {
+    pub async fn delete_folder(&self, folder_id: usize) -> Result<Folder, Error> {
         let folder_id = folder_id.to_string();
         let params = vec![("folderid", folder_id.as_str())];
         let result: Response<FolderResponse> = self.get_request("deletefolder", &params).await?;

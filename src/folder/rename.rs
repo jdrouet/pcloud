@@ -1,5 +1,5 @@
 use super::FolderResponse;
-use crate::entry::RemoteEntry;
+use crate::entry::Folder;
 use crate::error::Error;
 use crate::request::Response;
 use crate::PCloudApi;
@@ -12,7 +12,7 @@ impl PCloudApi {
     /// * `folder_id` - ID of the folder to rename.
     /// * `name` - New name for the folder
     ///
-    pub async fn rename_folder(&self, folder_id: usize, name: &str) -> Result<RemoteEntry, Error> {
+    pub async fn rename_folder(&self, folder_id: usize, name: &str) -> Result<Folder, Error> {
         let folder_id = folder_id.to_string();
         let params = vec![("folderid", folder_id.as_str()), ("toname", name)];
         let result: Response<FolderResponse> = self.get_request("renamefolder", &params).await?;
@@ -30,7 +30,7 @@ impl PCloudApi {
         &self,
         folder_id: usize,
         to_folder_id: usize,
-    ) -> Result<RemoteEntry, Error> {
+    ) -> Result<Folder, Error> {
         let folder_id = folder_id.to_string();
         let to_folder_id = to_folder_id.to_string();
         let params = vec![

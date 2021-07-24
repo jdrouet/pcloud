@@ -1,5 +1,5 @@
 use super::FolderResponse;
-use crate::entry::RemoteEntry;
+use crate::entry::Folder;
 use crate::error::Error;
 use crate::request::Response;
 use crate::PCloudApi;
@@ -62,7 +62,7 @@ impl PCloudApi {
     ///
     /// * `folder_id` - ID of the folder.
     ///
-    pub async fn list_folder(&self, folder_id: usize) -> Result<RemoteEntry, Error> {
+    pub async fn list_folder(&self, folder_id: usize) -> Result<Folder, Error> {
         self.list_folder_with_params(folder_id, &Params::default())
             .await
     }
@@ -71,7 +71,7 @@ impl PCloudApi {
         &self,
         folder_id: usize,
         params: &Params,
-    ) -> Result<RemoteEntry, Error> {
+    ) -> Result<Folder, Error> {
         let folder_id = folder_id.to_string();
         let mut local_params = vec![("folderid", folder_id.as_str())];
         local_params.extend(&params.to_vec());

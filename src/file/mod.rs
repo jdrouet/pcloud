@@ -5,9 +5,9 @@ pub mod get_link;
 pub mod rename;
 pub mod upload;
 
-use crate::entry::RemoteEntry;
+use crate::entry::File;
 
 #[derive(Debug, serde::Deserialize)]
 pub struct FileResponse {
-    metadata: RemoteEntry,
+    metadata: File,
 }

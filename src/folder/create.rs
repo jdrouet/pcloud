@@ -1,5 +1,5 @@
 use super::FolderResponse;
-use crate::entry::RemoteEntry;
+use crate::entry::Folder;
 use crate::error::Error;
 use crate::request::Response;
 use crate::PCloudApi;
@@ -12,7 +12,7 @@ impl PCloudApi {
     /// * `name` - Name of the folder.
     /// * `parent_id` - ID of the parent folder. Use 0 for the root folder.
     ///
-    pub async fn create_folder(&self, name: &str, parent_id: usize) -> Result<RemoteEntry, Error> {
+    pub async fn create_folder(&self, name: &str, parent_id: usize) -> Result<Folder, Error> {
         let parent_id = parent_id.to_string();
         let params = vec![("name", name), ("folderid", parent_id.as_str())];
         let result: Response<FolderResponse> = self.get_request("createfolder", &params).await?;

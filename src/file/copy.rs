@@ -1,5 +1,5 @@
 use super::FileResponse;
-use crate::common::RemoteFile;
+use crate::entry::RemoteEntry;
 use crate::error::Error;
 use crate::request::Response;
 use crate::PCloudApi;
@@ -16,7 +16,7 @@ impl PCloudApi {
         &self,
         file_id: usize,
         to_folder_id: usize,
-    ) -> Result<RemoteFile, Error> {
+    ) -> Result<RemoteEntry, Error> {
         let file_id = file_id.to_string();
         let to_folder_id = to_folder_id.to_string();
         let params = vec![

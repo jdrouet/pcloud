@@ -1,5 +1,5 @@
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
-pub struct RemoteFile {
+pub struct RemoteEntry {
     // TODO replace by chrono
     pub created: String,
     #[serde(rename = "isfolder")]
@@ -25,5 +25,5 @@ pub struct RemoteFile {
     pub hash: Option<usize>,
     #[serde(rename = "contenttype")]
     pub content_type: Option<String>,
-    pub contents: Option<Vec<RemoteFile>>,
+    pub contents: Option<Vec<RemoteEntry>>,
 }

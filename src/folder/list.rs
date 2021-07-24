@@ -1,5 +1,5 @@
 use super::FolderResponse;
-use crate::common::RemoteFile;
+use crate::entry::RemoteEntry;
 use crate::error::Error;
 use crate::request::Response;
 use crate::PCloudApi;
@@ -62,7 +62,7 @@ impl PCloudApi {
     ///
     /// * `folder_id` - ID of the folder.
     ///
-    pub async fn list_folder(&self, folder_id: usize) -> Result<RemoteFile, Error> {
+    pub async fn list_folder(&self, folder_id: usize) -> Result<RemoteEntry, Error> {
         self.list_folder_with_params(folder_id, &Params::default())
             .await
     }
@@ -71,7 +71,7 @@ impl PCloudApi {
         &self,
         folder_id: usize,
         params: &Params,
-    ) -> Result<RemoteFile, Error> {
+    ) -> Result<RemoteEntry, Error> {
         let folder_id = folder_id.to_string();
         let mut local_params = vec![("folderid", folder_id.as_str())];
         local_params.extend(&params.to_vec());
@@ -84,7 +84,7 @@ impl PCloudApi {
 #[cfg(test)]
 mod tests {
     use crate::credentials::Credentials;
-    use crate::data_center::DataCenter;
+    use crate::region::Region;
     use crate::PCloudApi;
     use mockito::{mock, Matcher};
 
@@ -118,7 +118,7 @@ mod tests {
             )
             .create();
         let creds = Credentials::AccessToken("access-token".into());
-        let dc = DataCenter::Test;
+        let dc = Region::Test;
         let api = PCloudApi::new(creds, dc);
         let payload = api.list_folder(0).await.unwrap();
         assert_eq!(payload.parent_folder_id, Some(0));
@@ -137,10 +137,10 @@ mod tests {
             .with_body(r#"{ "result": 1020, "error": "something went wrong" }"#)
             .create();
         let creds = Credentials::AccessToken("access-token".into());
-        let dc = DataCenter::Test;
+        let dc = Region::Test;
         let api = PCloudApi::new(creds, dc);
         let error = api.list_folder(0).await.unwrap_err();
-        assert!(matches!(error, crate::request::Error::Payload(_, _)));
+        assert!(matches!(error, crate::error::Error::Payload(_, _)));
         m.assert();
     }
 }

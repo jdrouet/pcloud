@@ -1,4 +1,4 @@
-use crate::common::RemoteFile;
+use crate::entry::RemoteEntry;
 use crate::error::Error;
 use crate::request::Response;
 use crate::PCloudApi;
@@ -7,7 +7,7 @@ use crate::PCloudApi;
 pub struct CheckSumFile {
     pub sha256: String,
     pub sha1: String,
-    pub metadata: RemoteFile,
+    pub metadata: RemoteEntry,
 }
 
 impl PCloudApi {
@@ -22,7 +22,7 @@ impl PCloudApi {
 #[cfg(test)]
 mod tests {
     use crate::credentials::Credentials;
-    use crate::data_center::DataCenter;
+    use crate::region::Region;
     use crate::PCloudApi;
     use mockito::{mock, Matcher};
 
@@ -62,7 +62,7 @@ mod tests {
             )
             .create();
         let creds = Credentials::AccessToken("access-token".into());
-        let dc = DataCenter::Test;
+        let dc = Region::Test;
         let api = PCloudApi::new(creds, dc);
         let result = api.get_info_file(42).await.unwrap();
         assert_eq!(

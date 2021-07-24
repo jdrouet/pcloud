@@ -1,5 +1,5 @@
 use super::FolderResponse;
-use crate::common::RemoteFile;
+use crate::entry::RemoteEntry;
 use crate::error::Error;
 use crate::request::Response;
 use crate::PCloudApi;
@@ -12,7 +12,7 @@ impl PCloudApi {
     /// * `name` - Name of the folder.
     /// * `parent_id` - ID of the parent folder. Use 0 for the root folder.
     ///
-    pub async fn create_folder(&self, name: &str, parent_id: usize) -> Result<RemoteFile, Error> {
+    pub async fn create_folder(&self, name: &str, parent_id: usize) -> Result<RemoteEntry, Error> {
         let parent_id = parent_id.to_string();
         let params = vec![("name", name), ("folderid", parent_id.as_str())];
         let result: Response<FolderResponse> = self.get_request("createfolder", &params).await?;
@@ -23,7 +23,7 @@ impl PCloudApi {
 #[cfg(test)]
 mod tests {
     use crate::credentials::Credentials;
-    use crate::data_center::DataCenter;
+    use crate::region::Region;
     use crate::PCloudApi;
     use mockito::{mock, Matcher};
 
@@ -58,7 +58,7 @@ mod tests {
             )
             .create();
         let creds = Credentials::AccessToken("access-token".into());
-        let dc = DataCenter::Test;
+        let dc = Region::Test;
         let api = PCloudApi::new(creds, dc);
         let result = api.create_folder("testing", 0).await.unwrap();
         assert_eq!(result.name, "testing");
@@ -78,10 +78,10 @@ mod tests {
             .with_body(r#"{ "result": 1020, "error": "something went wrong" }"#)
             .create();
         let creds = Credentials::AccessToken("access-token".into());
-        let dc = DataCenter::Test;
+        let dc = Region::Test;
         let api = PCloudApi::new(creds, dc);
         let error = api.create_folder("testing", 0).await.unwrap_err();
-        assert!(matches!(error, crate::request::Error::Payload(_, _)));
+        assert!(matches!(error, crate::error::Error::Payload(_, _)));
         m.assert();
     }
 }

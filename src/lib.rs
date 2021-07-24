@@ -1,5 +1,5 @@
-mod common;
 pub mod credentials;
+pub mod entry;
 pub mod error;
 pub mod file;
 pub mod folder;

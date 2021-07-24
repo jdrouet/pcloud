@@ -1,5 +1,5 @@
 use super::FolderResponse;
-use crate::common::RemoteFile;
+use crate::entry::RemoteEntry;
 use crate::error::Error;
 use crate::request::Response;
 use crate::PCloudApi;
@@ -11,7 +11,7 @@ impl PCloudApi {
     ///
     /// * `folder_id` - ID of the folder to delete.
     ///
-    pub async fn delete_folder(&self, folder_id: usize) -> Result<RemoteFile, Error> {
+    pub async fn delete_folder(&self, folder_id: usize) -> Result<RemoteEntry, Error> {
         let folder_id = folder_id.to_string();
         let params = vec![("folderid", folder_id.as_str())];
         let result: Response<FolderResponse> = self.get_request("deletefolder", &params).await?;
@@ -49,7 +49,7 @@ impl PCloudApi {
 #[cfg(test)]
 mod tests {
     use crate::credentials::Credentials;
-    use crate::data_center::DataCenter;
+    use crate::region::Region;
     use crate::PCloudApi;
     use mockito::{mock, Matcher};
 
@@ -84,7 +84,7 @@ mod tests {
             )
             .create();
         let creds = Credentials::AccessToken("access-token".into());
-        let dc = DataCenter::Test;
+        let dc = Region::Test;
         let api = PCloudApi::new(creds, dc);
         let result = api.delete_folder(42).await.unwrap();
         assert_eq!(result.name, "testing");

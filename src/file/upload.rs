@@ -1,5 +1,5 @@
 use super::FileResponse;
-use crate::common::RemoteFile;
+use crate::entry::RemoteEntry;
 use crate::error::Error;
 use crate::request::Response;
 use crate::PCloudApi;
@@ -66,7 +66,7 @@ impl PCloudApi {
         upload_id: usize,
         filename: &str,
         folder_id: usize,
-    ) -> Result<RemoteFile, Error> {
+    ) -> Result<RemoteEntry, Error> {
         let folder_id = folder_id.to_string();
         let upload_id = upload_id.to_string();
         let params = vec![
@@ -91,7 +91,7 @@ impl PCloudApi {
         input: R,
         filename: &str,
         folder_id: usize,
-    ) -> Result<RemoteFile, Error> {
+    ) -> Result<RemoteEntry, Error> {
         let upload_id = self.create_upload_file().await?;
         let mut reader = ChunkReader::new(input, self.upload_part_size);
 
@@ -113,7 +113,7 @@ impl PCloudApi {
 #[cfg(test)]
 mod tests {
     use crate::credentials::Credentials;
-    use crate::data_center::DataCenter;
+    use crate::region::Region;
     use crate::PCloudApi;
     use mockito::{mock, Matcher};
 
@@ -171,7 +171,7 @@ mod tests {
             .create();
 
         let creds = Credentials::AccessToken("access-token".into());
-        let dc = DataCenter::Test;
+        let dc = Region::Test;
         let api = PCloudApi::new(creds, dc);
         //
         let cursor = std::io::Cursor::new("hello world!");

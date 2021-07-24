@@ -44,6 +44,13 @@ impl PCloudApi {
     pub fn new_us(credentials: credentials::Credentials) -> Self {
         Self::new(credentials, region::Region::UnitedStates)
     }
+
+    pub fn from_env() -> Self {
+        Self::new(
+            credentials::Credentials::from_env(),
+            region::Region::from_env(),
+        )
+    }
 }
 
 impl PCloudApi {

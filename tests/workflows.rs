@@ -72,6 +72,12 @@ async fn complete() {
         .await
         .unwrap();
     assert_eq!(buffer, filecontent);
+    // rename file
+    let renamed_file = client
+        .rename_file(file.file_id.unwrap(), "hello.world")
+        .await
+        .unwrap();
+    assert_eq!(renamed_file.name, "hello.world");
     // create other folder
     let child = client
         .create_folder(&child_name, folder.folder_id.unwrap())

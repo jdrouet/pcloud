@@ -17,3 +17,23 @@ impl DataCenter {
         }
     }
 }
+
+impl Default for DataCenter {
+    fn default() -> Self {
+        Self::Europe
+    }
+}
+
+impl DataCenter {
+    pub fn from_env() -> Self {
+        if let Ok(value) = std::env::var("PCLOUD_DATA_CENTER") {
+            match value.as_str() {
+                "eu" => Self::Europe,
+                "us" => Self::UnitedStates,
+                _ => Self::default(),
+            }
+        } else {
+            Self::default()
+        }
+    }
+}

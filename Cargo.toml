@@ -2,7 +2,11 @@
 name = "pcloud"
 version = "0.1.0"
 authors = ["Jérémie Drouet <jeremie.drouet@gmail.com>"]
+description = "Library for pCloud API"
+license = "MIT"
 edition = "2018"
+readme = "readme.md"
+repository = "https://github.com/jdrouet/pcloud"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -16,4 +20,4 @@ serde_json = { version = "^1.0" }
 env_logger = { version = "^0.9" }
 mockito = { version = "^0.30" }
 rand = { version = "^0.8" }
-tokio = { version = "*", features = ["macros", "rt"] }
+tokio = { version = "^1.9", features = ["macros", "rt"] }

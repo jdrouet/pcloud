@@ -62,6 +62,9 @@ async fn complete() {
         .upload_file(cursor, &filename, folder.folder_id.unwrap())
         .await
         .unwrap();
+    // get file info
+    let file_info = client.get_info_file(file.file_id.unwrap()).await.unwrap();
+    assert_eq!(file_info.metadata.file_id, file.file_id);
     // get file link
     let _file_link = client.get_link_file(file.file_id.unwrap()).await.unwrap();
     // download file

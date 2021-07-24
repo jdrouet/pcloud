@@ -62,10 +62,14 @@ impl PCloudApi {
         local_params.extend_from_slice(params);
         let uri = self.build_url(method);
         let req = self.client.get(uri).query(&local_params).send().await?;
-        // req.json::<T>().await.map_err(Error::from)
-        let body = req.text().await?;
-        println!("GET {}: {}", method, body);
-        Ok(serde_json::from_str(&body).unwrap())
+        // TODO drop this when ready
+        if cfg!(test) {
+            let body = req.text().await?;
+            println!("GET {}: {}", method, body);
+            Ok(serde_json::from_str(&body).unwrap())
+        } else {
+            req.json::<T>().await.map_err(Error::from)
+        }
     }
 
     pub(crate) async fn put_request_data<T: serde::de::DeserializeOwned>(
@@ -84,9 +88,13 @@ impl PCloudApi {
             .body(payload)
             .send()
             .await?;
-        // req.json::<T>().await.map_err(Error::from)
-        let body = req.text().await?;
-        println!("PUT {}: {}", method, body);
-        Ok(serde_json::from_str(&body).unwrap())
+        // TODO drop this when ready
+        if cfg!(test) {
+            let body = req.text().await?;
+            println!("PUT {}: {}", method, body);
+            Ok(serde_json::from_str(&body).unwrap())
+        } else {
+            req.json::<T>().await.map_err(Error::from)
+        }
     }
 }

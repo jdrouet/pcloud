@@ -43,7 +43,7 @@ async fn complete() {
         .await
         .unwrap();
     assert_eq!(folder.folder_id, renamed.folder_id);
-    assert_eq!(renamed.name, renamed_name);
+    assert_eq!(renamed.base.name, renamed_name);
     // delete folder
     let deleted = client.delete_folder(folder.folder_id).await.unwrap();
     assert_eq!(deleted.folder_id, folder.folder_id);
@@ -72,21 +72,21 @@ async fn complete() {
         .rename_file(file.file_id, "hello.world")
         .await
         .unwrap();
-    assert_eq!(renamed_file.name, "hello.world");
+    assert_eq!(renamed_file.base.name, "hello.world");
     // create other folder
     let child = client
         .create_folder(&child_name, folder.folder_id)
         .await
         .unwrap();
-    assert_eq!(Some(folder.folder_id), child.parent_folder_id);
+    assert_eq!(Some(folder.folder_id), child.base.parent_folder_id);
     // create in root folder and move
     let next = client.create_folder(&renamed_name, ROOT).await.unwrap();
-    assert_eq!(next.parent_folder_id, Some(ROOT));
+    assert_eq!(next.base.parent_folder_id, Some(ROOT));
     let moved = client
         .move_folder(next.folder_id, folder.folder_id)
         .await
         .unwrap();
-    assert_eq!(moved.parent_folder_id, Some(folder.folder_id));
+    assert_eq!(moved.base.parent_folder_id, Some(folder.folder_id));
     // delete folder
     let result = client
         .delete_folder_recursive(folder.folder_id)

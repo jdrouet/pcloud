@@ -1,4 +1,5 @@
 pub mod credentials;
+mod date;
 pub mod entry;
 pub mod error;
 pub mod file;

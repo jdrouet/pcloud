@@ -176,7 +176,7 @@ mod tests {
         //
         let cursor = std::io::Cursor::new("hello world!");
         let result = api.upload_file(cursor, "testing.txt", 0).await.unwrap();
-        assert_eq!(result.name, "testing.txt");
+        assert_eq!(result.base.name, "testing.txt");
         m_create.assert();
         m_write.assert();
         m_save.assert();

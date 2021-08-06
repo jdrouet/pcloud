@@ -87,7 +87,7 @@ mod tests {
         let dc = Region::Test;
         let api = PCloudApi::new(creds, dc);
         let result = api.delete_folder(42).await.unwrap();
-        assert_eq!(result.name, "testing");
+        assert_eq!(result.base.name, "testing");
         m.assert();
     }
 }

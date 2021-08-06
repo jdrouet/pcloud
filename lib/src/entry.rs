@@ -1,22 +1,30 @@
+use chrono::prelude::{DateTime, Utc};
+
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
-pub struct File {
-    // TODO replace by chrono
-    pub created: String,
+pub struct EntryBase {
+    #[serde(with = "crate::date")]
+    pub created: DateTime<Utc>,
+    #[serde(with = "crate::date")]
+    pub modified: DateTime<Utc>,
     #[serde(rename = "parentfolderid")]
     pub parent_folder_id: Option<usize>,
     pub icon: String,
     pub id: String,
+    pub name: String,
     pub path: Option<String>,
-    // TODO replace by chrono
-    pub modified: String,
     pub thumb: bool,
-    #[serde(rename = "fileid")]
-    pub file_id: usize,
     #[serde(rename = "isshared")]
     pub is_shared: bool,
     #[serde(rename = "ismine")]
     pub is_mine: bool,
-    pub name: String,
+}
+
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
+pub struct File {
+    #[serde(flatten)]
+    pub base: EntryBase,
+    #[serde(rename = "fileid")]
+    pub file_id: usize,
     pub size: Option<usize>,
     pub hash: Option<usize>,
     #[serde(rename = "contenttype")]
@@ -25,25 +33,10 @@ pub struct File {
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct Folder {
-    // TODO replace by chrono
-    pub created: String,
-    #[serde(rename = "parentfolderid")]
-    pub parent_folder_id: Option<usize>,
-    pub icon: String,
-    pub id: String,
-    pub path: Option<String>,
-    // TODO replace by chrono
-    pub modified: String,
-    pub thumb: bool,
+    #[serde(flatten)]
+    pub base: EntryBase,
     #[serde(rename = "folderid")]
     pub folder_id: usize,
-    #[serde(rename = "isshared")]
-    pub is_shared: bool,
-    #[serde(rename = "ismine")]
-    pub is_mine: bool,
-    pub name: String,
-    pub size: Option<usize>,
-    pub hash: Option<usize>,
     pub contents: Option<Vec<Entry>>,
 }
 
@@ -54,10 +47,7 @@ macro_rules! entry_field {
     ($fname:ident, $output:ty, $field:ident) => {
         impl Entry {
             pub fn $fname(&self) -> $output {
-                match self {
-                    Self::File(item) => item.$field,
-                    Self::Folder(item) => item.$field,
-                }
+                self.base().$field
             }
         }
     };
@@ -70,10 +60,7 @@ macro_rules! entry_field_ref {
     ($fname:ident, $output:ty, $field:ident) => {
         impl Entry {
             pub fn $fname(&self) -> $output {
-                match self {
-                    Self::File(item) => &item.$field,
-                    Self::Folder(item) => &item.$field,
-                }
+                &self.base().$field
             }
         }
     };
@@ -100,14 +87,21 @@ impl From<Folder> for Entry {
 
 entry_field_ref!(id, &str);
 entry_field_ref!(name, &str);
-entry_field_ref!(created, &str);
-entry_field_ref!(modified, &str);
+entry_field_ref!(created, &DateTime<Utc>);
+entry_field_ref!(modified, &DateTime<Utc>);
 entry_field_ref!(icon, &str);
 entry_field_ref!(parent_folder_id, &Option<usize>);
 entry_field!(is_shared, bool);
 entry_field!(is_mine, bool);
 
 impl Entry {
+    pub fn base(&self) -> &EntryBase {
+        match self {
+            Self::File(file) => &file.base,
+            Self::Folder(folder) => &folder.base,
+        }
+    }
+
     pub fn file_id(&self) -> Option<usize> {
         match self {
             Self::File(item) => Some(item.file_id),

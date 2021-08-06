@@ -121,7 +121,7 @@ mod tests {
         let dc = Region::Test;
         let api = PCloudApi::new(creds, dc);
         let payload = api.list_folder(0).await.unwrap();
-        assert_eq!(payload.parent_folder_id, Some(0));
+        assert_eq!(payload.base.parent_folder_id, Some(0));
         m.assert();
     }
 

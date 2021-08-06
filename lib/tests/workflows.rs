@@ -39,16 +39,13 @@ async fn complete() {
     let folder = client.create_folder(&folder_name, ROOT).await.unwrap();
     // rename folder
     let renamed = client
-        .rename_folder(folder.folder_id.unwrap(), &renamed_name)
+        .rename_folder(folder.folder_id, &renamed_name)
         .await
         .unwrap();
     assert_eq!(folder.folder_id, renamed.folder_id);
     assert_eq!(renamed.name, renamed_name);
     // delete folder
-    let deleted = client
-        .delete_folder(folder.folder_id.unwrap())
-        .await
-        .unwrap();
+    let deleted = client.delete_folder(folder.folder_id).await.unwrap();
     assert_eq!(deleted.folder_id, folder.folder_id);
     // create folder
     let folder = client.create_folder(&folder_name, ROOT).await.unwrap();
@@ -57,45 +54,42 @@ async fn complete() {
     let mut filecontent = create_file(1024 * 1024 * 10); // 10Mo
     let cursor = Cursor::new(&mut filecontent);
     let file = client
-        .upload_file(cursor, &filename, folder.folder_id.unwrap())
+        .upload_file(cursor, &filename, folder.folder_id)
         .await
         .unwrap();
     // get file info
-    let file_info = client.get_info_file(file.file_id.unwrap()).await.unwrap();
-    assert_eq!(file_info.metadata.file_id(), file.file_id);
+    let file_info = client.get_info_file(file.file_id).await.unwrap();
+    assert_eq!(file_info.metadata.file_id(), Some(file.file_id));
     // get file link
-    let _file_link = client.get_link_file(file.file_id.unwrap()).await.unwrap();
+    let _file_link = client.get_link_file(file.file_id).await.unwrap();
     // download file
     let mut buffer: Vec<u8> = Vec::with_capacity(1024 * 1024 * 10);
     let cursor = Cursor::new(&mut buffer);
-    let _size = client
-        .download_file(file.file_id.unwrap(), cursor)
-        .await
-        .unwrap();
+    let _size = client.download_file(file.file_id, cursor).await.unwrap();
     assert_eq!(buffer, filecontent);
     // rename file
     let renamed_file = client
-        .rename_file(file.file_id.unwrap(), "hello.world")
+        .rename_file(file.file_id, "hello.world")
         .await
         .unwrap();
     assert_eq!(renamed_file.name, "hello.world");
     // create other folder
     let child = client
-        .create_folder(&child_name, folder.folder_id.unwrap())
+        .create_folder(&child_name, folder.folder_id)
         .await
         .unwrap();
-    assert_eq!(folder.folder_id, child.parent_folder_id);
+    assert_eq!(Some(folder.folder_id), child.parent_folder_id);
     // create in root folder and move
     let next = client.create_folder(&renamed_name, ROOT).await.unwrap();
     assert_eq!(next.parent_folder_id, Some(ROOT));
     let moved = client
-        .move_folder(next.folder_id.unwrap(), folder.folder_id.unwrap())
+        .move_folder(next.folder_id, folder.folder_id)
         .await
         .unwrap();
-    assert_eq!(moved.parent_folder_id, folder.folder_id);
+    assert_eq!(moved.parent_folder_id, Some(folder.folder_id));
     // delete folder
     let result = client
-        .delete_folder_recursive(folder.folder_id.unwrap())
+        .delete_folder_recursive(folder.folder_id)
         .await
         .unwrap();
     assert_eq!(result.deleted_files, 1);

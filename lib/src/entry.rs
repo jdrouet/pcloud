@@ -11,7 +11,7 @@ pub struct File {
     pub modified: String,
     pub thumb: bool,
     #[serde(rename = "fileid")]
-    pub file_id: Option<usize>,
+    pub file_id: usize,
     #[serde(rename = "isshared")]
     pub is_shared: bool,
     #[serde(rename = "ismine")]
@@ -36,7 +36,7 @@ pub struct Folder {
     pub modified: String,
     pub thumb: bool,
     #[serde(rename = "folderid")]
-    pub folder_id: Option<usize>,
+    pub folder_id: usize,
     #[serde(rename = "isshared")]
     pub is_shared: bool,
     #[serde(rename = "ismine")]
@@ -110,7 +110,7 @@ entry_field!(is_mine, bool);
 impl Entry {
     pub fn file_id(&self) -> Option<usize> {
         match self {
-            Self::File(item) => item.file_id,
+            Self::File(item) => Some(item.file_id),
             _ => None,
         }
     }
@@ -128,7 +128,7 @@ impl Entry {
 
     pub fn folder_id(&self) -> Option<usize> {
         match self {
-            Self::Folder(item) => item.folder_id,
+            Self::Folder(item) => Some(item.folder_id),
             _ => None,
         }
     }

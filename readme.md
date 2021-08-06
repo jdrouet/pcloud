@@ -1,3 +1,3 @@
-# pCloud API library in Rust
+# pCloud related project written Rust
 
-[![tests](https://github.com/jdrouet/pcloud/actions/workflows/testing.yml/badge.svg)](https://github.com/jdrouet/pcloud/actions/workflows/testing.yml)
+- [ploud library](./lib) written in Rust

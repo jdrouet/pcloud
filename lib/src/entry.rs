@@ -1,4 +1,6 @@
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+use std::cmp::Ordering;
+
+#[derive(Debug, Eq, serde::Deserialize, serde::Serialize)]
 pub struct File {
     // TODO replace by chrono
     pub created: String,
@@ -11,7 +13,7 @@ pub struct File {
     pub modified: String,
     pub thumb: bool,
     #[serde(rename = "fileid")]
-    pub file_id: Option<usize>,
+    pub file_id: usize,
     #[serde(rename = "isshared")]
     pub is_shared: bool,
     #[serde(rename = "ismine")]
@@ -23,7 +25,7 @@ pub struct File {
     pub content_type: Option<String>,
 }
 
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Eq, serde::Deserialize, serde::Serialize)]
 pub struct Folder {
     // TODO replace by chrono
     pub created: String,
@@ -36,7 +38,7 @@ pub struct Folder {
     pub modified: String,
     pub thumb: bool,
     #[serde(rename = "folderid")]
-    pub folder_id: Option<usize>,
+    pub folder_id: usize,
     #[serde(rename = "isshared")]
     pub is_shared: bool,
     #[serde(rename = "ismine")]
@@ -79,7 +81,7 @@ macro_rules! entry_field_ref {
     };
 }
 
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(untagged)]
 pub enum Entry {
     File(File),
@@ -110,7 +112,7 @@ entry_field!(is_mine, bool);
 impl Entry {
     pub fn file_id(&self) -> Option<usize> {
         match self {
-            Self::File(item) => item.file_id,
+            Self::File(item) => Some(item.file_id),
             _ => None,
         }
     }
@@ -128,7 +130,7 @@ impl Entry {
 
     pub fn folder_id(&self) -> Option<usize> {
         match self {
-            Self::Folder(item) => item.folder_id,
+            Self::Folder(item) => Some(item.folder_id),
             _ => None,
         }
     }
@@ -145,34 +147,59 @@ impl Entry {
     }
 }
 
-/*
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
-struct RemoteEntry {
-    // TODO replace by chrono
-    pub created: String,
-    #[serde(rename = "isfolder")]
-    pub is_folder: bool,
-    #[serde(rename = "parentfolderid")]
-    pub parent_folder_id: Option<usize>,
-    pub icon: String,
-    pub id: String,
-    pub path: Option<String>,
-    // TODO replace by chrono
-    pub modified: String,
-    pub thumb: bool,
-    #[serde(rename = "fileid")]
-    pub file_id: Option<usize>,
-    #[serde(rename = "folderid")]
-    pub folder_id: Option<usize>,
-    #[serde(rename = "isshared")]
-    pub is_shared: bool,
-    #[serde(rename = "ismine")]
-    pub is_mine: bool,
-    pub name: String,
-    pub size: Option<usize>,
-    pub hash: Option<usize>,
-    #[serde(rename = "contenttype")]
-    pub content_type: Option<String>,
-    pub contents: Option<Vec<RemoteEntry>>,
+impl PartialEq for File {
+    fn eq(&self, other: &Self) -> bool {
+        self.file_id == other.file_id
+    }
 }
-*/
+
+impl PartialOrd for File {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for File {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.name.cmp(&other.name)
+    }
+}
+
+impl PartialEq for Folder {
+    fn eq(&self, other: &Self) -> bool {
+        self.folder_id == other.folder_id
+    }
+}
+
+impl PartialOrd for Folder {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Folder {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.name.cmp(&other.name)
+    }
+}
+
+impl PartialOrd for Entry {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Entry {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match self {
+            Self::Folder(self_folder) => match other {
+                Self::Folder(other_folder) => self_folder.cmp(other_folder),
+                Self::File(_) => Ordering::Less,
+            },
+            Self::File(self_file) => match other {
+                Self::Folder(_) => Ordering::Greater,
+                Self::File(other_file) => self_file.cmp(other_file),
+            },
+        }
+    }
+}

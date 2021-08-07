@@ -1,5 +1,7 @@
 mod delete;
 mod download;
+mod moving;
+mod rename;
 mod upload;
 
 use clap::Clap;
@@ -21,6 +23,8 @@ impl Command {
 enum SubCommand {
     Delete(delete::Command),
     Download(download::Command),
+    Move(moving::Command),
+    Rename(rename::Command),
     Upload(upload::Command),
 }
 
@@ -29,6 +33,8 @@ impl SubCommand {
         match self {
             Self::Delete(cmd) => cmd.execute(pcloud).await,
             Self::Download(cmd) => cmd.execute(pcloud).await,
+            Self::Move(cmd) => cmd.execute(pcloud).await,
+            Self::Rename(cmd) => cmd.execute(pcloud).await,
             Self::Upload(cmd) => cmd.execute(pcloud).await,
         }
     }

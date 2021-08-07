@@ -7,6 +7,7 @@ use pcloud::PCloudApi;
 
 #[derive(Clap)]
 pub struct Command {
+    #[clap(default_value = "0")]
     folder_id: usize,
     #[clap(subcommand)]
     subcommand: SubCommand,

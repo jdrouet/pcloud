@@ -26,8 +26,8 @@ impl PCloudApi {
     /// * `file_id` - ID of the file to move.
     /// * `to_folder_id` - ID of the folder to move the file in.
     ///
-    pub async fn move_file(&self, folder_id: usize, to_folder_id: usize) -> Result<File, Error> {
-        let file_id = folder_id.to_string();
+    pub async fn move_file(&self, file_id: usize, to_folder_id: usize) -> Result<File, Error> {
+        let file_id = file_id.to_string();
         let to_folder_id = to_folder_id.to_string();
         let params = vec![
             ("fileid", file_id.as_str()),

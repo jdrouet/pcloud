@@ -25,8 +25,8 @@ impl Command {
                 "{:<12} {:<6} {:<32} {:<20}",
                 id,
                 type_,
-                entry.name(),
-                entry.modified(),
+                entry.base().name,
+                entry.base().modified,
             );
         }
     }

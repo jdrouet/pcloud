@@ -81,32 +81,6 @@ impl PartialOrd for Folder {
     }
 }
 
-macro_rules! entry_field {
-    ($field:ident, $output:ty) => {
-        entry_field!($field, $output, $field);
-    };
-    ($fname:ident, $output:ty, $field:ident) => {
-        impl Entry {
-            pub fn $fname(&self) -> $output {
-                self.base().$field
-            }
-        }
-    };
-}
-
-macro_rules! entry_field_ref {
-    ($field:ident, $output:ty) => {
-        entry_field_ref!($field, $output, $field);
-    };
-    ($fname:ident, $output:ty, $field:ident) => {
-        impl Entry {
-            pub fn $fname(&self) -> $output {
-                &self.base().$field
-            }
-        }
-    };
-}
-
 #[derive(Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(untagged)]
 pub enum Entry {
@@ -146,15 +120,6 @@ impl From<Folder> for Entry {
         Self::Folder(value)
     }
 }
-
-entry_field_ref!(id, &str);
-entry_field_ref!(name, &str);
-entry_field_ref!(created, &DateTime<Utc>);
-entry_field_ref!(modified, &DateTime<Utc>);
-entry_field_ref!(icon, &str);
-entry_field_ref!(parent_folder_id, &Option<usize>);
-entry_field!(is_shared, bool);
-entry_field!(is_mine, bool);
 
 impl Entry {
     pub fn base(&self) -> &EntryBase {

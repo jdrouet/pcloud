@@ -6,7 +6,8 @@ use pcloud::PCloudApi;
 pub struct Command;
 
 impl Command {
-    fn print(&self, result: Vec<Entry>) {
+    fn print(&self, mut result: Vec<Entry>) {
+        result.sort();
         println!(
             "{:<12} {:<6} {:<32} {:<20}",
             "ID", "Type", "Name", "Updated at"

@@ -1,4 +1,5 @@
 use chrono::prelude::{DateTime, Utc};
+use std::cmp::Ordering;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct EntryBase {
@@ -31,6 +32,26 @@ pub struct File {
     pub content_type: Option<String>,
 }
 
+impl Eq for File {}
+
+impl PartialEq for File {
+    fn eq(&self, other: &Self) -> bool {
+        self.base.id.eq(&other.base.id)
+    }
+}
+
+impl Ord for File {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.base.name.cmp(&other.base.name)
+    }
+}
+
+impl PartialOrd for File {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct Folder {
     #[serde(flatten)]
@@ -38,6 +59,26 @@ pub struct Folder {
     #[serde(rename = "folderid")]
     pub folder_id: usize,
     pub contents: Option<Vec<Entry>>,
+}
+
+impl Eq for Folder {}
+
+impl PartialEq for Folder {
+    fn eq(&self, other: &Self) -> bool {
+        self.base.id.eq(&other.base.id)
+    }
+}
+
+impl Ord for Folder {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.base.name.cmp(&other.base.name)
+    }
+}
+
+impl PartialOrd for Folder {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 macro_rules! entry_field {
@@ -66,11 +107,32 @@ macro_rules! entry_field_ref {
     };
 }
 
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(untagged)]
 pub enum Entry {
     File(File),
     Folder(Folder),
+}
+
+impl PartialOrd for Entry {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Entry {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match self {
+            Self::File(self_file) => match other {
+                Self::File(other_file) => self_file.cmp(other_file),
+                Self::Folder(_) => Ordering::Greater,
+            },
+            Self::Folder(self_folder) => match other {
+                Self::File(_) => Ordering::Less,
+                Self::Folder(other_folder) => self_folder.cmp(other_folder),
+            },
+        }
+    }
 }
 
 impl From<File> for Entry {
@@ -139,34 +201,60 @@ impl Entry {
     }
 }
 
-/*
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
-struct RemoteEntry {
-    // TODO replace by chrono
-    pub created: String,
-    #[serde(rename = "isfolder")]
-    pub is_folder: bool,
-    #[serde(rename = "parentfolderid")]
-    pub parent_folder_id: Option<usize>,
-    pub icon: String,
-    pub id: String,
-    pub path: Option<String>,
-    // TODO replace by chrono
-    pub modified: String,
-    pub thumb: bool,
-    #[serde(rename = "fileid")]
-    pub file_id: Option<usize>,
-    #[serde(rename = "folderid")]
-    pub folder_id: Option<usize>,
-    #[serde(rename = "isshared")]
-    pub is_shared: bool,
-    #[serde(rename = "ismine")]
-    pub is_mine: bool,
-    pub name: String,
-    pub size: Option<usize>,
-    pub hash: Option<usize>,
-    #[serde(rename = "contenttype")]
-    pub content_type: Option<String>,
-    pub contents: Option<Vec<RemoteEntry>>,
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_file(id: usize, name: &str) -> File {
+        File {
+            base: EntryBase {
+                created: Utc::now(),
+                modified: Utc::now(),
+                parent_folder_id: None,
+                icon: "".into(),
+                id: format!("f{}", id),
+                name: name.into(),
+                path: None,
+                thumb: false,
+                is_shared: false,
+                is_mine: false,
+            },
+            file_id: id,
+            size: Some(42),
+            hash: Some(42),
+            content_type: None,
+        }
+    }
+
+    fn create_folder(id: usize, name: &str) -> Folder {
+        Folder {
+            base: EntryBase {
+                created: Utc::now(),
+                modified: Utc::now(),
+                parent_folder_id: None,
+                icon: "".into(),
+                id: format!("d{}", id),
+                name: name.into(),
+                path: None,
+                thumb: false,
+                is_shared: false,
+                is_mine: false,
+            },
+            folder_id: id,
+            contents: None,
+        }
+    }
+
+    #[test]
+    fn sorting() {
+        let mut data: Vec<Entry> = vec![
+            create_file(1, "cccc").into(),
+            create_folder(2, "dddd").into(),
+            create_file(3, "aaaa").into(),
+            create_folder(4, "eeee").into(),
+        ];
+        data.sort();
+        let ids: Vec<_> = data.iter().map(|item| item.base().id.clone()).collect();
+        assert_eq!(ids, vec!["d2", "d4", "f3", "f1"]);
+    }
 }
-*/

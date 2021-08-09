@@ -16,6 +16,16 @@ impl Region {
             Self::Test => mockito::SERVER_URL,
         }
     }
+
+    pub fn address(&self) -> &str {
+        match self {
+            Self::Europe => "eapi.pcloud.com",
+            Self::UnitedStates => "api.pcloud.com",
+            #[cfg(test)]
+            #[allow(deprecated)]
+            Self::Test => mockito::SERVER_URL,
+        }
+    }
 }
 
 impl Default for Region {

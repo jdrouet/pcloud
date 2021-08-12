@@ -1,5 +1,5 @@
 use clap::Clap;
-use pcloud::PCloudApi;
+use pcloud::http::PCloudApi;
 use std::fs::File;
 use std::path::PathBuf;
 

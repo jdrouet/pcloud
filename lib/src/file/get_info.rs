@@ -1,7 +1,7 @@
 use crate::entry::Entry;
 use crate::error::Error;
+use crate::http::PCloudApi;
 use crate::request::Response;
-use crate::PCloudApi;
 
 #[derive(Debug, serde::Deserialize)]
 pub struct CheckSumFile {
@@ -22,8 +22,8 @@ impl PCloudApi {
 #[cfg(test)]
 mod tests {
     use crate::credentials::Credentials;
+    use crate::http::PCloudApi;
     use crate::region::Region;
-    use crate::PCloudApi;
     use mockito::{mock, Matcher};
 
     #[tokio::test]

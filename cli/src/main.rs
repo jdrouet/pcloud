@@ -2,7 +2,7 @@ mod file;
 mod folder;
 
 use clap::Clap;
-use pcloud::PCloudApi;
+use pcloud::http::PCloudApi;
 
 #[derive(Clap)]
 enum Command {

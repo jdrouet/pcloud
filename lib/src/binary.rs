@@ -11,9 +11,7 @@ fn build_buffer(len: usize) -> Vec<u8> {
 
 fn bytes_to_u64(bytes: &[u8]) -> u64 {
     let mut buffer: [u8; 8] = [0; 8];
-    for i in 0..bytes.len() {
-        buffer[i] = bytes[i];
-    }
+    buffer[..bytes.len()].clone_from_slice(&bytes);
     u64::from_le_bytes(buffer)
 }
 
@@ -66,7 +64,7 @@ impl<'a> BinaryReader<'a> {
         if self.offset >= self.in_buffer {
             self.fill_buffer()?;
         }
-        Ok(self.buffer[self.offset] & 0xff)
+        Ok(self.buffer[self.offset])
     }
 
     fn get_bytes(&mut self, cnt: usize) -> Result<Vec<u8>, Error> {
@@ -115,7 +113,7 @@ impl<'a> BinaryReader<'a> {
     }
 
     fn parse_text(&mut self, cache: &mut Vec<String>, ftype: u8) -> Result<String, Error> {
-        if (ftype >= 100 && ftype < 150) || ftype <= 3 {
+        if (100..150).contains(&ftype) || ftype <= 3 {
             self.parse_text_to_cache(cache, ftype)
         } else {
             self.parse_text_from_cache(cache, ftype)
@@ -123,7 +121,7 @@ impl<'a> BinaryReader<'a> {
     }
 
     fn parse_text_to_cache(&mut self, cache: &mut Vec<String>, ftype: u8) -> Result<String, Error> {
-        let len = if ftype >= 100 && ftype < 150 {
+        let len = if (100..150).contains(&ftype) {
             (ftype - 100) as u64
         } else {
             let data = self.get_bytes((ftype + 1) as usize)?;
@@ -140,7 +138,7 @@ impl<'a> BinaryReader<'a> {
         cache: &mut Vec<String>,
         ftype: u8,
     ) -> Result<String, Error> {
-        let idx = if ftype >= 150 && ftype < 200 {
+        let idx = if (150..200).contains(&ftype) {
             (ftype - 150) as usize
         } else {
             let data = self.get_bytes((ftype - 3) as usize)?;
@@ -153,12 +151,12 @@ impl<'a> BinaryReader<'a> {
     }
 
     fn parse_type(&mut self, cache: &mut Vec<String>, ftype: u8) -> Result<JsonValue, Error> {
-        if ftype >= 8 && ftype <= 15 {
+        if (8..=15).contains(&ftype) {
             let data = self.get_bytes((ftype - 7) as usize)?;
             Ok(JsonValue::Number(bytes_to_u64(&data).into()))
-        } else if ftype >= 200 && ftype < 220 {
+        } else if (200..220).contains(&ftype) {
             Ok(JsonValue::Number((ftype - 200).into()))
-        } else if (ftype >= 100 && ftype < 200) || ftype < 8 {
+        } else if (100..200).contains(&ftype) || ftype < 8 {
             self.parse_text(cache, ftype).map(JsonValue::String)
         } else if ftype == 19 {
             Ok(JsonValue::Bool(true))
@@ -272,7 +270,7 @@ impl CommandBuilder {
         self.push_u64(value);
     }
 
-    fn to_vec(mut self) -> Vec<u8> {
+    fn build(mut self) -> Vec<u8> {
         let size = self.0.len();
         self.0[0] = ((size - 2) % 256) as u8;
         self.0[1] = ((size - 2) / 256) as u8;
@@ -334,7 +332,7 @@ impl Protocol {
                 Value::Number(value) => cmd.push_number_param(key.as_str(), *value),
             }
         }
-        cmd.to_vec()
+        cmd.build()
     }
 
     pub fn send_command(

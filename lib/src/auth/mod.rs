@@ -1,6 +1,6 @@
 use crate::error::Error;
+use crate::http::PCloudApi;
 use crate::request::Response;
-use crate::PCloudApi;
 
 #[derive(serde::Deserialize)]
 struct Payload {

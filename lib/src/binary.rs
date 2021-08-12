@@ -355,8 +355,8 @@ impl Protocol {
 mod tests {
     use super::*;
     use crate::credentials::Credentials;
+    use crate::http::PCloudApi;
     use crate::region::Region;
-    use crate::PCloudApi;
 
     #[tokio::test]
     async fn execute_list_root() {

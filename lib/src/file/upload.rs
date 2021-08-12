@@ -1,8 +1,8 @@
 use super::FileResponse;
 use crate::entry::File;
 use crate::error::Error;
+use crate::http::PCloudApi;
 use crate::request::Response;
-use crate::PCloudApi;
 use std::io::Read;
 
 #[derive(Debug, serde::Deserialize)]
@@ -113,8 +113,8 @@ impl PCloudApi {
 #[cfg(test)]
 mod tests {
     use crate::credentials::Credentials;
+    use crate::http::PCloudApi;
     use crate::region::Region;
-    use crate::PCloudApi;
     use mockito::{mock, Matcher};
 
     #[tokio::test]

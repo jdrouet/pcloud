@@ -1,6 +1,6 @@
 use pcloud::credentials::Credentials;
 use pcloud::folder::ROOT;
-use pcloud::PCloudApi;
+use pcloud::http::PCloudApi;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use std::io::Cursor;

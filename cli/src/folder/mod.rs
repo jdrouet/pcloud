@@ -3,7 +3,7 @@ mod delete;
 mod list;
 
 use clap::Clap;
-use pcloud::PCloudApi;
+use pcloud::http::PCloudApi;
 
 #[derive(Clap)]
 pub struct Command {

@@ -1,6 +1,6 @@
 use clap::Clap;
 use pcloud::entry::Entry;
-use pcloud::PCloudApi;
+use pcloud::http::PCloudApi;
 
 #[derive(Clap)]
 pub struct Command;

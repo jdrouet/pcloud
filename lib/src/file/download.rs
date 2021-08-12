@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::PCloudApi;
+use crate::http::PCloudApi;
 use std::io::Write;
 
 impl PCloudApi {

@@ -1,8 +1,8 @@
 use super::FileResponse;
 use crate::entry::File;
 use crate::error::Error;
+use crate::http::PCloudApi;
 use crate::request::Response;
-use crate::PCloudApi;
 
 impl PCloudApi {
     /// Rename a folder

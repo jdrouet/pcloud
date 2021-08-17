@@ -1,6 +1,7 @@
 mod create;
 mod delete;
 mod list;
+mod sync;
 
 use clap::Clap;
 use pcloud::http::PCloudHttpApi;
@@ -24,6 +25,7 @@ enum SubCommand {
     Create(create::Command),
     Delete(delete::Command),
     List(list::Command),
+    Sync(sync::Command),
 }
 
 impl SubCommand {
@@ -32,6 +34,7 @@ impl SubCommand {
             Self::Create(cmd) => cmd.execute(pcloud, folder_id).await,
             Self::Delete(cmd) => cmd.execute(pcloud, folder_id).await,
             Self::List(cmd) => cmd.execute(pcloud, folder_id).await,
+            Self::Sync(cmd) => cmd.execute(pcloud, folder_id).await,
         }
     }
 }

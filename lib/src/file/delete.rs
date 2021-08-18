@@ -1,3 +1,4 @@
+use super::FileIdentifier;
 use crate::entry::File;
 use crate::error::Error;
 use crate::http::PCloudApi;
@@ -9,10 +10,9 @@ struct Payload {
 }
 
 impl PCloudApi {
-    pub async fn delete_file(&self, file_id: usize) -> Result<File, Error> {
-        let file_id = file_id.to_string();
-        let params = vec![("fileid", file_id.as_str())];
-        let result: Response<Payload> = self.get_request("deletefile", &params).await?;
+    pub async fn delete_file<I: Into<FileIdentifier>>(&self, identifier: I) -> Result<File, Error> {
+        let params: FileIdentifier = identifier.into();
+        let result: Response<Payload> = self.get_request("deletefile", &params.to_vec()).await?;
         result.payload().map(|res| res.metadata)
     }
 }

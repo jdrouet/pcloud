@@ -1,5 +1,6 @@
 use clap::Clap;
 use pcloud::entry::Entry;
+use pcloud::folder::list::Params;
 use pcloud::http::PCloudApi;
 
 #[derive(Clap)]
@@ -32,7 +33,8 @@ impl Command {
     }
 
     pub async fn execute(&self, pcloud: PCloudApi, folder_id: usize) {
-        match pcloud.list_folder(folder_id).await {
+        let params = Params::new(folder_id);
+        match pcloud.list_folder(&params).await {
             Ok(res) => {
                 self.print(res.contents.unwrap_or_default());
                 std::process::exit(exitcode::OK);

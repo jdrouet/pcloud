@@ -12,3 +12,42 @@ use crate::entry::File;
 pub struct FileResponse {
     metadata: File,
 }
+
+#[derive(Debug)]
+pub enum FileIdentifier {
+    Path(String),
+    FileId(usize),
+}
+
+impl Default for FileIdentifier {
+    fn default() -> Self {
+        Self::FileId(0)
+    }
+}
+
+impl From<&str> for FileIdentifier {
+    fn from(value: &str) -> Self {
+        Self::Path(value.to_string())
+    }
+}
+
+impl From<String> for FileIdentifier {
+    fn from(value: String) -> Self {
+        Self::Path(value)
+    }
+}
+
+impl From<usize> for FileIdentifier {
+    fn from(value: usize) -> Self {
+        Self::FileId(value)
+    }
+}
+
+impl FileIdentifier {
+    pub fn to_vec(&self) -> Vec<(&str, String)> {
+        match self {
+            Self::Path(value) => vec![("path", value.clone())],
+            Self::FileId(value) => vec![("fileid", value.to_string())],
+        }
+    }
+}

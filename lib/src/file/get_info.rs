@@ -1,3 +1,4 @@
+use super::FileIdentifier;
 use crate::entry::Entry;
 use crate::error::Error;
 use crate::http::PCloudApi;
@@ -11,10 +12,13 @@ pub struct CheckSumFile {
 }
 
 impl PCloudApi {
-    pub async fn get_info_file(&self, file_id: usize) -> Result<CheckSumFile, Error> {
-        let file_id = file_id.to_string();
-        let params = vec![("fileid", file_id.as_str())];
-        let result: Response<CheckSumFile> = self.get_request("checksumfile", &params).await?;
+    pub async fn get_info_file<I: Into<FileIdentifier>>(
+        &self,
+        identifier: I,
+    ) -> Result<CheckSumFile, Error> {
+        let params: FileIdentifier = identifier.into();
+        let result: Response<CheckSumFile> =
+            self.get_request("checksumfile", &params.to_vec()).await?;
         result.payload()
     }
 }

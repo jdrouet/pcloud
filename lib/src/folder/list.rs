@@ -1,11 +1,12 @@
-use super::FolderResponse;
+use super::{FolderIdentifier, FolderResponse};
 use crate::entry::Folder;
 use crate::error::Error;
 use crate::http::PCloudApi;
 use crate::request::Response;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Params {
+    identifier: FolderIdentifier,
     recursive: bool,
     show_deleted: bool,
     no_files: bool,
@@ -13,6 +14,16 @@ pub struct Params {
 }
 
 impl Params {
+    pub fn new<I: Into<FolderIdentifier>>(identifier: I) -> Self {
+        Self {
+            identifier: identifier.into(),
+            recursive: false,
+            show_deleted: false,
+            no_files: false,
+            no_shares: false,
+        }
+    }
+
     /// If is set full directory tree will be returned, which means that all directories will have contents filed.
     pub fn recursive(mut self, value: bool) -> Self {
         self.recursive = value;
@@ -37,19 +48,19 @@ impl Params {
         self
     }
 
-    fn to_vec(&self) -> Vec<(&str, &str)> {
-        let mut res = vec![];
+    fn to_vec(&self) -> Vec<(&str, String)> {
+        let mut res = self.identifier.to_vec();
         if self.recursive {
-            res.push(("recursive", "1"));
+            res.push(("recursive", "1".to_string()));
         }
         if self.show_deleted {
-            res.push(("showdeleted", "1"));
+            res.push(("showdeleted", "1".to_string()));
         }
         if self.no_files {
-            res.push(("no_files", "1"));
+            res.push(("no_files", "1".to_string()));
         }
         if self.no_shares {
-            res.push(("no_shares", "1"));
+            res.push(("no_shares", "1".to_string()));
         }
         res
     }
@@ -62,27 +73,16 @@ impl PCloudApi {
     ///
     /// * `folder_id` - ID of the folder.
     ///
-    pub async fn list_folder(&self, folder_id: usize) -> Result<Folder, Error> {
-        self.list_folder_with_params(folder_id, &Params::default())
-            .await
-    }
-
-    pub async fn list_folder_with_params(
-        &self,
-        folder_id: usize,
-        params: &Params,
-    ) -> Result<Folder, Error> {
-        let folder_id = folder_id.to_string();
-        let mut local_params = vec![("folderid", folder_id.as_str())];
-        local_params.extend(&params.to_vec());
+    pub async fn list_folder(&self, params: &Params) -> Result<Folder, Error> {
         let result: Response<FolderResponse> =
-            self.get_request("listfolder", &local_params).await?;
+            self.get_request("listfolder", &params.to_vec()).await?;
         result.payload().map(|item| item.metadata)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::Params;
     use crate::credentials::Credentials;
     use crate::http::PCloudApi;
     use crate::region::Region;
@@ -120,7 +120,7 @@ mod tests {
         let creds = Credentials::AccessToken("access-token".into());
         let dc = Region::Test;
         let api = PCloudApi::new(creds, dc);
-        let payload = api.list_folder(0).await.unwrap();
+        let payload = api.list_folder(&Params::new(0)).await.unwrap();
         assert_eq!(payload.base.parent_folder_id, Some(0));
         m.assert();
     }
@@ -139,7 +139,7 @@ mod tests {
         let creds = Credentials::AccessToken("access-token".into());
         let dc = Region::Test;
         let api = PCloudApi::new(creds, dc);
-        let error = api.list_folder(0).await.unwrap_err();
+        let error = api.list_folder(&Params::new(0)).await.unwrap_err();
         assert!(matches!(error, crate::error::Error::Payload(_, _)));
         m.assert();
     }

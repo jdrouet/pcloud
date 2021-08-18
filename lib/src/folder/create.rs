@@ -4,6 +4,28 @@ use crate::error::Error;
 use crate::http::PCloudApi;
 use crate::request::Response;
 
+#[derive(Debug)]
+pub struct Params {
+    name: String,
+    parent_id: usize,
+}
+
+impl Params {
+    pub fn new<S: Into<String>>(name: S, parent_id: usize) -> Self {
+        Self {
+            name: name.into(),
+            parent_id,
+        }
+    }
+
+    pub fn to_vec(&self) -> Vec<(&str, String)> {
+        vec![
+            ("name", self.name.clone()),
+            ("folderid", self.parent_id.to_string()),
+        ]
+    }
+}
+
 impl PCloudApi {
     /// Create a folder
     ///
@@ -12,16 +34,16 @@ impl PCloudApi {
     /// * `name` - Name of the folder.
     /// * `parent_id` - ID of the parent folder. Use 0 for the root folder.
     ///
-    pub async fn create_folder(&self, name: &str, parent_id: usize) -> Result<Folder, Error> {
-        let parent_id = parent_id.to_string();
-        let params = vec![("name", name), ("folderid", parent_id.as_str())];
-        let result: Response<FolderResponse> = self.get_request("createfolder", &params).await?;
+    pub async fn create_folder(&self, params: &Params) -> Result<Folder, Error> {
+        let result: Response<FolderResponse> =
+            self.get_request("createfolder", &params.to_vec()).await?;
         result.payload().map(|item| item.metadata)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::Params;
     use crate::credentials::Credentials;
     use crate::http::PCloudApi;
     use crate::region::Region;
@@ -60,7 +82,7 @@ mod tests {
         let creds = Credentials::AccessToken("access-token".into());
         let dc = Region::Test;
         let api = PCloudApi::new(creds, dc);
-        let result = api.create_folder("testing", 0).await.unwrap();
+        let result = api.create_folder(&Params::new("testing", 0)).await.unwrap();
         assert_eq!(result.base.name, "testing");
         m.assert();
     }
@@ -80,7 +102,10 @@ mod tests {
         let creds = Credentials::AccessToken("access-token".into());
         let dc = Region::Test;
         let api = PCloudApi::new(creds, dc);
-        let error = api.create_folder("testing", 0).await.unwrap_err();
+        let error = api
+            .create_folder(&Params::new("testing", 0))
+            .await
+            .unwrap_err();
         assert!(matches!(error, crate::error::Error::Payload(_, _)));
         m.assert();
     }

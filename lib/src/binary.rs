@@ -11,7 +11,7 @@ fn build_buffer(len: usize) -> Vec<u8> {
 
 fn bytes_to_u64(bytes: &[u8]) -> u64 {
     let mut buffer: [u8; 8] = [0; 8];
-    buffer[..bytes.len()].clone_from_slice(&bytes);
+    buffer[..bytes.len()].clone_from_slice(bytes);
     u64::from_le_bytes(buffer)
 }
 

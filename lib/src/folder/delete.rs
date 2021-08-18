@@ -1,4 +1,4 @@
-use super::FolderResponse;
+use super::{FolderIdentifier, FolderResponse};
 use crate::entry::Folder;
 use crate::error::Error;
 use crate::http::PCloudApi;
@@ -11,10 +11,14 @@ impl PCloudApi {
     ///
     /// * `folder_id` - ID of the folder to delete.
     ///
-    pub async fn delete_folder(&self, folder_id: usize) -> Result<Folder, Error> {
-        let folder_id = folder_id.to_string();
-        let params = vec![("folderid", folder_id.as_str())];
-        let result: Response<FolderResponse> = self.get_request("deletefolder", &params).await?;
+    pub async fn delete_folder<I: Into<FolderIdentifier>>(
+        &self,
+        identifier: I,
+    ) -> Result<Folder, Error> {
+        let identifier = identifier.into();
+        let result: Response<FolderResponse> = self
+            .get_request("deletefolder", &identifier.to_vec())
+            .await?;
         result.payload().map(|item| item.metadata)
     }
 }
@@ -34,14 +38,14 @@ impl PCloudApi {
     ///
     /// * `folder_id` - ID of the folder to delete.
     ///
-    pub async fn delete_folder_recursive(
+    pub async fn delete_folder_recursive<I: Into<FolderIdentifier>>(
         &self,
-        folder_id: usize,
+        identifier: I,
     ) -> Result<RecursivePayload, Error> {
-        let folder_id = folder_id.to_string();
-        let params = vec![("folderid", folder_id.as_str())];
-        let result: Response<RecursivePayload> =
-            self.get_request("deletefolderrecursive", &params).await?;
+        let identifier = identifier.into();
+        let result: Response<RecursivePayload> = self
+            .get_request("deletefolderrecursive", &identifier.to_vec())
+            .await?;
         result.payload()
     }
 }

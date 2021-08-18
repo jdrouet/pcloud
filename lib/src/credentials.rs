@@ -5,12 +5,12 @@ pub enum Credentials {
 }
 
 impl Credentials {
-    pub fn to_vec(&self) -> Vec<(&str, &str)> {
+    pub fn to_vec(&self) -> Vec<(&str, String)> {
         match self {
-            Self::AccessToken(value) => vec![("access_token", value.as_str())],
+            Self::AccessToken(value) => vec![("access_token", value.clone())],
             Self::UserPassword { username, password } => vec![
-                ("username", username.as_str()),
-                ("password", password.as_str()),
+                ("username", username.clone()),
+                ("password", password.clone()),
             ],
         }
     }

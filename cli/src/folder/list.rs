@@ -1,7 +1,7 @@
 use clap::Clap;
 use pcloud::entry::Entry;
 use pcloud::folder::list::Params;
-use pcloud::http::PCloudApi;
+use pcloud::http::PCloudHttpApi;
 
 #[derive(Clap)]
 pub struct Command;
@@ -32,7 +32,7 @@ impl Command {
         }
     }
 
-    pub async fn execute(&self, pcloud: PCloudApi, folder_id: usize) {
+    pub async fn execute(&self, pcloud: PCloudHttpApi, folder_id: usize) {
         let params = Params::new(folder_id);
         match pcloud.list_folder(&params).await {
             Ok(res) => {

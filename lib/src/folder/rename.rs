@@ -1,7 +1,7 @@
 use super::FolderResponse;
 use crate::entry::Folder;
 use crate::error::Error;
-use crate::http::PCloudApi;
+use crate::http::PCloudHttpApi;
 use crate::request::Response;
 
 #[derive(Debug)]
@@ -48,7 +48,7 @@ impl Params {
     }
 }
 
-impl PCloudApi {
+impl PCloudHttpApi {
     /// Rename a folder
     ///
     /// # Arguments

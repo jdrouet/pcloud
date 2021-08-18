@@ -1,7 +1,7 @@
 use super::{FolderIdentifier, FolderResponse};
 use crate::entry::Folder;
 use crate::error::Error;
-use crate::http::PCloudApi;
+use crate::http::PCloudHttpApi;
 use crate::request::Response;
 
 #[derive(Debug)]
@@ -66,7 +66,7 @@ impl Params {
     }
 }
 
-impl PCloudApi {
+impl PCloudHttpApi {
     /// List a folder's content
     ///
     /// # Arguments
@@ -84,7 +84,7 @@ impl PCloudApi {
 mod tests {
     use super::Params;
     use crate::credentials::Credentials;
-    use crate::http::PCloudApi;
+    use crate::http::PCloudHttpApi;
     use crate::region::Region;
     use mockito::{mock, Matcher};
 
@@ -119,7 +119,7 @@ mod tests {
             .create();
         let creds = Credentials::AccessToken("access-token".into());
         let dc = Region::Test;
-        let api = PCloudApi::new(creds, dc);
+        let api = PCloudHttpApi::new(creds, dc);
         let payload = api.list_folder(&Params::new(0)).await.unwrap();
         assert_eq!(payload.base.parent_folder_id, Some(0));
         m.assert();
@@ -138,7 +138,7 @@ mod tests {
             .create();
         let creds = Credentials::AccessToken("access-token".into());
         let dc = Region::Test;
-        let api = PCloudApi::new(creds, dc);
+        let api = PCloudHttpApi::new(creds, dc);
         let error = api.list_folder(&Params::new(0)).await.unwrap_err();
         assert!(matches!(error, crate::error::Error::Payload(_, _)));
         m.assert();

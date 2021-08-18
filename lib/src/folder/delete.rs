@@ -1,10 +1,10 @@
 use super::{FolderIdentifier, FolderResponse};
 use crate::entry::Folder;
 use crate::error::Error;
-use crate::http::PCloudApi;
+use crate::http::PCloudHttpApi;
 use crate::request::Response;
 
-impl PCloudApi {
+impl PCloudHttpApi {
     /// Delete a folder
     ///
     /// # Arguments
@@ -31,7 +31,7 @@ pub struct RecursivePayload {
     pub deleted_folders: usize,
 }
 
-impl PCloudApi {
+impl PCloudHttpApi {
     /// Delete a folder recursively
     ///
     /// # Arguments
@@ -53,7 +53,7 @@ impl PCloudApi {
 #[cfg(test)]
 mod tests {
     use crate::credentials::Credentials;
-    use crate::http::PCloudApi;
+    use crate::http::PCloudHttpApi;
     use crate::region::Region;
     use mockito::{mock, Matcher};
 
@@ -89,7 +89,7 @@ mod tests {
             .create();
         let creds = Credentials::AccessToken("access-token".into());
         let dc = Region::Test;
-        let api = PCloudApi::new(creds, dc);
+        let api = PCloudHttpApi::new(creds, dc);
         let result = api.delete_folder(42).await.unwrap();
         assert_eq!(result.base.name, "testing");
         m.assert();

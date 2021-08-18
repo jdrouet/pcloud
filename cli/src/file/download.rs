@@ -1,5 +1,5 @@
 use clap::Clap;
-use pcloud::http::PCloudApi;
+use pcloud::http::PCloudHttpApi;
 use std::fs::File;
 use std::path::PathBuf;
 
@@ -10,7 +10,7 @@ pub struct Command {
 }
 
 impl Command {
-    pub async fn execute(&self, pcloud: PCloudApi) {
+    pub async fn execute(&self, pcloud: PCloudHttpApi) {
         let file = File::create(&self.path).expect("unable to create file");
         match pcloud.download_file(self.file_id, file).await {
             Ok(res) => {

@@ -1,7 +1,7 @@
 use super::FileIdentifier;
 use crate::entry::Entry;
 use crate::error::Error;
-use crate::http::PCloudApi;
+use crate::http::PCloudHttpApi;
 use crate::request::Response;
 
 #[derive(Debug, serde::Deserialize)]
@@ -11,7 +11,7 @@ pub struct CheckSumFile {
     pub metadata: Entry,
 }
 
-impl PCloudApi {
+impl PCloudHttpApi {
     pub async fn get_info_file<I: Into<FileIdentifier>>(
         &self,
         identifier: I,
@@ -26,7 +26,7 @@ impl PCloudApi {
 #[cfg(test)]
 mod tests {
     use crate::credentials::Credentials;
-    use crate::http::PCloudApi;
+    use crate::http::PCloudHttpApi;
     use crate::region::Region;
     use mockito::{mock, Matcher};
 
@@ -67,7 +67,7 @@ mod tests {
             .create();
         let creds = Credentials::AccessToken("access-token".into());
         let dc = Region::Test;
-        let api = PCloudApi::new(creds, dc);
+        let api = PCloudHttpApi::new(creds, dc);
         let result = api.get_info_file(42).await.unwrap();
         assert_eq!(
             result.sha256,

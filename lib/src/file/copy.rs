@@ -1,7 +1,7 @@
 use super::FileResponse;
 use crate::entry::File;
 use crate::error::Error;
-use crate::http::PCloudApi;
+use crate::http::PCloudHttpApi;
 use crate::request::Response;
 
 pub struct Params {
@@ -25,7 +25,7 @@ impl Params {
     }
 }
 
-impl PCloudApi {
+impl PCloudHttpApi {
     pub async fn copy_file(&self, params: &Params) -> Result<File, Error> {
         let result: Response<FileResponse> = self.get_request("copyfile", &params.to_vec()).await?;
         result.payload().map(|item| item.metadata)

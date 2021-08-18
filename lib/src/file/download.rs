@@ -1,9 +1,9 @@
 use super::FileIdentifier;
 use crate::error::Error;
-use crate::http::PCloudApi;
+use crate::http::PCloudHttpApi;
 use std::io::Write;
 
-impl PCloudApi {
+impl PCloudHttpApi {
     /// Download a file
     ///
     /// # Arguments

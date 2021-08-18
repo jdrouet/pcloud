@@ -2,7 +2,7 @@ mod file;
 mod folder;
 
 use clap::Clap;
-use pcloud::http::PCloudApi;
+use pcloud::http::PCloudHttpApi;
 
 #[derive(Clap)]
 enum Command {
@@ -11,7 +11,7 @@ enum Command {
 }
 
 impl Command {
-    async fn execute(&self, pcloud: PCloudApi) {
+    async fn execute(&self, pcloud: PCloudHttpApi) {
         match self {
             Self::Folder(sub) => sub.execute(pcloud).await,
             Self::File(sub) => sub.execute(pcloud).await,
@@ -24,6 +24,6 @@ async fn main() {
     env_logger::init();
 
     let cmd = Command::parse();
-    let pcloud = PCloudApi::from_env();
+    let pcloud = PCloudHttpApi::from_env();
     cmd.execute(pcloud).await;
 }

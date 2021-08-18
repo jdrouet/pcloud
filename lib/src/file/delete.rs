@@ -1,7 +1,7 @@
 use super::FileIdentifier;
 use crate::entry::File;
 use crate::error::Error;
-use crate::http::PCloudApi;
+use crate::http::PCloudHttpApi;
 use crate::request::Response;
 
 #[derive(Debug, serde::Deserialize)]
@@ -9,7 +9,7 @@ struct Payload {
     metadata: File,
 }
 
-impl PCloudApi {
+impl PCloudHttpApi {
     pub async fn delete_file<I: Into<FileIdentifier>>(&self, identifier: I) -> Result<File, Error> {
         let params: FileIdentifier = identifier.into();
         let result: Response<Payload> = self.get_request("deletefile", &params.to_vec()).await?;
@@ -20,7 +20,7 @@ impl PCloudApi {
 #[cfg(test)]
 mod tests {
     use crate::credentials::Credentials;
-    use crate::http::PCloudApi;
+    use crate::http::PCloudHttpApi;
     use crate::region::Region;
     use mockito::{mock, Matcher};
 
@@ -61,7 +61,7 @@ mod tests {
             .create();
         let creds = Credentials::AccessToken("access-token".into());
         let dc = Region::Test;
-        let api = PCloudApi::new(creds, dc);
+        let api = PCloudHttpApi::new(creds, dc);
         api.delete_file(42).await.unwrap();
         m.assert();
     }

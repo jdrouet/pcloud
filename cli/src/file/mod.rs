@@ -5,7 +5,7 @@ mod rename;
 mod upload;
 
 use clap::Clap;
-use pcloud::http::PCloudApi;
+use pcloud::http::PCloudHttpApi;
 
 #[derive(Clap)]
 pub struct Command {
@@ -14,7 +14,7 @@ pub struct Command {
 }
 
 impl Command {
-    pub async fn execute(&self, pcloud: PCloudApi) {
+    pub async fn execute(&self, pcloud: PCloudHttpApi) {
         self.subcommand.execute(pcloud).await
     }
 }
@@ -29,7 +29,7 @@ enum SubCommand {
 }
 
 impl SubCommand {
-    pub async fn execute(&self, pcloud: PCloudApi) {
+    pub async fn execute(&self, pcloud: PCloudHttpApi) {
         match self {
             Self::Delete(cmd) => cmd.execute(pcloud).await,
             Self::Download(cmd) => cmd.execute(pcloud).await,

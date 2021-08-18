@@ -2,7 +2,7 @@ use super::{FileIdentifier, FileResponse};
 use crate::entry::File;
 use crate::error::Error;
 use crate::folder::FolderIdentifier;
-use crate::http::PCloudApi;
+use crate::http::PCloudHttpApi;
 use crate::request::Response;
 
 #[derive(Debug)]
@@ -72,7 +72,7 @@ impl Params {
     }
 }
 
-impl PCloudApi {
+impl PCloudHttpApi {
     pub async fn rename_file(&self, params: &Params) -> Result<File, Error> {
         let result: Response<FileResponse> =
             self.get_request("renamefile", &params.to_vec()).await?;

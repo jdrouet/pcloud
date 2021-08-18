@@ -353,13 +353,13 @@ impl Protocol {
 mod tests {
     use super::*;
     use crate::credentials::Credentials;
-    use crate::http::PCloudApi;
+    use crate::http::PCloudHttpApi;
     use crate::region::Region;
 
     #[tokio::test]
     async fn execute_list_root() {
         let creds = Credentials::from_env();
-        let api = PCloudApi::new_eu(creds.clone());
+        let api = PCloudHttpApi::new_eu(creds.clone());
         let token = api.get_token().await.unwrap();
         let address = format!("{}:{}", Region::Europe.address(), 8398);
         let mut protocol = Protocol::new(&address).unwrap();

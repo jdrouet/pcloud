@@ -1,5 +1,5 @@
 use clap::Clap;
-use pcloud::http::PCloudApi;
+use pcloud::http::PCloudHttpApi;
 
 #[derive(Clap)]
 pub struct Command {
@@ -8,7 +8,7 @@ pub struct Command {
 }
 
 impl Command {
-    pub async fn execute(&self, pcloud: PCloudApi, folder_id: usize) {
+    pub async fn execute(&self, pcloud: PCloudHttpApi, folder_id: usize) {
         let result = if self.recursive {
             pcloud
                 .delete_folder_recursive(folder_id)

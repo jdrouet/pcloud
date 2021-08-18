@@ -7,14 +7,14 @@ pub const DEFAULT_PART_SIZE: usize = 10485760;
 
 /// Client for the pCloud REST API
 #[derive(Clone, Debug)]
-pub struct PCloudApi {
+pub struct PCloudHttpApi {
     pub(crate) client: reqwest::Client,
     credentials: Credentials,
     region: Region,
     pub(crate) upload_part_size: usize,
 }
 
-impl PCloudApi {
+impl PCloudHttpApi {
     /// Create new client for the pCloud REST API
     ///
     /// # Arguments
@@ -47,14 +47,14 @@ impl PCloudApi {
     }
 }
 
-impl PCloudApi {
+impl PCloudHttpApi {
     pub fn upload_part_size(mut self, value: usize) -> Self {
         self.upload_part_size = value;
         self
     }
 }
 
-impl PCloudApi {
+impl PCloudHttpApi {
     pub(crate) fn create_client() -> reqwest::Client {
         reqwest::ClientBuilder::new()
             .user_agent(USER_AGENT)

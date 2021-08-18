@@ -1,3 +1,4 @@
+use super::FileIdentifier;
 use crate::error::Error;
 use crate::http::PCloudApi;
 use crate::request::Response;
@@ -19,10 +20,12 @@ impl Payload {
 }
 
 impl PCloudApi {
-    pub async fn get_link_file(&self, file_id: usize) -> Result<String, Error> {
-        let file_id = file_id.to_string();
-        let params = vec![("fileid", file_id.as_str())];
-        let result: Response<Payload> = self.get_request("getfilelink", &params).await?;
+    pub async fn get_link_file<I: Into<FileIdentifier>>(
+        &self,
+        identifier: I,
+    ) -> Result<String, Error> {
+        let params: FileIdentifier = identifier.into();
+        let result: Response<Payload> = self.get_request("getfilelink", &params.to_vec()).await?;
         result.payload().map(|res| res.to_url())
     }
 }

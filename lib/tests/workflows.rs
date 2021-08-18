@@ -36,10 +36,16 @@ async fn complete() {
     let child_name = create_folder();
     let client = PCloudApi::new_eu(Credentials::from_env());
     // create folder
-    let folder = client.create_folder(&folder_name, ROOT).await.unwrap();
+    let folder = client
+        .create_folder(&pcloud::folder::create::Params::new(&folder_name, ROOT))
+        .await
+        .unwrap();
     // rename folder
     let renamed = client
-        .rename_folder(folder.folder_id, &renamed_name)
+        .rename_folder(&pcloud::folder::rename::Params::new_rename(
+            folder.folder_id,
+            &renamed_name,
+        ))
         .await
         .unwrap();
     assert_eq!(folder.folder_id, renamed.folder_id);
@@ -48,7 +54,10 @@ async fn complete() {
     let deleted = client.delete_folder(folder.folder_id).await.unwrap();
     assert_eq!(deleted.folder_id, folder.folder_id);
     // create folder
-    let folder = client.create_folder(&folder_name, ROOT).await.unwrap();
+    let folder = client
+        .create_folder(&pcloud::folder::create::Params::new(&folder_name, ROOT))
+        .await
+        .unwrap();
     // create file in folder
     let filename = create_filename("bin");
     let mut filecontent = create_file(1024 * 1024 * 10); // 10Mo
@@ -69,21 +78,33 @@ async fn complete() {
     assert_eq!(buffer, filecontent);
     // rename file
     let renamed_file = client
-        .rename_file(file.file_id, "hello.world")
+        .rename_file(&pcloud::file::rename::Params::new_rename(
+            file.file_id,
+            "hello.world",
+        ))
         .await
         .unwrap();
     assert_eq!(renamed_file.base.name, "hello.world");
     // create other folder
     let child = client
-        .create_folder(&child_name, folder.folder_id)
+        .create_folder(&pcloud::folder::create::Params::new(
+            child_name,
+            folder.folder_id,
+        ))
         .await
         .unwrap();
     assert_eq!(Some(folder.folder_id), child.base.parent_folder_id);
     // create in root folder and move
-    let next = client.create_folder(&renamed_name, ROOT).await.unwrap();
+    let next = client
+        .create_folder(&pcloud::folder::create::Params::new(renamed_name, ROOT))
+        .await
+        .unwrap();
     assert_eq!(next.base.parent_folder_id, Some(ROOT));
     let moved = client
-        .move_folder(next.folder_id, folder.folder_id)
+        .rename_folder(&pcloud::folder::rename::Params::new_move(
+            next.folder_id,
+            folder.folder_id,
+        ))
         .await
         .unwrap();
     assert_eq!(moved.base.parent_folder_id, Some(folder.folder_id));

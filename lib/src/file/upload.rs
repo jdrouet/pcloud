@@ -55,7 +55,11 @@ impl PCloudApi {
         result.payload().map(|item| item.upload_id)
     }
 
-    async fn write_chunk_file(&self, params: &[(&str, &str)], chunk: Vec<u8>) -> Result<(), Error> {
+    async fn write_chunk_file(
+        &self,
+        params: &[(&str, String)],
+        chunk: Vec<u8>,
+    ) -> Result<(), Error> {
         let response: Response<()> = self.put_request_data("upload_write", params, chunk).await?;
         response.payload()?;
         Ok(())
@@ -67,12 +71,10 @@ impl PCloudApi {
         filename: &str,
         folder_id: usize,
     ) -> Result<File, Error> {
-        let folder_id = folder_id.to_string();
-        let upload_id = upload_id.to_string();
         let params = vec![
-            ("uploadid", upload_id.as_str()),
-            ("name", filename),
-            ("folderid", folder_id.as_str()),
+            ("uploadid", upload_id.to_string()),
+            ("name", filename.to_string()),
+            ("folderid", folder_id.to_string()),
         ];
         let result: Response<FileResponse> = self.get_request("upload_save", &params).await?;
         result.payload().map(|item| item.metadata)
@@ -100,8 +102,8 @@ impl PCloudApi {
         while let (offset, Some(chunk)) = reader.next_chunk()? {
             let offset = offset.to_string();
             let params = vec![
-                ("uploadid", upload_id_str.as_str()),
-                ("uploadoffset", offset.as_str()),
+                ("uploadid", upload_id_str.to_string()),
+                ("uploadoffset", offset.to_string()),
             ];
             self.write_chunk_file(&params, chunk).await?;
         }

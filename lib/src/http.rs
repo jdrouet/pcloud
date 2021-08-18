@@ -69,7 +69,7 @@ impl PCloudApi {
     pub(crate) async fn get_request<T: serde::de::DeserializeOwned>(
         &self,
         method: &str,
-        params: &[(&str, &str)],
+        params: &[(&str, String)],
     ) -> Result<T, Error> {
         let mut local_params = self.credentials.to_vec();
         local_params.extend_from_slice(params);
@@ -88,7 +88,7 @@ impl PCloudApi {
     pub(crate) async fn put_request_data<T: serde::de::DeserializeOwned>(
         &self,
         method: &str,
-        params: &[(&str, &str)],
+        params: &[(&str, String)],
         payload: Vec<u8>,
     ) -> Result<T, Error> {
         let mut local_params = self.credentials.to_vec();

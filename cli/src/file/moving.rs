@@ -1,4 +1,5 @@
 use clap::Clap;
+use pcloud::file::rename::Params;
 use pcloud::http::PCloudApi;
 
 #[derive(Clap)]
@@ -9,7 +10,8 @@ pub struct Command {
 
 impl Command {
     pub async fn execute(&self, pcloud: PCloudApi) {
-        match pcloud.move_file(self.file_id, self.folder_id).await {
+        let params = Params::new_move(self.file_id, self.folder_id);
+        match pcloud.rename_file(&params).await {
             Ok(_) => {
                 log::info!("file moved");
                 std::process::exit(exitcode::OK);

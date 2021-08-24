@@ -6,6 +6,7 @@ pub mod get_link;
 pub mod rename;
 pub mod upload;
 
+use crate::binary::Value as BValue;
 use crate::entry::File;
 
 #[derive(Debug, serde::Deserialize)]
@@ -48,6 +49,13 @@ impl FileIdentifier {
         match self {
             Self::Path(value) => vec![("path", value.clone())],
             Self::FileId(value) => vec![("fileid", value.to_string())],
+        }
+    }
+
+    pub fn to_binary_params(&self) -> Vec<(&str, BValue)> {
+        match self {
+            Self::Path(value) => vec![("path", BValue::Text(value.clone()))],
+            Self::FileId(value) => vec![("fileid", BValue::Number(*value as u64))],
         }
     }
 }

@@ -1,3 +1,5 @@
+use crate::binary::Value as BValue;
+
 #[derive(Clone, Debug)]
 pub enum Credentials {
     AccessToken(String),
@@ -11,6 +13,15 @@ impl Credentials {
             Self::UserPassword { username, password } => vec![
                 ("username", username.clone()),
                 ("password", password.clone()),
+            ],
+        }
+    }
+    pub fn to_binary_params(&self) -> Vec<(&str, BValue)> {
+        match self {
+            Self::AccessToken(value) => vec![("access_token", BValue::Text(value.clone()))],
+            Self::UserPassword { username, password } => vec![
+                ("username", BValue::Text(username.clone())),
+                ("password", BValue::Text(password.clone())),
             ],
         }
     }

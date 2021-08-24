@@ -1,9 +1,11 @@
+use crate::credentials::Credentials;
+use crate::region::Region;
 use serde_json::Value as JsonValue;
 use std::io::prelude::*;
 use std::io::Read;
 use std::net::TcpStream;
 
-fn build_buffer(len: usize) -> Vec<u8> {
+pub(crate) fn build_buffer(len: usize) -> Vec<u8> {
     let mut res = Vec::with_capacity(len);
     (0..len).for_each(|_| res.push(0));
     res
@@ -28,10 +30,13 @@ impl<'a> BinaryReader<'a> {
         let mut length: [u8; 4] = [0; 4];
         reader.read_exact(&mut length).map_err(Error::read)?;
         let length = u32::from_le_bytes(length) as usize;
-        let off = length.max(4096);
-        let mut buffer = build_buffer(off);
+        // let off = length.max(4096);
+        let mut buffer = build_buffer(length);
         let in_buffer = reader.read(&mut buffer).map_err(Error::read)?;
-        let length = length - in_buffer;
+        // let length = length - in_buffer;
+        let length = length.checked_sub(in_buffer).ok_or_else(|| {
+            Error::Read(format!("trying to substract {} - {}", length, in_buffer))
+        })?;
         Ok(Self {
             reader,
             buffer,
@@ -166,6 +171,9 @@ impl<'a> BinaryReader<'a> {
             self.parse_array(cache)
         } else if ftype == 16 {
             self.parse_object(cache)
+        } else if ftype == 20 {
+            let data = self.get_bytes(8)?;
+            Ok(JsonValue::Number(bytes_to_u64(&data).into()))
         } else {
             println!("ftype {} unimplemented", ftype);
             unimplemented!()
@@ -297,14 +305,19 @@ impl Error {
     }
 }
 
-pub struct Protocol {
-    stream: TcpStream,
+pub struct PCloudBinaryApi {
+    pub(crate) stream: TcpStream,
+    region: Region,
+    credentials: Credentials,
 }
 
-impl Protocol {
-    pub fn new(address: &str) -> Result<Self, Error> {
+impl PCloudBinaryApi {
+    pub fn new(region: Region, credentials: Credentials) -> Result<Self, Error> {
+        let address = format!("{}:{}", region.address(), 8398);
         Ok(Self {
             stream: TcpStream::connect(address).map_err(Error::connection)?,
+            region,
+            credentials,
         })
     }
 
@@ -314,7 +327,7 @@ impl Protocol {
 
     fn build_command(
         method: &str,
-        params: &[(String, Value)],
+        params: &[(&str, Value)],
         has_data: bool,
         _data_len: usize,
     ) -> Vec<u8> {
@@ -327,9 +340,9 @@ impl Protocol {
         cmd.push(params.len() as u8);
         for (key, value) in params.iter() {
             match value {
-                Value::Text(value) => cmd.push_str_param(key.as_str(), value.as_str()),
-                Value::Bool(value) => cmd.push_bool_param(key.as_str(), *value),
-                Value::Number(value) => cmd.push_number_param(key.as_str(), *value),
+                Value::Text(value) => cmd.push_str_param(key, value.as_str()),
+                Value::Bool(value) => cmd.push_bool_param(key, *value),
+                Value::Number(value) => cmd.push_number_param(key, *value),
             }
         }
         cmd.build()
@@ -338,11 +351,13 @@ impl Protocol {
     pub fn send_command(
         &mut self,
         method: &str,
-        params: &[(String, Value)],
+        params: &[(&str, Value)],
         has_data: bool,
         data_len: usize,
     ) -> Result<JsonValue, Error> {
-        let cmd = Self::build_command(method, params, has_data, data_len);
+        let mut creds = self.credentials.to_binary_params();
+        creds.extend_from_slice(params);
+        let cmd = Self::build_command(method, &creds, has_data, data_len);
         let count = self.stream.write(&cmd).map_err(Error::write)?;
         assert_eq!(count, cmd.len());
         self.read_result()
@@ -361,12 +376,9 @@ mod tests {
         let creds = Credentials::from_env();
         let api = PCloudHttpApi::new_eu(creds.clone());
         let token = api.get_token().await.unwrap();
-        let address = format!("{}:{}", Region::Europe.address(), 8398);
-        let mut protocol = Protocol::new(&address).unwrap();
-        let params: Vec<(String, Value)> = vec![
-            ("auth".into(), Value::Text(token)),
-            ("folderid".into(), Value::Number(0)),
-        ];
+        let mut protocol =
+            PCloudBinaryApi::new(Region::Europe, Credentials::AccessToken(token)).unwrap();
+        let params: Vec<(&str, Value)> = vec![("folderid", Value::Number(0))];
         let result = protocol
             .send_command("listfolder", &params, false, 0)
             .unwrap();
@@ -432,8 +444,8 @@ mod tests {
 
     #[test]
     fn build_command_number() {
-        let params: Vec<(String, Value)> = vec![("folderid".into(), Value::Number(0))];
-        let result = Protocol::build_command("listfolder", &params, false, 0);
+        let params: Vec<(&str, Value)> = vec![("folderid".into(), Value::Number(0))];
+        let result = PCloudBinaryApi::build_command("listfolder", &params, false, 0);
         let expected: Vec<u8> = vec![
             0x1D, 0x00, 0x0A, 0x6C, 0x69, 0x73, 0x74, 0x66, 0x6F, 0x6C, 0x64, 0x65, 0x72, 0x01,
             0x48, 0x66, 0x6F, 0x6C, 0x64, 0x65, 0x72, 0x69, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -444,11 +456,11 @@ mod tests {
 
     #[test]
     fn build_command_text() {
-        let params: Vec<(String, Value)> = vec![(
+        let params: Vec<(&str, Value)> = vec![(
             "auth".into(),
             Value::Text("Ec7QkEjFUnzZ7Z8W2YH1qLgxY7gGvTe09AH0i7V3kX".into()),
         )];
-        let result = Protocol::build_command("listfolder", &params, false, 0);
+        let result = PCloudBinaryApi::build_command("listfolder", &params, false, 0);
         let expected: Vec<u8> = vec![
             0x3F, 0x00, 0x0A, 0x6C, 0x69, 0x73, 0x74, 0x66, 0x6F, 0x6C, 0x64, 0x65, 0x72, 0x01,
             0x04, 0x61, 0x75, 0x74, 0x68, 0x2A, 0x00, 0x00, 0x00, 0x45, 0x63, 0x37, 0x51, 0x6B,
@@ -461,14 +473,14 @@ mod tests {
 
     #[test]
     fn build_command_multiple() {
-        let params: Vec<(String, Value)> = vec![
+        let params: Vec<(&str, Value)> = vec![
             (
                 "auth".into(),
                 Value::Text("Ec7QkEjFUnzZ7Z8W2YH1qLgxY7gGvTe09AH0i7V3kX".into()),
             ),
             ("folderid".into(), Value::Number(0)),
         ];
-        let result = Protocol::build_command("listfolder", &params, false, 0);
+        let result = PCloudBinaryApi::build_command("listfolder", &params, false, 0);
         let expected: Vec<u8> = vec![
             0x50, 0x00, 0x0A, 0x6C, 0x69, 0x73, 0x74, 0x66, 0x6F, 0x6C, 0x64, 0x65, 0x72, 0x02,
             0x04, 0x61, 0x75, 0x74, 0x68, 0x2A, 0x00, 0x00, 0x00, 0x45, 0x63, 0x37, 0x51, 0x6B,

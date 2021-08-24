@@ -5,7 +5,7 @@ use std::io::prelude::*;
 use std::io::Read;
 use std::net::TcpStream;
 
-fn build_buffer(len: usize) -> Vec<u8> {
+pub(crate) fn build_buffer(len: usize) -> Vec<u8> {
     let mut res = Vec::with_capacity(len);
     (0..len).for_each(|_| res.push(0));
     res
@@ -30,10 +30,13 @@ impl<'a> BinaryReader<'a> {
         let mut length: [u8; 4] = [0; 4];
         reader.read_exact(&mut length).map_err(Error::read)?;
         let length = u32::from_le_bytes(length) as usize;
-        let off = length.max(4096);
-        let mut buffer = build_buffer(off);
+        // let off = length.max(4096);
+        let mut buffer = build_buffer(length);
         let in_buffer = reader.read(&mut buffer).map_err(Error::read)?;
-        let length = length - in_buffer;
+        // let length = length - in_buffer;
+        let length = length.checked_sub(in_buffer).ok_or_else(|| {
+            Error::Read(format!("trying to substract {} - {}", length, in_buffer))
+        })?;
         Ok(Self {
             reader,
             buffer,
@@ -303,7 +306,7 @@ impl Error {
 }
 
 pub struct PCloudBinaryApi {
-    stream: TcpStream,
+    pub(crate) stream: TcpStream,
     region: Region,
     credentials: Credentials,
 }

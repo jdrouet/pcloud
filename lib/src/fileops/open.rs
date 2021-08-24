@@ -63,3 +63,19 @@ impl PCloudBinaryApi {
         res.payload().map(|value| value.fd)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Params;
+    use crate::binary::PCloudBinaryApi;
+    use crate::credentials::Credentials;
+    use crate::region::Region;
+
+    #[test]
+    fn open_existing_file() {
+        let creds = Credentials::from_env();
+        let mut client = PCloudBinaryApi::new(Region::Europe, creds).unwrap();
+        let params = Params::new(0).identifier(5837100991.into());
+        client.file_open(&params).unwrap();
+    }
+}

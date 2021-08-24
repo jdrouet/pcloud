@@ -1,3 +1,5 @@
+use crate::credentials::Credentials;
+use crate::region::Region;
 use serde_json::Value as JsonValue;
 use std::io::prelude::*;
 use std::io::Read;
@@ -302,12 +304,17 @@ impl Error {
 
 pub struct PCloudBinaryApi {
     stream: TcpStream,
+    region: Region,
+    credentials: Credentials,
 }
 
 impl PCloudBinaryApi {
-    pub fn new(address: &str) -> Result<Self, Error> {
+    pub fn new(region: Region, credentials: Credentials) -> Result<Self, Error> {
+        let address = format!("{}:{}", region.address(), 8398);
         Ok(Self {
             stream: TcpStream::connect(address).map_err(Error::connection)?,
+            region,
+            credentials,
         })
     }
 
@@ -317,7 +324,7 @@ impl PCloudBinaryApi {
 
     fn build_command(
         method: &str,
-        params: &[(String, Value)],
+        params: &[(&str, Value)],
         has_data: bool,
         _data_len: usize,
     ) -> Vec<u8> {
@@ -330,9 +337,9 @@ impl PCloudBinaryApi {
         cmd.push(params.len() as u8);
         for (key, value) in params.iter() {
             match value {
-                Value::Text(value) => cmd.push_str_param(key.as_str(), value.as_str()),
-                Value::Bool(value) => cmd.push_bool_param(key.as_str(), *value),
-                Value::Number(value) => cmd.push_number_param(key.as_str(), *value),
+                Value::Text(value) => cmd.push_str_param(key, value.as_str()),
+                Value::Bool(value) => cmd.push_bool_param(key, *value),
+                Value::Number(value) => cmd.push_number_param(key, *value),
             }
         }
         cmd.build()
@@ -341,11 +348,13 @@ impl PCloudBinaryApi {
     pub fn send_command(
         &mut self,
         method: &str,
-        params: &[(String, Value)],
+        params: &[(&str, Value)],
         has_data: bool,
         data_len: usize,
     ) -> Result<JsonValue, Error> {
-        let cmd = Self::build_command(method, params, has_data, data_len);
+        let mut creds = self.credentials.to_binary_params();
+        creds.extend_from_slice(params);
+        let cmd = Self::build_command(method, &creds, has_data, data_len);
         let count = self.stream.write(&cmd).map_err(Error::write)?;
         assert_eq!(count, cmd.len());
         self.read_result()
@@ -364,12 +373,9 @@ mod tests {
         let creds = Credentials::from_env();
         let api = PCloudHttpApi::new_eu(creds.clone());
         let token = api.get_token().await.unwrap();
-        let address = format!("{}:{}", Region::Europe.address(), 8398);
-        let mut protocol = PCloudBinaryApi::new(&address).unwrap();
-        let params: Vec<(String, Value)> = vec![
-            ("auth".into(), Value::Text(token)),
-            ("folderid".into(), Value::Number(0)),
-        ];
+        let mut protocol =
+            PCloudBinaryApi::new(Region::Europe, Credentials::AccessToken(token)).unwrap();
+        let params: Vec<(&str, Value)> = vec![("folderid", Value::Number(0))];
         let result = protocol
             .send_command("listfolder", &params, false, 0)
             .unwrap();
@@ -435,7 +441,7 @@ mod tests {
 
     #[test]
     fn build_command_number() {
-        let params: Vec<(String, Value)> = vec![("folderid".into(), Value::Number(0))];
+        let params: Vec<(&str, Value)> = vec![("folderid".into(), Value::Number(0))];
         let result = PCloudBinaryApi::build_command("listfolder", &params, false, 0);
         let expected: Vec<u8> = vec![
             0x1D, 0x00, 0x0A, 0x6C, 0x69, 0x73, 0x74, 0x66, 0x6F, 0x6C, 0x64, 0x65, 0x72, 0x01,
@@ -447,7 +453,7 @@ mod tests {
 
     #[test]
     fn build_command_text() {
-        let params: Vec<(String, Value)> = vec![(
+        let params: Vec<(&str, Value)> = vec![(
             "auth".into(),
             Value::Text("Ec7QkEjFUnzZ7Z8W2YH1qLgxY7gGvTe09AH0i7V3kX".into()),
         )];
@@ -464,7 +470,7 @@ mod tests {
 
     #[test]
     fn build_command_multiple() {
-        let params: Vec<(String, Value)> = vec![
+        let params: Vec<(&str, Value)> = vec![
             (
                 "auth".into(),
                 Value::Text("Ec7QkEjFUnzZ7Z8W2YH1qLgxY7gGvTe09AH0i7V3kX".into()),

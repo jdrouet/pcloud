@@ -5,6 +5,7 @@ mod date;
 pub mod entry;
 pub mod error;
 pub mod file;
+pub mod fileops;
 pub mod folder;
 pub mod http;
 pub mod region;

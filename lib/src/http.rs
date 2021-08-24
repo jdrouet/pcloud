@@ -54,6 +54,20 @@ impl PCloudHttpApi {
     }
 }
 
+async fn read_response<T: serde::de::DeserializeOwned>(
+    action: &str,
+    method: &str,
+    res: reqwest::Response,
+) -> Result<T, Error> {
+    if cfg!(test) {
+        let body = res.text().await?;
+        println!("{} {}: {}", action, method, body);
+        Ok(serde_json::from_str(&body).unwrap())
+    } else {
+        res.json::<T>().await.map_err(Error::from)
+    }
+}
+
 impl PCloudHttpApi {
     pub(crate) fn create_client() -> reqwest::Client {
         reqwest::ClientBuilder::new()
@@ -74,15 +88,8 @@ impl PCloudHttpApi {
         let mut local_params = self.credentials.to_vec();
         local_params.extend_from_slice(params);
         let uri = self.build_url(method);
-        let req = self.client.get(uri).query(&local_params).send().await?;
-        // TODO drop this when ready
-        if cfg!(test) {
-            let body = req.text().await?;
-            println!("GET {}: {}", method, body);
-            Ok(serde_json::from_str(&body).unwrap())
-        } else {
-            req.json::<T>().await.map_err(Error::from)
-        }
+        let res = self.client.get(uri).query(&local_params).send().await?;
+        read_response("GET", method, res).await
     }
 
     pub(crate) async fn put_request_data<T: serde::de::DeserializeOwned>(
@@ -94,20 +101,13 @@ impl PCloudHttpApi {
         let mut local_params = self.credentials.to_vec();
         local_params.extend_from_slice(params);
         let uri = self.build_url(method);
-        let req = self
+        let res = self
             .client
             .put(uri)
             .query(&local_params)
             .body(payload)
             .send()
             .await?;
-        // TODO drop this when ready
-        if cfg!(test) {
-            let body = req.text().await?;
-            println!("PUT {}: {}", method, body);
-            Ok(serde_json::from_str(&body).unwrap())
-        } else {
-            req.json::<T>().await.map_err(Error::from)
-        }
+        read_response("PUT", method, res).await
     }
 }

@@ -1,4 +1,5 @@
 use super::FileIdentifier;
+use crate::binary::BinaryClient;
 use crate::entry::File;
 use crate::error::Error;
 use crate::http::HttpClient;
@@ -20,6 +21,18 @@ impl HttpClient {
         let result: Response<CheckSumFile> = self
             .get_request("checksumfile", &params.to_http_params())
             .await?;
+        result.payload()
+    }
+}
+
+impl BinaryClient {
+    pub fn get_info_file<I: Into<FileIdentifier>>(
+        &mut self,
+        identifier: I,
+    ) -> Result<CheckSumFile, Error> {
+        let params: FileIdentifier = identifier.into();
+        let result = self.send_command("checksumfile", &params.to_binary_params(), false, 0)?;
+        let result: Response<CheckSumFile> = serde_json::from_value(result)?;
         result.payload()
     }
 }

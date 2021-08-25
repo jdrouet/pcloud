@@ -1,6 +1,7 @@
 [workspace]
 members = [
 	"./cli",
+	"./fuse",
 	"./http-server",
 	"./lib",
 ]

@@ -7,6 +7,7 @@ pub mod error;
 pub mod file;
 pub mod fileops;
 pub mod folder;
+pub mod general;
 pub mod http;
 pub mod region;
 pub mod request;

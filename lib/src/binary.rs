@@ -366,16 +366,12 @@ impl PCloudBinaryApi {
 mod tests {
     use super::*;
     use crate::credentials::Credentials;
-    use crate::http::PCloudHttpApi;
     use crate::region::Region;
 
     #[tokio::test]
     async fn execute_list_root() {
         let creds = Credentials::from_env();
-        let api = PCloudHttpApi::new_eu(creds.clone());
-        let token = api.get_token().await.unwrap();
-        let mut protocol =
-            PCloudBinaryApi::new(Region::Europe, Credentials::AccessToken(token)).unwrap();
+        let mut protocol = PCloudBinaryApi::new(Region::Europe, creds).unwrap();
         let params: Vec<(&str, Value)> = vec![("folderid", Value::Number(0))];
         let result = protocol
             .send_command("listfolder", &params, false, 0)

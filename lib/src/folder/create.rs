@@ -19,7 +19,7 @@ impl Params {
         }
     }
 
-    pub fn to_vec(&self) -> Vec<(&str, String)> {
+    pub fn to_http_params(&self) -> Vec<(&str, String)> {
         vec![
             ("name", self.name.clone()),
             ("folderid", self.parent_id.to_string()),
@@ -43,8 +43,9 @@ impl PCloudHttpApi {
     /// * `parent_id` - ID of the parent folder. Use 0 for the root folder.
     ///
     pub async fn create_folder(&self, params: &Params) -> Result<Folder, Error> {
-        let result: Response<FolderResponse> =
-            self.get_request("createfolder", &params.to_vec()).await?;
+        let result: Response<FolderResponse> = self
+            .get_request("createfolder", &params.to_http_params())
+            .await?;
         result.payload().map(|item| item.metadata)
     }
 }

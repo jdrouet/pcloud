@@ -44,7 +44,7 @@ impl From<usize> for FolderIdentifier {
 }
 
 impl FolderIdentifier {
-    pub fn to_vec(&self) -> Vec<(&str, String)> {
+    pub fn to_http_params(&self) -> Vec<(&str, String)> {
         match self {
             Self::Path(value) => vec![("path", value.clone())],
             Self::FolderId(value) => vec![("folderid", value.to_string())],

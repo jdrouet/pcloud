@@ -9,8 +9,9 @@ use crate::request::Response;
 impl PCloudHttpApi {
     pub async fn delete_file<I: Into<FileIdentifier>>(&self, identifier: I) -> Result<File, Error> {
         let params: FileIdentifier = identifier.into();
-        let result: Response<FileResponse> =
-            self.get_request("deletefile", &params.to_vec()).await?;
+        let result: Response<FileResponse> = self
+            .get_request("deletefile", &params.to_http_params())
+            .await?;
         result.payload().map(|res| res.metadata)
     }
 }

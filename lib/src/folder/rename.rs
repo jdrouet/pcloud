@@ -32,7 +32,7 @@ impl Params {
         }
     }
 
-    pub fn to_vec(&self) -> Vec<(&str, String)> {
+    pub fn to_http_params(&self) -> Vec<(&str, String)> {
         match self {
             Self::Rename { folder_id, name } => vec![
                 ("folderid", folder_id.to_string()),
@@ -74,8 +74,9 @@ impl PCloudHttpApi {
     /// * `name` - New name for the folder
     ///
     pub async fn rename_folder(&self, params: &Params) -> Result<Folder, Error> {
-        let result: Response<FolderResponse> =
-            self.get_request("renamefolder", &params.to_vec()).await?;
+        let result: Response<FolderResponse> = self
+            .get_request("renamefolder", &params.to_http_params())
+            .await?;
         result.payload().map(|item| item.metadata)
     }
 }

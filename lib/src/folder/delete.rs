@@ -18,7 +18,7 @@ impl PCloudHttpApi {
     ) -> Result<Folder, Error> {
         let identifier = identifier.into();
         let result: Response<FolderResponse> = self
-            .get_request("deletefolder", &identifier.to_vec())
+            .get_request("deletefolder", &identifier.to_http_params())
             .await?;
         result.payload().map(|item| item.metadata)
     }
@@ -57,7 +57,7 @@ impl PCloudHttpApi {
     ) -> Result<RecursivePayload, Error> {
         let identifier = identifier.into();
         let result: Response<RecursivePayload> = self
-            .get_request("deletefolderrecursive", &identifier.to_vec())
+            .get_request("deletefolderrecursive", &identifier.to_http_params())
             .await?;
         result.payload()
     }

@@ -17,8 +17,9 @@ impl PCloudHttpApi {
         identifier: I,
     ) -> Result<CheckSumFile, Error> {
         let params: FileIdentifier = identifier.into();
-        let result: Response<CheckSumFile> =
-            self.get_request("checksumfile", &params.to_vec()).await?;
+        let result: Response<CheckSumFile> = self
+            .get_request("checksumfile", &params.to_http_params())
+            .await?;
         result.payload()
     }
 }

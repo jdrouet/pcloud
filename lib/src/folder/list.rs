@@ -49,8 +49,8 @@ impl Params {
         self
     }
 
-    fn to_vec(&self) -> Vec<(&str, String)> {
-        let mut res = self.identifier.to_vec();
+    fn to_http_params(&self) -> Vec<(&str, String)> {
+        let mut res = self.identifier.to_http_params();
         if self.recursive {
             res.push(("recursive", "1".to_string()));
         }
@@ -92,8 +92,9 @@ impl PCloudHttpApi {
     /// * `folder_id` - ID of the folder.
     ///
     pub async fn list_folder(&self, params: &Params) -> Result<Folder, Error> {
-        let result: Response<FolderResponse> =
-            self.get_request("listfolder", &params.to_vec()).await?;
+        let result: Response<FolderResponse> = self
+            .get_request("listfolder", &params.to_http_params())
+            .await?;
         result.payload().map(|item| item.metadata)
     }
 }

@@ -7,7 +7,7 @@ pub enum Credentials {
 }
 
 impl Credentials {
-    pub fn to_vec(&self) -> Vec<(&str, String)> {
+    pub fn to_http_params(&self) -> Vec<(&str, String)> {
         match self {
             Self::AccessToken(value) => vec![("access_token", value.clone())],
             Self::UserPassword { username, password } => vec![

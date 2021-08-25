@@ -35,7 +35,7 @@ impl Params {
         }
     }
 
-    pub fn to_vec(&self) -> Vec<(&str, String)> {
+    pub fn to_http_params(&self) -> Vec<(&str, String)> {
         let mut res = vec![];
         match self {
             Self::Move { from, to } => {
@@ -74,8 +74,9 @@ impl Params {
 
 impl PCloudHttpApi {
     pub async fn rename_file(&self, params: &Params) -> Result<File, Error> {
-        let result: Response<FileResponse> =
-            self.get_request("renamefile", &params.to_vec()).await?;
+        let result: Response<FileResponse> = self
+            .get_request("renamefile", &params.to_http_params())
+            .await?;
         result.payload().map(|item| item.metadata)
     }
 }

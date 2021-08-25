@@ -1,4 +1,5 @@
 use super::FolderResponse;
+use crate::binary::{PCloudBinaryApi, Value as BinaryValue};
 use crate::entry::Folder;
 use crate::error::Error;
 use crate::http::PCloudHttpApi;
@@ -18,10 +19,17 @@ impl Params {
         }
     }
 
-    pub fn to_vec(&self) -> Vec<(&str, String)> {
+    pub fn to_http_params(&self) -> Vec<(&str, String)> {
         vec![
             ("name", self.name.clone()),
             ("folderid", self.parent_id.to_string()),
+        ]
+    }
+
+    pub fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
+        vec![
+            ("name", BinaryValue::Text(self.name.clone())),
+            ("folderid", BinaryValue::Number(self.parent_id as u64)),
         ]
     }
 }
@@ -35,8 +43,17 @@ impl PCloudHttpApi {
     /// * `parent_id` - ID of the parent folder. Use 0 for the root folder.
     ///
     pub async fn create_folder(&self, params: &Params) -> Result<Folder, Error> {
-        let result: Response<FolderResponse> =
-            self.get_request("createfolder", &params.to_vec()).await?;
+        let result: Response<FolderResponse> = self
+            .get_request("createfolder", &params.to_http_params())
+            .await?;
+        result.payload().map(|item| item.metadata)
+    }
+}
+
+impl PCloudBinaryApi {
+    pub fn create_folder(&mut self, params: &Params) -> Result<Folder, Error> {
+        let result = self.send_command("createfolder", &params.to_binary_params(), false, 0)?;
+        let result: Response<FolderResponse> = serde_json::from_value(result)?;
         result.payload().map(|item| item.metadata)
     }
 }
@@ -44,6 +61,7 @@ impl PCloudHttpApi {
 #[cfg(test)]
 mod tests {
     use super::Params;
+    use crate::binary::PCloudBinaryApi;
     use crate::credentials::Credentials;
     use crate::http::PCloudHttpApi;
     use crate::region::Region;
@@ -108,5 +126,16 @@ mod tests {
             .unwrap_err();
         assert!(matches!(error, crate::error::Error::Payload(_, _)));
         m.assert();
+    }
+
+    #[test]
+    #[ignore]
+    fn binary_success() {
+        let name = crate::tests::random_name();
+        let mut client = PCloudBinaryApi::new(Region::Europe, Credentials::from_env()).unwrap();
+        let res = client
+            .create_folder(&Params::new(name.as_str(), 0))
+            .unwrap();
+        assert_eq!(res.base.name, name);
     }
 }

@@ -25,7 +25,9 @@ impl PCloudHttpApi {
         identifier: I,
     ) -> Result<String, Error> {
         let params: FileIdentifier = identifier.into();
-        let result: Response<Payload> = self.get_request("getfilelink", &params.to_vec()).await?;
+        let result: Response<Payload> = self
+            .get_request("getfilelink", &params.to_http_params())
+            .await?;
         result.payload().map(|res| res.to_url())
     }
 }

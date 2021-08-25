@@ -85,7 +85,7 @@ impl PCloudHttpApi {
         method: &str,
         params: &[(&str, String)],
     ) -> Result<T, Error> {
-        let mut local_params = self.credentials.to_vec();
+        let mut local_params = self.credentials.to_http_params();
         local_params.extend_from_slice(params);
         let uri = self.build_url(method);
         let res = self.client.get(uri).query(&local_params).send().await?;
@@ -98,7 +98,7 @@ impl PCloudHttpApi {
         params: &[(&str, String)],
         payload: Vec<u8>,
     ) -> Result<T, Error> {
-        let mut local_params = self.credentials.to_vec();
+        let mut local_params = self.credentials.to_http_params();
         local_params.extend_from_slice(params);
         let uri = self.build_url(method);
         let res = self

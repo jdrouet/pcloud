@@ -1,4 +1,5 @@
 use super::{FolderIdentifier, FolderResponse};
+use crate::binary::PCloudBinaryApi;
 use crate::entry::Folder;
 use crate::error::Error;
 use crate::http::PCloudHttpApi;
@@ -17,8 +18,20 @@ impl PCloudHttpApi {
     ) -> Result<Folder, Error> {
         let identifier = identifier.into();
         let result: Response<FolderResponse> = self
-            .get_request("deletefolder", &identifier.to_vec())
+            .get_request("deletefolder", &identifier.to_http_params())
             .await?;
+        result.payload().map(|item| item.metadata)
+    }
+}
+
+impl PCloudBinaryApi {
+    pub fn delete_folder<I: Into<FolderIdentifier>>(
+        &mut self,
+        identifier: I,
+    ) -> Result<Folder, Error> {
+        let identifier = identifier.into();
+        let result = self.send_command("deletefolder", &identifier.to_binary_params(), false, 0)?;
+        let result: Response<FolderResponse> = serde_json::from_value(result)?;
         result.payload().map(|item| item.metadata)
     }
 }
@@ -44,8 +57,25 @@ impl PCloudHttpApi {
     ) -> Result<RecursivePayload, Error> {
         let identifier = identifier.into();
         let result: Response<RecursivePayload> = self
-            .get_request("deletefolderrecursive", &identifier.to_vec())
+            .get_request("deletefolderrecursive", &identifier.to_http_params())
             .await?;
+        result.payload()
+    }
+}
+
+impl PCloudBinaryApi {
+    pub fn delete_folder_recursive<I: Into<FolderIdentifier>>(
+        &mut self,
+        identifier: I,
+    ) -> Result<RecursivePayload, Error> {
+        let identifier = identifier.into();
+        let result = self.send_command(
+            "deletefolderrecursive",
+            &identifier.to_binary_params(),
+            false,
+            0,
+        )?;
+        let result: Response<RecursivePayload> = serde_json::from_value(result)?;
         result.payload()
     }
 }

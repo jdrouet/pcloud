@@ -1,4 +1,5 @@
 use super::{FolderIdentifier, FolderResponse};
+use crate::binary::{PCloudBinaryApi, Value as BinaryValue};
 use crate::entry::Folder;
 use crate::error::Error;
 use crate::http::PCloudHttpApi;
@@ -64,6 +65,23 @@ impl Params {
         }
         res
     }
+
+    fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
+        let mut res = self.identifier.to_binary_params();
+        if self.recursive {
+            res.push(("recursive", BinaryValue::Bool(true)));
+        }
+        if self.show_deleted {
+            res.push(("showdeleted", BinaryValue::Bool(true)));
+        }
+        if self.no_files {
+            res.push(("no_files", BinaryValue::Bool(true)));
+        }
+        if self.no_shares {
+            res.push(("no_shares", BinaryValue::Bool(true)));
+        }
+        res
+    }
 }
 
 impl PCloudHttpApi {
@@ -80,9 +98,18 @@ impl PCloudHttpApi {
     }
 }
 
+impl PCloudBinaryApi {
+    pub fn list_folder(&mut self, params: &Params) -> Result<Folder, Error> {
+        let result = self.send_command("listfolder", &params.to_binary_params(), false, 0)?;
+        let result: Response<FolderResponse> = serde_json::from_value(result)?;
+        result.payload().map(|res| res.metadata)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Params;
+    use crate::binary::PCloudBinaryApi;
     use crate::credentials::Credentials;
     use crate::http::PCloudHttpApi;
     use crate::region::Region;
@@ -142,5 +169,12 @@ mod tests {
         let error = api.list_folder(&Params::new(0)).await.unwrap_err();
         assert!(matches!(error, crate::error::Error::Payload(_, _)));
         m.assert();
+    }
+
+    #[test]
+    fn binary_success() {
+        let mut client = PCloudBinaryApi::new(Region::Europe, Credentials::from_env()).unwrap();
+        let res = client.list_folder(&Params::new(0)).unwrap();
+        assert_eq!(res.base.name, "/");
     }
 }

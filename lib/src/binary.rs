@@ -307,7 +307,6 @@ impl Error {
 
 pub struct PCloudBinaryApi {
     pub(crate) stream: TcpStream,
-    region: Region,
     credentials: Credentials,
 }
 
@@ -316,7 +315,6 @@ impl PCloudBinaryApi {
         let address = format!("{}:{}", region.address(), 8398);
         Ok(Self {
             stream: TcpStream::connect(address).map_err(Error::connection)?,
-            region,
             credentials,
         })
     }

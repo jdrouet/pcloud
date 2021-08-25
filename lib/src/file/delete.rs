@@ -1,18 +1,25 @@
 use super::FileIdentifier;
+use crate::binary::PCloudBinaryApi;
 use crate::entry::File;
 use crate::error::Error;
+use crate::file::FileResponse;
 use crate::http::PCloudHttpApi;
 use crate::request::Response;
-
-#[derive(Debug, serde::Deserialize)]
-struct Payload {
-    metadata: File,
-}
 
 impl PCloudHttpApi {
     pub async fn delete_file<I: Into<FileIdentifier>>(&self, identifier: I) -> Result<File, Error> {
         let params: FileIdentifier = identifier.into();
-        let result: Response<Payload> = self.get_request("deletefile", &params.to_vec()).await?;
+        let result: Response<FileResponse> =
+            self.get_request("deletefile", &params.to_vec()).await?;
+        result.payload().map(|res| res.metadata)
+    }
+}
+
+impl PCloudBinaryApi {
+    pub fn delete_file<I: Into<FileIdentifier>>(&mut self, identifier: I) -> Result<File, Error> {
+        let identifier = identifier.into();
+        let result = self.send_command("deletefile", &identifier.to_binary_params(), false, 0)?;
+        let result: Response<FileResponse> = serde_json::from_value(result)?;
         result.payload().map(|res| res.metadata)
     }
 }

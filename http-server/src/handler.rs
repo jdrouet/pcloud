@@ -3,6 +3,8 @@ use human_bytes::human_bytes;
 use pcloud::entry::{Entry, File, Folder};
 use pcloud::folder::list::Params as ListFolderParams;
 use pcloud::http::PCloudHttpApi;
+use pcloud::streaming::get_audio_link::Params as AudioStreamParams;
+use pcloud::streaming::get_video_link::Params as VideoStreamParams;
 
 pub struct RootFolder(String);
 
@@ -109,7 +111,23 @@ pub async fn handle(
             Err(err) => HttpResponse::BadGateway().body(format!("unable to get folder: {:?}", err)),
         }
     } else {
-        match client.get_link_file(target_path).await {
+        let file = match client.get_info_file(target_path.clone()).await {
+            Ok(value) => value,
+            Err(err) => {
+                return HttpResponse::NotFound().body(format!("unable to get file: {:?}", err))
+            }
+        };
+        let content_type = file.metadata.content_type.unwrap_or_default();
+        let result = if content_type.starts_with("video/") {
+            let params = VideoStreamParams::new(target_path);
+            client.get_video_link(&params).await
+        } else if content_type.starts_with("audio/") {
+            let params = AudioStreamParams::new(target_path);
+            client.get_audio_link(&params).await
+        } else {
+            client.get_link_file(target_path).await
+        };
+        match result {
             Ok(url) => HttpResponse::Found()
                 .append_header(("Location", url))
                 .finish(),

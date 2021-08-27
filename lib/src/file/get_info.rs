@@ -1,5 +1,5 @@
 use super::FileIdentifier;
-use crate::entry::Entry;
+use crate::entry::File;
 use crate::error::Error;
 use crate::http::PCloudHttpApi;
 use crate::request::Response;
@@ -8,7 +8,7 @@ use crate::request::Response;
 pub struct CheckSumFile {
     pub sha256: String,
     pub sha1: String,
-    pub metadata: Entry,
+    pub metadata: File,
 }
 
 impl PCloudHttpApi {

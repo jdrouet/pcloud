@@ -10,6 +10,7 @@ pub mod folder;
 pub mod http;
 pub mod region;
 pub mod request;
+pub mod streaming;
 
 #[cfg(test)]
 mod tests {

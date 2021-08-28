@@ -68,7 +68,7 @@ async fn complete() {
         .unwrap();
     // get file info
     let file_info = client.get_info_file(file.file_id).await.unwrap();
-    assert_eq!(file_info.metadata.file_id(), Some(file.file_id));
+    assert_eq!(file_info.metadata.file_id, file.file_id);
     // get file link
     let _file_link = client.get_link_file(file.file_id).await.unwrap();
     // download file

@@ -1,7 +1,7 @@
 use chrono::prelude::{DateTime, Utc};
 use std::cmp::Ordering;
 
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct EntryBase {
     #[serde(with = "crate::date")]
     pub created: DateTime<Utc>,
@@ -20,7 +20,7 @@ pub struct EntryBase {
     pub is_mine: bool,
 }
 
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct File {
     #[serde(flatten)]
     pub base: EntryBase,
@@ -52,7 +52,7 @@ impl PartialOrd for File {
     }
 }
 
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct Folder {
     #[serde(flatten)]
     pub base: EntryBase,
@@ -81,7 +81,7 @@ impl PartialOrd for Folder {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(untagged)]
 pub enum Entry {
     File(File),

@@ -48,11 +48,12 @@ fn format_entry_row(entry: &Entry) -> String {
 }
 
 fn format_page(path: &str, folder: &Folder) -> String {
-    let children = folder
-        .contents
-        .as_ref()
-        .map(|contents| contents.iter().map(format_entry_row).collect::<Vec<_>>())
-        .unwrap_or_default()
+    let mut children = folder.contents.clone().unwrap_or_default();
+    children.sort();
+    let children = children
+        .iter()
+        .map(format_entry_row)
+        .collect::<Vec<_>>()
         .join("");
     format!(
         r#"<!DOCTYPE html>

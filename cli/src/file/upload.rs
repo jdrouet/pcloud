@@ -1,5 +1,5 @@
 use clap::Clap;
-use pcloud::http::PCloudHttpApi;
+use pcloud::http::HttpClient;
 use std::fs::File;
 use std::path::PathBuf;
 
@@ -25,7 +25,7 @@ impl Command {
             .unwrap()
     }
 
-    pub async fn execute(&self, pcloud: PCloudHttpApi) {
+    pub async fn execute(&self, pcloud: HttpClient) {
         let file = File::open(&self.path).expect("unable to open file");
         let filename = self.filename();
         match pcloud.upload_file(&file, &filename, self.folder_id).await {

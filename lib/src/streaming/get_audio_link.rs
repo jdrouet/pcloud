@@ -1,7 +1,7 @@
 use super::Payload;
 use crate::error::Error;
 use crate::file::FileIdentifier;
-use crate::http::PCloudHttpApi;
+use crate::http::HttpClient;
 use crate::request::Response;
 
 #[derive(Debug)]
@@ -44,7 +44,7 @@ impl Params {
     }
 }
 
-impl PCloudHttpApi {
+impl HttpClient {
     pub async fn get_audio_link(&self, params: &Params) -> Result<String, Error> {
         let result: Response<Payload> = self
             .get_request("getaudiolink", &params.to_http_params())

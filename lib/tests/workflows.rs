@@ -1,6 +1,6 @@
 use pcloud::credentials::Credentials;
 use pcloud::folder::ROOT;
-use pcloud::http::PCloudHttpApi;
+use pcloud::http::HttpClient;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use std::io::Cursor;
@@ -34,7 +34,7 @@ async fn complete() {
     let folder_name = create_folder();
     let renamed_name = create_folder();
     let child_name = create_folder();
-    let client = PCloudHttpApi::new_eu(Credentials::from_env());
+    let client = HttpClient::new_eu(Credentials::from_env());
     // create folder
     let folder = client
         .create_folder(&pcloud::folder::create::Params::new(&folder_name, ROOT))

@@ -2,7 +2,7 @@ use super::FolderResponse;
 use crate::binary::{PCloudBinaryApi, Value as BinaryValue};
 use crate::entry::Folder;
 use crate::error::Error;
-use crate::http::PCloudHttpApi;
+use crate::http::HttpClient;
 use crate::request::Response;
 
 #[derive(Debug)]
@@ -65,7 +65,7 @@ impl Params {
     }
 }
 
-impl PCloudHttpApi {
+impl HttpClient {
     /// Rename a folder
     ///
     /// # Arguments

@@ -3,10 +3,10 @@ use crate::binary::PCloudBinaryApi;
 use crate::entry::File;
 use crate::error::Error;
 use crate::file::FileResponse;
-use crate::http::PCloudHttpApi;
+use crate::http::HttpClient;
 use crate::request::Response;
 
-impl PCloudHttpApi {
+impl HttpClient {
     pub async fn delete_file<I: Into<FileIdentifier>>(&self, identifier: I) -> Result<File, Error> {
         let params: FileIdentifier = identifier.into();
         let result: Response<FileResponse> = self
@@ -28,7 +28,7 @@ impl PCloudBinaryApi {
 #[cfg(test)]
 mod tests {
     use crate::credentials::Credentials;
-    use crate::http::PCloudHttpApi;
+    use crate::http::HttpClient;
     use crate::region::Region;
     use mockito::{mock, Matcher};
 
@@ -69,7 +69,7 @@ mod tests {
             .create();
         let creds = Credentials::AccessToken("access-token".into());
         let dc = Region::Test;
-        let api = PCloudHttpApi::new(creds, dc);
+        let api = HttpClient::new(creds, dc);
         api.delete_file(42).await.unwrap();
         m.assert();
     }

@@ -2,7 +2,7 @@ use actix_web::{web, HttpResponse};
 use human_bytes::human_bytes;
 use pcloud::entry::{Entry, File, Folder};
 use pcloud::folder::list::Params as ListFolderParams;
-use pcloud::http::PCloudHttpApi;
+use pcloud::http::HttpClient;
 use pcloud::streaming::get_audio_link::Params as AudioStreamParams;
 use pcloud::streaming::get_video_link::Params as VideoStreamParams;
 
@@ -92,7 +92,7 @@ fn format_path(path: &str) -> String {
 }
 
 pub async fn handle(
-    client: web::Data<PCloudHttpApi>,
+    client: web::Data<HttpClient>,
     root: web::Data<RootFolder>,
     path: web::Path<String>,
 ) -> HttpResponse {

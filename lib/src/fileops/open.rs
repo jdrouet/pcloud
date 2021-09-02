@@ -1,4 +1,4 @@
-use crate::binary::{PCloudBinaryApi, Value as BinaryValue};
+use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::error::Error;
 use crate::file::FileIdentifier;
 use crate::request::Response;
@@ -56,7 +56,7 @@ impl Params {
     }
 }
 
-impl PCloudBinaryApi {
+impl BinaryClient {
     pub fn file_open(&mut self, params: &Params) -> Result<usize, Error> {
         let res = self.send_command("file_open", &params.to_binary_params(), false, 0)?;
         let res: Response<Payload> = serde_json::from_value(res)?;
@@ -67,14 +67,14 @@ impl PCloudBinaryApi {
 #[cfg(test)]
 mod tests {
     use super::Params;
-    use crate::binary::PCloudBinaryApi;
+    use crate::binary::BinaryClient;
     use crate::credentials::Credentials;
     use crate::region::Region;
 
     #[test]
     fn open_existing_file() {
         let creds = Credentials::from_env();
-        let mut client = PCloudBinaryApi::new(Region::Europe, creds).unwrap();
+        let mut client = BinaryClient::new(Region::Europe, creds).unwrap();
         let params = Params::new(0).identifier(5837100991.into());
         client.file_open(&params).unwrap();
     }

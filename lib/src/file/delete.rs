@@ -1,5 +1,5 @@
 use super::FileIdentifier;
-use crate::binary::PCloudBinaryApi;
+use crate::binary::BinaryClient;
 use crate::entry::File;
 use crate::error::Error;
 use crate::file::FileResponse;
@@ -16,7 +16,7 @@ impl HttpClient {
     }
 }
 
-impl PCloudBinaryApi {
+impl BinaryClient {
     pub fn delete_file<I: Into<FileIdentifier>>(&mut self, identifier: I) -> Result<File, Error> {
         let identifier = identifier.into();
         let result = self.send_command("deletefile", &identifier.to_binary_params(), false, 0)?;

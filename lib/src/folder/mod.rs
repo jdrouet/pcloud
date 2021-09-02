@@ -61,14 +61,14 @@ impl FolderIdentifier {
 
 #[cfg(test)]
 mod tests {
-    use crate::binary::PCloudBinaryApi;
+    use crate::binary::BinaryClient;
     use crate::credentials::Credentials;
     use crate::region::Region;
 
     #[test]
     fn binary_success() {
         let creds = Credentials::from_env();
-        let mut client = PCloudBinaryApi::new(Region::Europe, creds).unwrap();
+        let mut client = BinaryClient::new(Region::Europe, creds).unwrap();
         let folder = client
             .create_folder(&super::create::Params::new(crate::tests::random_name(), 0))
             .unwrap();

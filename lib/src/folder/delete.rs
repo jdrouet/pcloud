@@ -1,5 +1,5 @@
 use super::{FolderIdentifier, FolderResponse};
-use crate::binary::PCloudBinaryApi;
+use crate::binary::BinaryClient;
 use crate::entry::Folder;
 use crate::error::Error;
 use crate::http::HttpClient;
@@ -24,7 +24,7 @@ impl HttpClient {
     }
 }
 
-impl PCloudBinaryApi {
+impl BinaryClient {
     pub fn delete_folder<I: Into<FolderIdentifier>>(
         &mut self,
         identifier: I,
@@ -63,7 +63,7 @@ impl HttpClient {
     }
 }
 
-impl PCloudBinaryApi {
+impl BinaryClient {
     pub fn delete_folder_recursive<I: Into<FolderIdentifier>>(
         &mut self,
         identifier: I,

@@ -1,8 +1,8 @@
 use super::{FolderIdentifier, FolderResponse};
-use crate::binary::{PCloudBinaryApi, Value as BinaryValue};
+use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::entry::Folder;
 use crate::error::Error;
-use crate::http::PCloudHttpApi;
+use crate::http::HttpClient;
 use crate::request::Response;
 
 #[derive(Debug)]
@@ -84,7 +84,7 @@ impl Params {
     }
 }
 
-impl PCloudHttpApi {
+impl HttpClient {
     /// List a folder's content
     ///
     /// # Arguments
@@ -99,7 +99,7 @@ impl PCloudHttpApi {
     }
 }
 
-impl PCloudBinaryApi {
+impl BinaryClient {
     pub fn list_folder(&mut self, params: &Params) -> Result<Folder, Error> {
         let result = self.send_command("listfolder", &params.to_binary_params(), false, 0)?;
         let result: Response<FolderResponse> = serde_json::from_value(result)?;
@@ -110,9 +110,9 @@ impl PCloudBinaryApi {
 #[cfg(test)]
 mod tests {
     use super::Params;
-    use crate::binary::PCloudBinaryApi;
+    use crate::binary::BinaryClient;
     use crate::credentials::Credentials;
-    use crate::http::PCloudHttpApi;
+    use crate::http::HttpClient;
     use crate::region::Region;
     use mockito::{mock, Matcher};
 
@@ -147,7 +147,7 @@ mod tests {
             .create();
         let creds = Credentials::AccessToken("access-token".into());
         let dc = Region::Test;
-        let api = PCloudHttpApi::new(creds, dc);
+        let api = HttpClient::new(creds, dc);
         let payload = api.list_folder(&Params::new(0)).await.unwrap();
         assert_eq!(payload.base.parent_folder_id, Some(0));
         m.assert();
@@ -166,7 +166,7 @@ mod tests {
             .create();
         let creds = Credentials::AccessToken("access-token".into());
         let dc = Region::Test;
-        let api = PCloudHttpApi::new(creds, dc);
+        let api = HttpClient::new(creds, dc);
         let error = api.list_folder(&Params::new(0)).await.unwrap_err();
         assert!(matches!(error, crate::error::Error::Payload(_, _)));
         m.assert();
@@ -174,7 +174,7 @@ mod tests {
 
     #[test]
     fn binary_success() {
-        let mut client = PCloudBinaryApi::new(Region::Europe, Credentials::from_env()).unwrap();
+        let mut client = BinaryClient::new(Region::Europe, Credentials::from_env()).unwrap();
         let res = client.list_folder(&Params::new(0)).unwrap();
         assert_eq!(res.base.name, "/");
     }

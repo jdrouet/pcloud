@@ -1,5 +1,5 @@
 use clap::Clap;
-use pcloud::http::PCloudHttpApi;
+use pcloud::http::HttpClient;
 
 #[derive(Clap)]
 pub struct Command {
@@ -7,7 +7,7 @@ pub struct Command {
 }
 
 impl Command {
-    pub async fn execute(&self, pcloud: PCloudHttpApi) {
+    pub async fn execute(&self, pcloud: HttpClient) {
         match pcloud.delete_file(self.file_id).await {
             Ok(_) => {
                 log::info!("file deleted");

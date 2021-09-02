@@ -1,8 +1,8 @@
 use super::FolderResponse;
-use crate::binary::{PCloudBinaryApi, Value as BinaryValue};
+use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::entry::Folder;
 use crate::error::Error;
-use crate::http::PCloudHttpApi;
+use crate::http::HttpClient;
 use crate::request::Response;
 
 #[derive(Debug)]
@@ -34,7 +34,7 @@ impl Params {
     }
 }
 
-impl PCloudHttpApi {
+impl HttpClient {
     /// Create a folder
     ///
     /// # Arguments
@@ -50,7 +50,7 @@ impl PCloudHttpApi {
     }
 }
 
-impl PCloudBinaryApi {
+impl BinaryClient {
     pub fn create_folder(&mut self, params: &Params) -> Result<Folder, Error> {
         let result = self.send_command("createfolder", &params.to_binary_params(), false, 0)?;
         let result: Response<FolderResponse> = serde_json::from_value(result)?;
@@ -61,9 +61,9 @@ impl PCloudBinaryApi {
 #[cfg(test)]
 mod tests {
     use super::Params;
-    use crate::binary::PCloudBinaryApi;
+    use crate::binary::BinaryClient;
     use crate::credentials::Credentials;
-    use crate::http::PCloudHttpApi;
+    use crate::http::HttpClient;
     use crate::region::Region;
     use mockito::{mock, Matcher};
 
@@ -99,7 +99,7 @@ mod tests {
             .create();
         let creds = Credentials::AccessToken("access-token".into());
         let dc = Region::Test;
-        let api = PCloudHttpApi::new(creds, dc);
+        let api = HttpClient::new(creds, dc);
         let result = api.create_folder(&Params::new("testing", 0)).await.unwrap();
         assert_eq!(result.base.name, "testing");
         m.assert();
@@ -119,7 +119,7 @@ mod tests {
             .create();
         let creds = Credentials::AccessToken("access-token".into());
         let dc = Region::Test;
-        let api = PCloudHttpApi::new(creds, dc);
+        let api = HttpClient::new(creds, dc);
         let error = api
             .create_folder(&Params::new("testing", 0))
             .await
@@ -132,7 +132,7 @@ mod tests {
     #[ignore]
     fn binary_success() {
         let name = crate::tests::random_name();
-        let mut client = PCloudBinaryApi::new(Region::Europe, Credentials::from_env()).unwrap();
+        let mut client = BinaryClient::new(Region::Europe, Credentials::from_env()).unwrap();
         let res = client
             .create_folder(&Params::new(name.as_str(), 0))
             .unwrap();

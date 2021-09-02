@@ -305,12 +305,12 @@ impl Error {
     }
 }
 
-pub struct PCloudBinaryApi {
+pub struct BinaryClient {
     pub(crate) stream: TcpStream,
     credentials: Credentials,
 }
 
-impl PCloudBinaryApi {
+impl BinaryClient {
     pub fn new(region: Region, credentials: Credentials) -> Result<Self, Error> {
         let address = format!("{}:{}", region.address(), 8398);
         Ok(Self {
@@ -371,7 +371,7 @@ mod tests {
     #[tokio::test]
     async fn execute_list_root() {
         let creds = Credentials::from_env();
-        let mut protocol = PCloudBinaryApi::new(Region::Europe, creds).unwrap();
+        let mut protocol = BinaryClient::new(Region::Europe, creds).unwrap();
         let params: Vec<(&str, Value)> = vec![("folderid", Value::Number(0))];
         let result = protocol
             .send_command("listfolder", &params, false, 0)
@@ -439,7 +439,7 @@ mod tests {
     #[test]
     fn build_command_number() {
         let params: Vec<(&str, Value)> = vec![("folderid".into(), Value::Number(0))];
-        let result = PCloudBinaryApi::build_command("listfolder", &params, false, 0);
+        let result = BinaryClient::build_command("listfolder", &params, false, 0);
         let expected: Vec<u8> = vec![
             0x1D, 0x00, 0x0A, 0x6C, 0x69, 0x73, 0x74, 0x66, 0x6F, 0x6C, 0x64, 0x65, 0x72, 0x01,
             0x48, 0x66, 0x6F, 0x6C, 0x64, 0x65, 0x72, 0x69, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -454,7 +454,7 @@ mod tests {
             "auth".into(),
             Value::Text("Ec7QkEjFUnzZ7Z8W2YH1qLgxY7gGvTe09AH0i7V3kX".into()),
         )];
-        let result = PCloudBinaryApi::build_command("listfolder", &params, false, 0);
+        let result = BinaryClient::build_command("listfolder", &params, false, 0);
         let expected: Vec<u8> = vec![
             0x3F, 0x00, 0x0A, 0x6C, 0x69, 0x73, 0x74, 0x66, 0x6F, 0x6C, 0x64, 0x65, 0x72, 0x01,
             0x04, 0x61, 0x75, 0x74, 0x68, 0x2A, 0x00, 0x00, 0x00, 0x45, 0x63, 0x37, 0x51, 0x6B,
@@ -474,7 +474,7 @@ mod tests {
             ),
             ("folderid".into(), Value::Number(0)),
         ];
-        let result = PCloudBinaryApi::build_command("listfolder", &params, false, 0);
+        let result = BinaryClient::build_command("listfolder", &params, false, 0);
         let expected: Vec<u8> = vec![
             0x50, 0x00, 0x0A, 0x6C, 0x69, 0x73, 0x74, 0x66, 0x6F, 0x6C, 0x64, 0x65, 0x72, 0x02,
             0x04, 0x61, 0x75, 0x74, 0x68, 0x2A, 0x00, 0x00, 0x00, 0x45, 0x63, 0x37, 0x51, 0x6B,

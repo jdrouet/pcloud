@@ -6,14 +6,14 @@ pub mod size;
 
 #[cfg(test)]
 mod tests {
-    use crate::binary::PCloudBinaryApi;
+    use crate::binary::BinaryClient;
     use crate::credentials::Credentials;
     use crate::region::Region;
 
     #[test]
     fn reading() {
         let creds = Credentials::from_env();
-        let mut client = PCloudBinaryApi::new(Region::Europe, creds).unwrap();
+        let mut client = BinaryClient::new(Region::Europe, creds).unwrap();
         let params = super::open::Params::new(0).identifier(5837100991.into());
         let fd = client.file_open(&params).unwrap();
         let params = super::read::Params::new(fd, 8);

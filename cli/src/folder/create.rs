@@ -1,6 +1,6 @@
 use clap::Clap;
 use pcloud::folder::create::Params;
-use pcloud::http::PCloudHttpApi;
+use pcloud::http::HttpClient;
 
 #[derive(Clap)]
 pub struct Command {
@@ -8,7 +8,7 @@ pub struct Command {
 }
 
 impl Command {
-    pub async fn execute(&self, pcloud: PCloudHttpApi, folder_id: usize) {
+    pub async fn execute(&self, pcloud: HttpClient, folder_id: usize) {
         let params = Params::new(&self.name, folder_id);
         match pcloud.create_folder(&params).await {
             Ok(res) => {

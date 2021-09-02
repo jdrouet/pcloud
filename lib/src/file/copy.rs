@@ -1,8 +1,8 @@
 use super::FileResponse;
-use crate::binary::{PCloudBinaryApi, Value as BinaryValue};
+use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::entry::File;
 use crate::error::Error;
-use crate::http::PCloudHttpApi;
+use crate::http::HttpClient;
 use crate::request::Response;
 
 pub struct Params {
@@ -33,7 +33,7 @@ impl Params {
     }
 }
 
-impl PCloudHttpApi {
+impl HttpClient {
     pub async fn copy_file(&self, params: &Params) -> Result<File, Error> {
         let result: Response<FileResponse> = self
             .get_request("copyfile", &params.to_http_params())
@@ -42,7 +42,7 @@ impl PCloudHttpApi {
     }
 }
 
-impl PCloudBinaryApi {
+impl BinaryClient {
     pub fn copy_file(&mut self, params: &Params) -> Result<File, Error> {
         let result = self.send_command("copyfile", &params.to_binary_params(), false, 0)?;
         let result: Response<FileResponse> = serde_json::from_value(result)?;

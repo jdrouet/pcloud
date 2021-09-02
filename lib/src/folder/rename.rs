@@ -1,8 +1,8 @@
 use super::FolderResponse;
-use crate::binary::{PCloudBinaryApi, Value as BinaryValue};
+use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::entry::Folder;
 use crate::error::Error;
-use crate::http::PCloudHttpApi;
+use crate::http::HttpClient;
 use crate::request::Response;
 
 #[derive(Debug)]
@@ -65,7 +65,7 @@ impl Params {
     }
 }
 
-impl PCloudHttpApi {
+impl HttpClient {
     /// Rename a folder
     ///
     /// # Arguments
@@ -81,7 +81,7 @@ impl PCloudHttpApi {
     }
 }
 
-impl PCloudBinaryApi {
+impl BinaryClient {
     pub fn rename_folder(&mut self, params: &Params) -> Result<Folder, Error> {
         let result = self.send_command("renamefolder", &params.to_binary_params(), false, 0)?;
         let result: Response<FolderResponse> = serde_json::from_value(result)?;

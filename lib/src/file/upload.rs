@@ -1,7 +1,7 @@
 use super::FileResponse;
 use crate::entry::File;
 use crate::error::Error;
-use crate::http::PCloudHttpApi;
+use crate::http::HttpClient;
 use crate::request::Response;
 use std::io::Read;
 
@@ -48,7 +48,7 @@ impl<R: Read> ChunkReader<R> {
     }
 }
 
-impl PCloudHttpApi {
+impl HttpClient {
     async fn create_upload_file(&self) -> Result<usize, Error> {
         let result: Response<CreateUploadPayload> =
             self.get_request("upload_create", &Vec::new()).await?;
@@ -115,7 +115,7 @@ impl PCloudHttpApi {
 #[cfg(test)]
 mod tests {
     use crate::credentials::Credentials;
-    use crate::http::PCloudHttpApi;
+    use crate::http::HttpClient;
     use crate::region::Region;
     use mockito::{mock, Matcher};
 
@@ -174,7 +174,7 @@ mod tests {
 
         let creds = Credentials::AccessToken("access-token".into());
         let dc = Region::Test;
-        let api = PCloudHttpApi::new(creds, dc);
+        let api = HttpClient::new(creds, dc);
         //
         let cursor = std::io::Cursor::new("hello world!");
         let result = api.upload_file(cursor, "testing.txt", 0).await.unwrap();

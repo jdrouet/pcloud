@@ -1,6 +1,6 @@
 use clap::Clap;
 use pcloud::file::rename::Params;
-use pcloud::http::PCloudHttpApi;
+use pcloud::http::HttpClient;
 
 #[derive(Clap)]
 pub struct Command {
@@ -9,7 +9,7 @@ pub struct Command {
 }
 
 impl Command {
-    pub async fn execute(&self, pcloud: PCloudHttpApi) {
+    pub async fn execute(&self, pcloud: HttpClient) {
         let params = Params::new_move(self.file_id, self.folder_id);
         match pcloud.rename_file(&params).await {
             Ok(_) => {

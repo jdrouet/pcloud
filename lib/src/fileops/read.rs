@@ -1,4 +1,4 @@
-use crate::binary::{build_buffer, PCloudBinaryApi, Value as BinaryValue};
+use crate::binary::{build_buffer, BinaryClient, Value as BinaryValue};
 use crate::error::Error;
 use crate::request::Response;
 use std::io::Read;
@@ -27,7 +27,7 @@ impl Params {
     }
 }
 
-impl PCloudBinaryApi {
+impl BinaryClient {
     pub fn file_read(&mut self, params: &Params) -> Result<Vec<u8>, Error> {
         let res = self.send_command("file_read", &params.to_binary_params(), false, 0)?;
         let res: Response<Payload> = serde_json::from_value(res)?;

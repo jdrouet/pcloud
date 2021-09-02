@@ -1,6 +1,6 @@
-use crate::binary::{PCloudBinaryApi, Value as BinaryValue};
+use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::error::Error;
-use crate::http::PCloudHttpApi;
+use crate::http::HttpClient;
 use crate::request::Response;
 
 #[derive(serde::Deserialize)]
@@ -50,7 +50,7 @@ impl Params {
     }
 }
 
-impl PCloudHttpApi {
+impl HttpClient {
     pub async fn user_info(&self, params: &Params) -> Result<Payload, Error> {
         let result: Response<Payload> = self
             .get_request("userinfo", &params.to_http_params())
@@ -59,7 +59,7 @@ impl PCloudHttpApi {
     }
 }
 
-impl PCloudBinaryApi {
+impl BinaryClient {
     pub fn user_info(&mut self, params: &Params) -> Result<Payload, Error> {
         let result = self.send_command("userinfo", &params.to_binary_params(), false, 0)?;
         let result: Response<Payload> = serde_json::from_value(result)?;
@@ -69,15 +69,15 @@ impl PCloudBinaryApi {
 
 #[cfg(test)]
 mod tests {
-    use crate::binary::PCloudBinaryApi;
+    use crate::binary::BinaryClient;
     use crate::credentials::Credentials;
-    use crate::http::PCloudHttpApi;
+    use crate::http::HttpClient;
     use crate::region::Region;
 
     #[tokio::test]
     async fn http_success() {
         let creds = Credentials::from_env();
-        let client = PCloudHttpApi::new_eu(creds);
+        let client = HttpClient::new_eu(creds);
         let params = super::Params::default();
         client.user_info(&params).await.unwrap();
     }
@@ -85,7 +85,7 @@ mod tests {
     #[test]
     fn binary_success() {
         let creds = Credentials::from_env();
-        let mut client = PCloudBinaryApi::new(Region::Europe, creds).unwrap();
+        let mut client = BinaryClient::new(Region::Europe, creds).unwrap();
         let params = super::Params::default();
         client.user_info(&params).unwrap();
     }

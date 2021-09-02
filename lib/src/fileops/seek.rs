@@ -1,4 +1,4 @@
-use crate::binary::{PCloudBinaryApi, Value as BinaryValue};
+use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::error::Error;
 use crate::request::Response;
 use std::io::SeekFrom;
@@ -34,7 +34,7 @@ impl Params {
     }
 }
 
-impl PCloudBinaryApi {
+impl BinaryClient {
     pub fn file_seek(&mut self, params: &Params) -> Result<usize, Error> {
         let params = params.to_binary_params();
         let result = self.send_command("file_seek", &params, false, 0)?;

@@ -1,4 +1,4 @@
-use crate::binary::{PCloudBinaryApi, Value as BinaryValue};
+use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::error::Error;
 use crate::request::Response;
 
@@ -8,7 +8,7 @@ pub struct Payload {
     pub offset: usize,
 }
 
-impl PCloudBinaryApi {
+impl BinaryClient {
     pub fn file_size(&mut self, fd: usize) -> Result<Payload, Error> {
         let params = vec![("fd", BinaryValue::Number(fd as u64))];
         let res = self.send_command("file_size", &params, false, 0)?;

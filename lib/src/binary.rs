@@ -17,85 +17,40 @@ fn bytes_to_u64(bytes: &[u8]) -> u64 {
     u64::from_le_bytes(buffer)
 }
 
-struct BinaryReader<'a> {
-    reader: &'a mut dyn Read,
-    length: usize,
+struct BinaryReader {
     buffer: Vec<u8>,
-    in_buffer: usize,
     offset: usize,
 }
 
-impl<'a> BinaryReader<'a> {
-    fn new(reader: &'a mut dyn Read) -> Result<Self, Error> {
+impl BinaryReader {
+    fn new(reader: &mut dyn Read) -> Result<Self, Error> {
         let mut length: [u8; 4] = [0; 4];
         reader.read_exact(&mut length).map_err(Error::read)?;
         let length = u32::from_le_bytes(length) as usize;
-        // let off = length.max(4096);
         let mut buffer = build_buffer(length);
-        let in_buffer = reader.read(&mut buffer).map_err(Error::read)?;
-        // let length = length - in_buffer;
-        let length = length.checked_sub(in_buffer).ok_or_else(|| {
-            Error::Read(format!("trying to substract {} - {}", length, in_buffer))
-        })?;
-        Ok(Self {
-            reader,
-            buffer,
-            in_buffer,
-            length,
-            offset: 0,
-        })
+        reader.read_exact(&mut buffer).map_err(Error::read)?;
+        Ok(Self { buffer, offset: 0 })
     }
 
-    fn fill_buffer(&mut self) -> Result<(), Error> {
-        let mut cnt = 4096;
-        if cnt > self.length {
-            cnt = self.length;
-        }
-        let mut buffer = build_buffer(cnt);
-        self.in_buffer = self.reader.read(&mut buffer).map_err(Error::read)?;
-        self.buffer = buffer;
-        self.length -= self.in_buffer;
-        self.offset = 0;
-        Ok(())
-    }
-
-    fn get_byte(&mut self) -> Result<u8, Error> {
-        let value = self.peek_byte()?;
+    fn get_byte(&mut self) -> Option<u8> {
+        let value = self.peek_byte();
         self.offset += 1;
-        Ok(value)
+        value
     }
 
-    fn peek_byte(&mut self) -> Result<u8, Error> {
-        if self.offset >= self.in_buffer {
-            self.fill_buffer()?;
-        }
-        Ok(self.buffer[self.offset])
+    fn peek_byte(&mut self) -> Option<u8> {
+        self.buffer.get(self.offset).copied()
     }
 
-    fn get_bytes(&mut self, cnt: usize) -> Result<Vec<u8>, Error> {
-        let mut res = build_buffer(cnt);
-        let mut off = 0;
-        while off < cnt {
-            if self.offset >= self.in_buffer {
-                self.fill_buffer()?;
-            }
-            let mut mb = cnt - off;
-            if mb > self.in_buffer - self.offset {
-                mb = self.in_buffer - self.offset;
-            }
-            // System.arraycopy(buffer, bufferOffset, ret, off, mb);
-            for i in 0..mb {
-                res[off + i] = self.buffer[self.offset + i];
-            }
-            self.offset += mb;
-            off += mb;
-        }
-        Ok(res)
+    fn get_bytes(&mut self, cnt: usize) -> Vec<u8> {
+        let result = self.buffer[self.offset..(self.offset + cnt)].to_vec();
+        self.offset += cnt;
+        result
     }
 
     fn parse_array(&mut self, cache: &mut Vec<String>) -> Result<JsonValue, Error> {
         let mut res = Vec::new();
-        while let Ok(ftype) = self.get_byte() {
+        while let Some(ftype) = self.get_byte() {
             if ftype == 255 {
                 break;
             }
@@ -106,7 +61,7 @@ impl<'a> BinaryReader<'a> {
 
     fn parse_object(&mut self, cache: &mut Vec<String>) -> Result<JsonValue, Error> {
         let mut res = serde_json::Map::new();
-        while let Ok(ftype) = self.get_byte() {
+        while let Some(ftype) = self.get_byte() {
             if ftype == 255 {
                 break;
             }
@@ -129,10 +84,10 @@ impl<'a> BinaryReader<'a> {
         let len = if (100..150).contains(&ftype) {
             (ftype - 100) as u64
         } else {
-            let data = self.get_bytes((ftype + 1) as usize)?;
+            let data = self.get_bytes((ftype + 1) as usize);
             bytes_to_u64(&data)
         };
-        let data = self.get_bytes(len as usize)?;
+        let data = self.get_bytes(len as usize);
         let res = String::from_utf8(data).map_err(Error::read)?;
         cache.push(res.clone());
         Ok(res)
@@ -146,7 +101,7 @@ impl<'a> BinaryReader<'a> {
         let idx = if (150..200).contains(&ftype) {
             (ftype - 150) as usize
         } else {
-            let data = self.get_bytes((ftype - 3) as usize)?;
+            let data = self.get_bytes((ftype - 3) as usize);
             bytes_to_u64(&data) as usize
         };
         cache
@@ -157,7 +112,7 @@ impl<'a> BinaryReader<'a> {
 
     fn parse_type(&mut self, cache: &mut Vec<String>, ftype: u8) -> Result<JsonValue, Error> {
         if (8..=15).contains(&ftype) {
-            let data = self.get_bytes((ftype - 7) as usize)?;
+            let data = self.get_bytes((ftype - 7) as usize);
             Ok(JsonValue::Number(bytes_to_u64(&data).into()))
         } else if (200..220).contains(&ftype) {
             Ok(JsonValue::Number((ftype - 200).into()))
@@ -172,7 +127,7 @@ impl<'a> BinaryReader<'a> {
         } else if ftype == 16 {
             self.parse_object(cache)
         } else if ftype == 20 {
-            let data = self.get_bytes(8)?;
+            let data = self.get_bytes(8);
             Ok(JsonValue::Number(bytes_to_u64(&data).into()))
         } else {
             println!("ftype {} unimplemented", ftype);
@@ -181,7 +136,7 @@ impl<'a> BinaryReader<'a> {
     }
 
     fn run_parse(&mut self, cache: &mut Vec<String>) -> Result<JsonValue, Error> {
-        let ftype = self.get_byte()?;
+        let ftype = self.get_byte().unwrap();
         self.parse_type(cache, ftype)
     }
 

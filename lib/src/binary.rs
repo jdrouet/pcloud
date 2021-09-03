@@ -274,6 +274,10 @@ impl BinaryClient {
         })
     }
 
+    pub fn from_env() -> Result<Self, Error> {
+        Self::new(Region::from_env(), Credentials::from_env())
+    }
+
     fn read_result(&mut self) -> Result<JsonValue, Error> {
         BinaryReader::parse(&mut self.stream)
     }

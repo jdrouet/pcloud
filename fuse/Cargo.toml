@@ -1,0 +1,16 @@
+[package]
+name = "pcloud-fuse"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+pcloud = { path = "../lib" }
+#
+clap = { version = "3.0.0-beta.4" }
+env_logger = { version = "^0.9" }
+fuser = { version = "^0.8" }
+libc = { version = "^0.2" }
+log = { version = "^0.4" }
+ttl_cache = { version = "^0.5" }

@@ -6,6 +6,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      - name: install fuse dependencies
+        run: sudo apt-get install libfuse-dev pkg-config
       - uses: actions/checkout@v1
       - name: annotate commit with clippy warnings
         uses: actions-rs/clippy-check@v1

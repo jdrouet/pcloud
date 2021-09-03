@@ -5,6 +5,9 @@ RUN apk add --no-cache libc-dev
 WORKDIR /code/cli
 RUN cargo init
 
+WORKDIR /code/fuse
+RUN cargo init
+
 WORKDIR /code/http-server
 RUN cargo init
 

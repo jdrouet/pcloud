@@ -1,4 +1,4 @@
-use crate::service::PCloudService;
+use crate::service::{Error, PCloudService};
 use fuser::{FileType, Filesystem};
 use pcloud::entry::{Entry, File, Folder};
 use std::ffi::OsStr;
@@ -88,7 +88,7 @@ impl Filesystem for PCloudFs {
             value
         } else {
             log::error!("Path component is not UTF-8");
-            reply.error(libc::EINVAL);
+            reply.error(Error::InvalidArgument.into());
             return;
         };
         let parent = match self.service.get_folder(parent) {
@@ -103,7 +103,7 @@ impl Filesystem for PCloudFs {
             reply.entry(&Duration::new(2, 0), &attr, 0);
         } else {
             // file doesn't exist
-            reply.error(libc::ENOENT);
+            reply.error(Error::NotFound.into());
         }
     }
 
@@ -201,7 +201,7 @@ impl Filesystem for PCloudFs {
         reply: fuser::ReplyEmpty,
     ) {
         log::debug!("flush() ino={}", inode);
-        reply.error(libc::ENOSYS);
+        reply.error(Error::NotImplemented.into());
     }
 
     fn release(
@@ -283,7 +283,7 @@ impl Filesystem for PCloudFs {
             length,
             mode
         );
-        reply.error(libc::ENOSYS);
+        reply.error(Error::NotImplemented.into());
     }
 
     fn bmap(
@@ -295,6 +295,27 @@ impl Filesystem for PCloudFs {
         reply: fuser::ReplyBmap,
     ) {
         log::debug!("bmap() ino={} blocksize={} idx={}", ino, blocksize, idx);
-        reply.error(libc::ENOSYS);
+        reply.error(Error::NotImplemented.into());
+    }
+
+    fn create(
+        &mut self,
+        _req: &fuser::Request<'_>,
+        parent: u64,
+        name: &OsStr,
+        mode: u32,
+        umask: u32,
+        flags: i32,
+        reply: fuser::ReplyCreate,
+    ) {
+        log::debug!(
+            "create() parent={} name={:?} mode={} umask={} flags={}",
+            parent,
+            name,
+            mode,
+            umask,
+            flags
+        );
+        reply.error(Error::NotImplemented.into());
     }
 }

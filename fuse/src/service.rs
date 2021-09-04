@@ -8,28 +8,36 @@ use std::time::Duration;
 use ttl_cache::TtlCache;
 
 pub enum Error {
-    Network,
     BehaviorUndefined,
+    InvalidArgument,
+    Network,
+    NotFound,
+    NotImplemented,
+    PermissionDenied,
 }
 
 impl From<Error> for i32 {
     fn from(err: Error) -> i32 {
         match err {
-            Error::Network => libc::EIO,
             Error::BehaviorUndefined => libc::EPERM,
+            Error::InvalidArgument => libc::EINVAL,
+            Error::Network => libc::EIO,
+            Error::NotFound => libc::ENOENT,
+            Error::NotImplemented => libc::ENOSYS,
+            Error::PermissionDenied => libc::EACCES,
         }
     }
 }
 
 enum EntryId {
-    File { file_id: usize },
+    File { file_id: usize, handle: usize },
     Folder { folder_id: usize },
 }
 
 impl EntryId {
     fn inner(&self) -> usize {
         match self {
-            Self::File { file_id } => *file_id,
+            Self::File { file_id, .. } => *file_id,
             Self::Folder { folder_id } => *folder_id,
         }
     }
@@ -50,9 +58,9 @@ impl EntryHandle {
         }
     }
 
-    fn file(file_id: usize, read: bool, write: bool) -> Self {
+    fn file(file_id: usize, handle: usize, read: bool, write: bool) -> Self {
         Self {
-            inner: EntryId::File { file_id },
+            inner: EntryId::File { file_id, handle },
             read,
             write,
         }
@@ -200,9 +208,20 @@ impl PCloudService {
             .expect("entry_handles lock is poisoned");
         handles.remove(&fh);
     }
+
+    fn get_file_handle(&self, fh: u64) -> Option<usize> {
+        let handles = self
+            .entry_handles
+            .lock()
+            .expect("entry_handles lock is poisoned");
+        handles.get(&fh).and_then(|item| match item.inner {
+            EntryId::File { handle, .. } => Some(handle),
+            _ => None,
+        })
+    }
 }
 
-fn decode_folder_flag(flags: i32) -> Result<(bool, bool), Error> {
+fn decode_flag(flags: i32) -> Result<(bool, bool), Error> {
     match flags as i32 & libc::O_ACCMODE {
         libc::O_RDONLY => {
             // Behavior is undefined, but most filesystems return EACCES
@@ -227,23 +246,35 @@ impl PCloudService {
 
     pub fn open_folder(&mut self, inode: u64, flags: i32) -> Result<u64, Error> {
         let folder_id = (inode - 1) as usize;
-        let (read, write) = decode_folder_flag(flags)?;
+        let (read, write) = decode_flag(flags)?;
         Ok(self.allocate_folder(folder_id, read, write))
+    }
+}
+
+fn build_flag(_read: bool, write: bool) -> u16 {
+    if write {
+        0x0042
+    } else {
+        0x0000
     }
 }
 
 // open file
 impl PCloudService {
+    fn allocate_file(&mut self, file_id: usize, handle: usize, read: bool, write: bool) -> u64 {
+        self.allocate_entry(EntryHandle::file(file_id, handle, read, write))
+    }
+
     pub fn open_file(&mut self, inode: u64, flags: i32) -> Result<u64, Error> {
-        let params = pcloud::fileops::open::Params::new(flags as u16)
-            .identifier((inode as usize - 1).into());
-        self.inner
-            .file_open(&params)
-            .map(|value| value as u64)
-            .map_err(|err| {
-                log::warn!("unable to open file: {:?}", err);
-                Error::Network
-            })
+        let file_id = (inode - 1) as usize;
+        let (read, write) = decode_flag(flags)?;
+        let params =
+            pcloud::fileops::open::Params::new(build_flag(read, write)).identifier(file_id.into());
+        let handle = self.inner.file_open(&params).map_err(|err| {
+            log::warn!("unable to open file: {:?}", err);
+            Error::Network
+        })?;
+        Ok(self.allocate_file(file_id, handle, read, write))
     }
 }
 
@@ -256,8 +287,11 @@ impl PCloudService {
         offset: i64,
         size: u32,
     ) -> Result<Vec<u8>, Error> {
-        let params =
-            pcloud::fileops::pread::Params::new(fh as usize, size as usize, offset as usize);
+        if !self.can_read(fh) {
+            return Err(Error::PermissionDenied);
+        }
+        let handle = self.get_file_handle(fh).ok_or(Error::InvalidArgument)?;
+        let params = pcloud::fileops::pread::Params::new(handle, size as usize, offset as usize);
         self.inner.file_pread(&params).map_err(|err| {
             log::warn!("unable to read file: {:?}", err);
             Error::Network

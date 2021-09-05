@@ -16,7 +16,7 @@ fn create_file_attrs(file: &File) -> fuser::FileAttr {
         ctime: file.base.modified.into(),
         crtime: file.base.created.into(),
         kind: fuser::FileType::RegularFile,
-        perm: 666,
+        perm: 0o666,
         nlink: 0,
         uid: 1000,
         gid: 1000,
@@ -36,7 +36,7 @@ fn create_folder_attrs(folder: &Folder) -> fuser::FileAttr {
         ctime: folder.base.modified.into(),
         crtime: folder.base.created.into(),
         kind: fuser::FileType::Directory,
-        perm: 666,
+        perm: 0o777,
         nlink: 0,
         uid: 1000,
         gid: 1000,
@@ -247,7 +247,7 @@ impl Filesystem for PCloudFs {
         _lock_owner: Option<u64>,
         reply: fuser::ReplyData,
     ) {
-        log::info!(
+        log::debug!(
             "read() ino={} fh={} offset={} size={} flags={}",
             ino,
             fh,
@@ -317,5 +317,30 @@ impl Filesystem for PCloudFs {
             flags
         );
         reply.error(Error::NotImplemented.into());
+    }
+
+    fn write(
+        &mut self,
+        _req: &fuser::Request<'_>,
+        ino: u64,
+        fh: u64,
+        offset: i64,
+        data: &[u8],
+        _write_flags: u32,
+        _flags: i32,
+        _lock_owner: Option<u64>,
+        reply: fuser::ReplyWrite,
+    ) {
+        log::debug!(
+            "write() ino={} fh={:?} offset={} size={}",
+            ino,
+            fh,
+            offset,
+            data.len()
+        );
+        match self.service.write_file(ino, fh, offset, data) {
+            Ok(size) => reply.written(size as u32),
+            Err(err) => reply.error(err.into()),
+        };
     }
 }

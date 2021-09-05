@@ -37,7 +37,7 @@ impl Params {
 impl BinaryClient {
     pub fn file_seek(&mut self, params: &Params) -> Result<usize, Error> {
         let params = params.to_binary_params();
-        let result = self.send_command("file_seek", &params, false, 0)?;
+        let result = self.send_command("file_seek", &params)?;
         let result: Response<Payload> = serde_json::from_value(result)?;
         result.payload().map(|p| p.offset)
     }

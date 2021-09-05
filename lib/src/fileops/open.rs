@@ -58,7 +58,7 @@ impl Params {
 
 impl BinaryClient {
     pub fn file_open(&mut self, params: &Params) -> Result<usize, Error> {
-        let res = self.send_command("file_open", &params.to_binary_params(), false, 0)?;
+        let res = self.send_command("file_open", &params.to_binary_params())?;
         let res: Response<Payload> = serde_json::from_value(res)?;
         res.payload().map(|value| value.fd)
     }

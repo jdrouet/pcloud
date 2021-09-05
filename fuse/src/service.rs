@@ -251,14 +251,6 @@ impl PCloudService {
     }
 }
 
-fn build_flag(_read: bool, write: bool) -> u16 {
-    if write {
-        0x0042
-    } else {
-        0x0000
-    }
-}
-
 // open file
 impl PCloudService {
     fn allocate_file(&mut self, file_id: usize, handle: usize, read: bool, write: bool) -> u64 {
@@ -268,8 +260,11 @@ impl PCloudService {
     pub fn open_file(&mut self, inode: u64, flags: i32) -> Result<u64, Error> {
         let file_id = (inode - 1) as usize;
         let (read, write) = decode_flag(flags)?;
-        let params =
-            pcloud::fileops::open::Params::new(build_flag(read, write)).identifier(file_id.into());
+        let params = if write {
+            pcloud::fileops::open::Params::new(0x0002).identifier(file_id.into())
+        } else {
+            pcloud::fileops::open::Params::new(0x0000).identifier(file_id.into())
+        };
         let handle = self.inner.file_open(&params).map_err(|err| {
             log::warn!("unable to open file: {:?}", err);
             Error::Network
@@ -293,6 +288,26 @@ impl PCloudService {
         let handle = self.get_file_handle(fh).ok_or(Error::InvalidArgument)?;
         let params = pcloud::fileops::pread::Params::new(handle, size as usize, offset as usize);
         self.inner.file_pread(&params).map_err(|err| {
+            log::warn!("unable to read file: {:?}", err);
+            Error::Network
+        })
+    }
+}
+
+impl PCloudService {
+    pub fn write_file(
+        &mut self,
+        _inode: u64,
+        fh: u64,
+        offset: i64,
+        data: &[u8],
+    ) -> Result<usize, Error> {
+        if !self.can_write(fh) {
+            return Err(Error::PermissionDenied);
+        }
+        let handle = self.get_file_handle(fh).ok_or(Error::InvalidArgument)?;
+        let params = pcloud::fileops::pwrite::Params::new(handle, offset as usize, data);
+        self.inner.file_pwrite(&params).map_err(|err| {
             log::warn!("unable to read file: {:?}", err);
             Error::Network
         })

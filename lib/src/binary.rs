@@ -189,18 +189,18 @@ impl CommandBuilder {
         self.0.push(value);
     }
 
+    fn push_raw(&mut self, value: &[u8]) {
+        self.0.extend_from_slice(value);
+    }
+
     fn push_u32(&mut self, value: u32) {
         let bytes = value.to_le_bytes();
-        for b in bytes {
-            self.push(b);
-        }
+        self.push_raw(&bytes);
     }
 
     fn push_u64(&mut self, value: u64) {
         let bytes = value.to_le_bytes();
-        for b in bytes {
-            self.push(b);
-        }
+        self.push_raw(&bytes);
     }
 
     fn push_str(&mut self, value: &str) {
@@ -282,18 +282,16 @@ impl BinaryClient {
         BinaryReader::parse(&mut self.stream)
     }
 
-    fn build_command(
-        method: &str,
-        params: &[(&str, Value)],
-        has_data: bool,
-        _data_len: usize,
-    ) -> Vec<u8> {
+    fn build_command(method: &str, params: &[(&str, Value)], data: &[u8]) -> Vec<u8> {
         let mut cmd = CommandBuilder::new();
-        if has_data {
-            unimplemented!()
+        if data.is_empty() {
+            cmd.push(method.len() as u8);
         } else {
-            cmd.push_lstr(method);
+            let arr: [u8; 8] = data.len().to_le_bytes();
+            cmd.push(method.len() as u8 + 0x80);
+            arr.iter().for_each(|v| cmd.push(*v));
         }
+        cmd.push_str(method);
         cmd.push(params.len() as u8);
         for (key, value) in params.iter() {
             match value {
@@ -302,22 +300,34 @@ impl BinaryClient {
                 Value::Number(value) => cmd.push_number_param(key, *value),
             }
         }
-        cmd.build()
+        let mut result = cmd.build();
+        if !data.is_empty() {
+            result.extend_from_slice(data);
+        }
+        result
+    }
+
+    pub fn send_command_with_data(
+        &mut self,
+        method: &str,
+        params: &[(&str, Value)],
+        data: &[u8],
+    ) -> Result<JsonValue, Error> {
+        let mut creds = self.credentials.to_binary_params();
+        creds.extend_from_slice(params);
+        let cmd = Self::build_command(method, &creds, data);
+        let count = self.stream.write(&cmd).map_err(Error::write)?;
+        assert_eq!(count, cmd.len());
+        self.read_result()
     }
 
     pub fn send_command(
         &mut self,
         method: &str,
         params: &[(&str, Value)],
-        has_data: bool,
-        data_len: usize,
     ) -> Result<JsonValue, Error> {
-        let mut creds = self.credentials.to_binary_params();
-        creds.extend_from_slice(params);
-        let cmd = Self::build_command(method, &creds, has_data, data_len);
-        let count = self.stream.write(&cmd).map_err(Error::write)?;
-        assert_eq!(count, cmd.len());
-        self.read_result()
+        let data = Vec::new();
+        self.send_command_with_data(method, params, &data)
     }
 }
 
@@ -332,9 +342,7 @@ mod tests {
         let creds = Credentials::from_env();
         let mut protocol = BinaryClient::new(Region::Europe, creds).unwrap();
         let params: Vec<(&str, Value)> = vec![("folderid", Value::Number(0))];
-        let result = protocol
-            .send_command("listfolder", &params, false, 0)
-            .unwrap();
+        let result = protocol.send_command("listfolder", &params).unwrap();
         assert!(result.is_object());
     }
 
@@ -398,7 +406,7 @@ mod tests {
     #[test]
     fn build_command_number() {
         let params: Vec<(&str, Value)> = vec![("folderid".into(), Value::Number(0))];
-        let result = BinaryClient::build_command("listfolder", &params, false, 0);
+        let result = BinaryClient::build_command("listfolder", &params, &Vec::new());
         let expected: Vec<u8> = vec![
             0x1D, 0x00, 0x0A, 0x6C, 0x69, 0x73, 0x74, 0x66, 0x6F, 0x6C, 0x64, 0x65, 0x72, 0x01,
             0x48, 0x66, 0x6F, 0x6C, 0x64, 0x65, 0x72, 0x69, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -413,7 +421,7 @@ mod tests {
             "auth".into(),
             Value::Text("Ec7QkEjFUnzZ7Z8W2YH1qLgxY7gGvTe09AH0i7V3kX".into()),
         )];
-        let result = BinaryClient::build_command("listfolder", &params, false, 0);
+        let result = BinaryClient::build_command("listfolder", &params, &Vec::new());
         let expected: Vec<u8> = vec![
             0x3F, 0x00, 0x0A, 0x6C, 0x69, 0x73, 0x74, 0x66, 0x6F, 0x6C, 0x64, 0x65, 0x72, 0x01,
             0x04, 0x61, 0x75, 0x74, 0x68, 0x2A, 0x00, 0x00, 0x00, 0x45, 0x63, 0x37, 0x51, 0x6B,
@@ -433,7 +441,7 @@ mod tests {
             ),
             ("folderid".into(), Value::Number(0)),
         ];
-        let result = BinaryClient::build_command("listfolder", &params, false, 0);
+        let result = BinaryClient::build_command("listfolder", &params, &Vec::new());
         let expected: Vec<u8> = vec![
             0x50, 0x00, 0x0A, 0x6C, 0x69, 0x73, 0x74, 0x66, 0x6F, 0x6C, 0x64, 0x65, 0x72, 0x02,
             0x04, 0x61, 0x75, 0x74, 0x68, 0x2A, 0x00, 0x00, 0x00, 0x45, 0x63, 0x37, 0x51, 0x6B,

@@ -19,7 +19,7 @@ impl HttpClient {
 impl BinaryClient {
     pub fn delete_file<I: Into<FileIdentifier>>(&mut self, identifier: I) -> Result<File, Error> {
         let identifier = identifier.into();
-        let result = self.send_command("deletefile", &identifier.to_binary_params(), false, 0)?;
+        let result = self.send_command("deletefile", &identifier.to_binary_params())?;
         let result: Response<FileResponse> = serde_json::from_value(result)?;
         result.payload().map(|res| res.metadata)
     }

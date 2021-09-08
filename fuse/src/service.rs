@@ -30,17 +30,8 @@ impl From<Error> for i32 {
 }
 
 enum EntryId {
-    File { file_id: usize, handle: usize },
-    Folder { folder_id: usize },
-}
-
-impl EntryId {
-    fn inner(&self) -> usize {
-        match self {
-            Self::File { file_id, .. } => *file_id,
-            Self::Folder { folder_id } => *folder_id,
-        }
-    }
+    File { handle: usize },
+    Folder,
 }
 
 struct EntryHandle {
@@ -50,17 +41,17 @@ struct EntryHandle {
 }
 
 impl EntryHandle {
-    fn folder(folder_id: usize, read: bool, write: bool) -> Self {
+    fn folder(_folder_id: usize, read: bool, write: bool) -> Self {
         Self {
-            inner: EntryId::Folder { folder_id },
+            inner: EntryId::Folder,
             read,
             write,
         }
     }
 
-    fn file(file_id: usize, handle: usize, read: bool, write: bool) -> Self {
+    fn file(_file_id: usize, handle: usize, read: bool, write: bool) -> Self {
         Self {
-            inner: EntryId::File { file_id, handle },
+            inner: EntryId::File { handle },
             read,
             write,
         }
@@ -114,10 +105,10 @@ impl PCloudService {
         self.file_cache.borrow_mut().get(&inode).cloned()
     }
 
-    fn fetch_file(&mut self, inode: u64) -> Result<File, Error> {
+    pub fn fetch_file(&mut self, inode: u64) -> Result<File, Error> {
         self.inner
             .get_info_file(inode as usize - 1)
-            .map(|res| res.metadata)
+            .map(|res| self.add_file(inode, res.metadata))
             .map_err(|err| {
                 log::warn!("unable to fetch file: {:?}", err);
                 Error::Network
@@ -128,7 +119,7 @@ impl PCloudService {
         if let Some(file) = self.get_file_from_cache(inode) {
             Ok(file)
         } else {
-            self.fetch_file(inode).map(|res| self.add_file(inode, res))
+            self.fetch_file(inode)
         }
     }
 }
@@ -146,12 +137,15 @@ impl PCloudService {
         self.folder_cache.borrow().get(&inode).cloned()
     }
 
-    fn fetch_folder(&mut self, inode: u64) -> Result<Folder, Error> {
+    pub fn fetch_folder(&mut self, inode: u64) -> Result<Folder, Error> {
         let params = pcloud::folder::list::Params::new(inode as usize - 1);
-        self.inner.list_folder(&params).map_err(|err| {
-            log::warn!("unable to fetch folder: {:?}", err);
-            Error::Network
-        })
+        self.inner
+            .list_folder(&params)
+            .map(|res| self.add_folder(inode, res))
+            .map_err(|err| {
+                log::warn!("unable to fetch folder: {:?}", err);
+                Error::Network
+            })
     }
 
     pub fn get_folder(&mut self, inode: u64) -> Result<Folder, Error> {
@@ -159,7 +153,6 @@ impl PCloudService {
             Ok(folder)
         } else {
             self.fetch_folder(inode)
-                .map(|res| self.add_folder(inode, res))
         }
     }
 }
@@ -295,6 +288,21 @@ impl PCloudService {
 }
 
 impl PCloudService {
+    pub fn create_file(&mut self, parent: u64, name: &str) -> Result<u64, Error> {
+        let params = pcloud::fileops::open::Params::new(0x0040)
+            .folder_id((parent - 1) as usize)
+            .name(name.to_string());
+        self.inner
+            .file_open(&params)
+            .map(|value| value as u64)
+            .map_err(|err| {
+                log::warn!("unable to open file: {:?}", err);
+                Error::Network
+            })
+    }
+}
+
+impl PCloudService {
     pub fn write_file(
         &mut self,
         _inode: u64,
@@ -311,5 +319,28 @@ impl PCloudService {
             log::warn!("unable to read file: {:?}", err);
             Error::Network
         })
+    }
+}
+
+impl PCloudService {
+    pub fn remove_file(&mut self, parent: u64, fname: &str) -> Result<(), Error> {
+        let folder = self.get_folder(parent)?;
+        let files = folder.contents.unwrap_or_default();
+        let file = files
+            .into_iter()
+            .filter_map(|f| f.as_file())
+            .find(|f| f.base.name == fname);
+        if let Some(file) = file {
+            self.folder_cache.borrow_mut().remove(&parent);
+            self.inner
+                .delete_file(file.file_id)
+                .map(|_| ())
+                .map_err(|err| {
+                    log::warn!("unable to read file: {:?}", err);
+                    Error::Network
+                })
+        } else {
+            Err(Error::NotFound)
+        }
     }
 }

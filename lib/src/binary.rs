@@ -2,6 +2,7 @@ use crate::credentials::Credentials;
 use crate::region::Region;
 use serde_json::Value as JsonValue;
 use std::io::prelude::*;
+use std::io::Error as IoError;
 use std::io::Read;
 use std::net::TcpStream;
 
@@ -25,10 +26,10 @@ struct BinaryReader {
 impl BinaryReader {
     fn new(reader: &mut dyn Read) -> Result<Self, Error> {
         let mut length: [u8; 4] = [0; 4];
-        reader.read_exact(&mut length).map_err(Error::read)?;
+        reader.read_exact(&mut length)?;
         let length = u32::from_le_bytes(length) as usize;
         let mut buffer = build_buffer(length);
-        reader.read_exact(&mut buffer).map_err(Error::read)?;
+        reader.read_exact(&mut buffer)?;
         Ok(Self { buffer, offset: 0 })
     }
 
@@ -88,7 +89,7 @@ impl BinaryReader {
             bytes_to_u64(&data)
         };
         let data = self.get_bytes(len as usize);
-        let res = String::from_utf8(data).map_err(Error::read)?;
+        let res = String::from_utf8(data)?;
         cache.push(res.clone());
         Ok(res)
     }
@@ -104,10 +105,7 @@ impl BinaryReader {
             let data = self.get_bytes((ftype - 3) as usize);
             bytes_to_u64(&data) as usize
         };
-        cache
-            .get(idx)
-            .cloned()
-            .ok_or_else(|| Error::Read(format!("string not found in cache at index {}", idx)))
+        cache.get(idx).cloned().ok_or_else(|| Error::TextCache(idx))
     }
 
     fn parse_type(&mut self, cache: &mut Vec<String>, ftype: u8) -> Result<JsonValue, Error> {
@@ -243,20 +241,20 @@ impl CommandBuilder {
 
 #[derive(Debug)]
 pub enum Error {
-    Connection(String),
-    Read(String),
-    Write(String),
+    Io(IoError),
+    TextFormat(std::string::FromUtf8Error),
+    TextCache(usize),
 }
 
-impl Error {
-    pub fn connection<T: ToString>(input: T) -> Self {
-        Self::Connection(input.to_string())
+impl From<std::string::FromUtf8Error> for Error {
+    fn from(err: std::string::FromUtf8Error) -> Self {
+        Self::TextFormat(err)
     }
-    pub fn read<T: ToString>(input: T) -> Self {
-        Self::Read(input.to_string())
-    }
-    pub fn write<T: ToString>(input: T) -> Self {
-        Self::Write(input.to_string())
+}
+
+impl From<IoError> for Error {
+    fn from(err: IoError) -> Self {
+        Self::Io(err)
     }
 }
 
@@ -269,7 +267,7 @@ impl BinaryClient {
     pub fn new(region: Region, credentials: Credentials) -> Result<Self, Error> {
         let address = format!("{}:{}", region.address(), 8398);
         Ok(Self {
-            stream: TcpStream::connect(address).map_err(Error::connection)?,
+            stream: TcpStream::connect(address)?,
             credentials,
         })
     }
@@ -316,7 +314,7 @@ impl BinaryClient {
         let mut creds = self.credentials.to_binary_params();
         creds.extend_from_slice(params);
         let cmd = Self::build_command(method, &creds, data);
-        let count = self.stream.write(&cmd).map_err(Error::write)?;
+        let count = self.stream.write(&cmd)?;
         assert_eq!(count, cmd.len());
         self.read_result()
     }

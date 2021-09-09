@@ -270,13 +270,17 @@ impl PCloudService {
 impl PCloudService {
     pub fn read_file(
         &mut self,
-        _inode: u64,
+        inode: u64,
         fh: u64,
         offset: i64,
         size: u32,
     ) -> Result<Vec<u8>, Error> {
         if !self.can_read(fh) {
             return Err(Error::PermissionDenied);
+        }
+        let file = self.get_file(inode)?;
+        if file.size == Some(0) {
+            return Ok(Vec::new());
         }
         let handle = self.get_file_handle(fh).ok_or(Error::InvalidArgument)?;
         let params = pcloud::fileops::pread::Params::new(handle, size as usize, offset as usize);

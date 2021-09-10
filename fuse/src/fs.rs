@@ -632,13 +632,32 @@ impl Filesystem for PCloudFs {
         _req: &fuser::Request<'_>,
         parent: u64,
         name: &OsStr,
-        _newparent: u64,
-        _newname: &OsStr,
+        new_parent: u64,
+        new_name: &OsStr,
         _flags: u32,
         reply: fuser::ReplyEmpty,
     ) {
-        log::warn!("rename() parent={} name={:?}", parent, name);
-        reply.error(Error::NotImplemented.into());
+        log::debug!("rename() parent={} name={:?}", parent, name);
+        let name = match name.to_str() {
+            Some(value) => value,
+            None => {
+                log::error!("Path component is not UTF-8");
+                reply.error(Error::InvalidArgument.into());
+                return;
+            }
+        };
+        let new_name = match new_name.to_str() {
+            Some(value) => value,
+            None => {
+                log::error!("Path component is not UTF-8");
+                reply.error(Error::InvalidArgument.into());
+                return;
+            }
+        };
+        match self.service.rename(parent, name, new_parent, new_name) {
+            Ok(_) => reply.ok(),
+            Err(err) => reply.error(err.into()),
+        }
     }
 
     fn rmdir(

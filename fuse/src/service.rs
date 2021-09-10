@@ -1,5 +1,5 @@
 use pcloud::binary::BinaryClient;
-use pcloud::entry::{File, Folder};
+use pcloud::entry::{Entry, File, Folder};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -135,6 +135,10 @@ impl PCloudService {
 
     fn get_folder_from_cache(&self, inode: u64) -> Option<Folder> {
         self.folder_cache.borrow().get(&inode).cloned()
+    }
+
+    fn remove_folder_from_cache(&mut self, inode: u64) -> Option<Folder> {
+        self.folder_cache.borrow_mut().remove(&inode)
     }
 
     pub fn fetch_folder(&mut self, inode: u64) -> Result<Folder, Error> {
@@ -345,6 +349,83 @@ impl PCloudService {
                 })
         } else {
             Err(Error::NotFound)
+        }
+    }
+}
+
+impl PCloudService {
+    fn rename_file(
+        &mut self,
+        parent: &Folder,
+        file: &File,
+        new_parent: &Folder,
+        new_name: &str,
+    ) -> Result<(), Error> {
+        if parent.folder_id != new_parent.folder_id {
+            self.remove_folder_from_cache(parent.folder_id as u64 + 1);
+            self.remove_folder_from_cache(new_parent.folder_id as u64 + 1);
+            let params = pcloud::file::rename::Params::new_move(file.file_id, new_parent.folder_id);
+            self.inner.rename_file(&params).map_err(|err| {
+                log::warn!("unable to move file: {:?}", err);
+                Error::PermissionDenied
+            })?;
+        }
+        if file.base.name != new_name {
+            self.remove_folder_from_cache(parent.folder_id as u64 + 1);
+            let params = pcloud::file::rename::Params::new_rename(file.file_id, new_name);
+            self.inner.rename_file(&params).map_err(|err| {
+                log::warn!("unable to rename file: {:?}", err);
+                Error::PermissionDenied
+            })?;
+        }
+        Ok(())
+    }
+
+    fn rename_folder(
+        &mut self,
+        parent: &Folder,
+        folder: &Folder,
+        new_parent: &Folder,
+        new_name: &str,
+    ) -> Result<(), Error> {
+        if parent.folder_id != new_parent.folder_id {
+            self.remove_folder_from_cache(parent.folder_id as u64 + 1);
+            self.remove_folder_from_cache(new_parent.folder_id as u64 + 1);
+            let params =
+                pcloud::folder::rename::Params::new_move(folder.folder_id, new_parent.folder_id);
+            self.inner.rename_folder(&params).map_err(|err| {
+                log::warn!("unable to move folder: {:?}", err);
+                Error::PermissionDenied
+            })?;
+        }
+        if folder.base.name != new_name {
+            self.remove_folder_from_cache(parent.folder_id as u64 + 1);
+            let params = pcloud::folder::rename::Params::new_rename(folder.folder_id, new_name);
+            self.inner.rename_folder(&params).map_err(|err| {
+                log::warn!("unable to rename folder: {:?}", err);
+                Error::PermissionDenied
+            })?;
+        }
+        Ok(())
+    }
+
+    pub fn rename(
+        &mut self,
+        parent_id: u64,
+        name: &str,
+        new_parent_id: u64,
+        new_name: &str,
+    ) -> Result<(), Error> {
+        let parent = self.get_folder(parent_id)?;
+        let entry = parent
+            .contents
+            .as_ref()
+            .and_then(|list| list.into_iter().find(|item| item.base().name == name))
+            .ok_or(Error::NotFound)?;
+        let new_parent = self.get_folder(new_parent_id)?;
+        match entry {
+            Entry::File(file) => self.rename_file(&parent, file, &new_parent, new_name),
+            Entry::Folder(folder) => self.rename_folder(&parent, folder, &new_parent, new_name),
         }
     }
 }

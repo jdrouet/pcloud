@@ -1,4 +1,5 @@
 use super::{FileIdentifier, FileResponse};
+use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::entry::File;
 use crate::error::Error;
 use crate::folder::FolderIdentifier;
@@ -70,6 +71,42 @@ impl Params {
         }
         res
     }
+
+    pub fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
+        let mut res = vec![];
+        match self {
+            Self::Move { from, to } => {
+                match from {
+                    FileIdentifier::FileId(id) => {
+                        res.push(("fileid", BinaryValue::Number(*id as u64)));
+                    }
+                    FileIdentifier::Path(value) => {
+                        res.push(("path", BinaryValue::Text(value.to_string())));
+                    }
+                };
+                match to {
+                    FolderIdentifier::FolderId(id) => {
+                        res.push(("tofolderid", BinaryValue::Number(*id as u64)));
+                    }
+                    FolderIdentifier::Path(value) => {
+                        res.push(("topath", BinaryValue::Text(value.to_string())));
+                    }
+                };
+            }
+            Self::Rename { from, to_name } => {
+                match from {
+                    FileIdentifier::FileId(id) => {
+                        res.push(("fileid", BinaryValue::Number(*id as u64)));
+                    }
+                    FileIdentifier::Path(value) => {
+                        res.push(("path", BinaryValue::Text(value.to_string())));
+                    }
+                };
+                res.push(("toname", BinaryValue::Text(to_name.to_string())));
+            }
+        }
+        res
+    }
 }
 
 impl HttpClient {
@@ -77,6 +114,14 @@ impl HttpClient {
         let result: Response<FileResponse> = self
             .get_request("renamefile", &params.to_http_params())
             .await?;
+        result.payload().map(|item| item.metadata)
+    }
+}
+
+impl BinaryClient {
+    pub fn rename_file(&mut self, params: &Params) -> Result<File, Error> {
+        let result = self.send_command("renamefile", &params.to_binary_params())?;
+        let result: Response<FileResponse> = serde_json::from_value(result)?;
         result.payload().map(|item| item.metadata)
     }
 }

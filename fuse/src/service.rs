@@ -429,3 +429,31 @@ impl PCloudService {
         }
     }
 }
+
+impl PCloudService {
+    pub fn create_folder(&mut self, parent_id: u64, name: &str) -> Result<Folder, Error> {
+        self.remove_folder_from_cache(parent_id);
+        let params = pcloud::folder::create::Params::new(name, parent_id as usize - 1);
+        self.inner.create_folder(&params).map_err(|err| {
+            log::warn!("unable to create folder: {:?}", err);
+            Error::PermissionDenied
+        })
+    }
+}
+
+impl PCloudService {
+    pub fn remove_folder(&mut self, parent_id: u64, name: &str) -> Result<Folder, Error> {
+        let parent = self.get_folder(parent_id)?;
+        self.remove_folder_from_cache(parent_id);
+        let children = parent.contents.unwrap_or_default();
+        let folder = children
+            .into_iter()
+            .filter_map(|item| item.as_folder())
+            .find(|item| item.base.name == name)
+            .ok_or(Error::NotFound)?;
+        self.inner.delete_folder(folder.folder_id).map_err(|err| {
+            log::warn!("unable to create folder: {:?}", err);
+            Error::PermissionDenied
+        })
+    }
+}

@@ -54,11 +54,15 @@ fn create_entry_attrs(entry: &Entry) -> fuser::FileAttr {
 
 pub struct PCloudFs {
     service: PCloudService,
+    fuse_duration: Duration,
 }
 
 impl PCloudFs {
     pub fn new(service: PCloudService, _folder_id: usize, _data_dir: String) -> Self {
-        Self { service }
+        Self {
+            service,
+            fuse_duration: Duration::new(2, 0),
+        }
     }
 }
 
@@ -100,7 +104,7 @@ impl Filesystem for PCloudFs {
 
         if let Some(entry) = entry {
             let attr = create_entry_attrs(entry);
-            reply.entry(&Duration::new(2, 0), &attr, 0);
+            reply.entry(&self.fuse_duration, &attr, 0);
         } else {
             // file doesn't exist
             reply.error(Error::NotFound.into());
@@ -351,7 +355,7 @@ impl Filesystem for PCloudFs {
                 flags: 0o666,
             };
 
-            reply.created(&Duration::new(2, 0), &file_attr, 42, handle, 0o666)
+            reply.created(&self.fuse_duration, &file_attr, 42, handle, 0o666)
         } else {
             log::error!("Unable to find the created file");
             reply.error(Error::NotFound.into());
@@ -387,11 +391,11 @@ impl Filesystem for PCloudFs {
         log::debug!("getattr() ino={}", ino);
         match self.service.get_folder(ino) {
             Ok(folder) => {
-                reply.attr(&Duration::new(0, 0), &create_folder_attrs(&folder));
+                reply.attr(&self.fuse_duration, &create_folder_attrs(&folder));
             }
             Err(_err) => match self.service.get_file(ino) {
                 Ok(result) => {
-                    reply.attr(&Duration::new(0, 0), &create_file_attrs(&result));
+                    reply.attr(&self.fuse_duration, &create_file_attrs(&result));
                 }
                 Err(err) => {
                     reply.error(err.into());
@@ -420,7 +424,7 @@ impl Filesystem for PCloudFs {
     ) {
         log::debug!("setattr() ino={}", ino);
         match self.service.get_file(ino) {
-            Ok(result) => reply.attr(&Duration::new(0, 0), &create_file_attrs(&result)),
+            Ok(result) => reply.attr(&self.fuse_duration, &create_file_attrs(&result)),
             Err(err) => reply.error(err.into()),
         }
     }
@@ -604,8 +608,22 @@ impl Filesystem for PCloudFs {
         _umask: u32,
         reply: fuser::ReplyEntry,
     ) {
-        log::warn!("mkdir() parent={} name={:?}", parent, name);
-        reply.error(Error::NotImplemented.into());
+        log::debug!("mkdir() parent={} name={:?}", parent, name);
+        let name = match name.to_str() {
+            Some(value) => value,
+            None => {
+                log::error!("Path component is not UTF-8");
+                reply.error(Error::InvalidArgument.into());
+                return;
+            }
+        };
+        match self.service.create_folder(parent, name) {
+            Ok(folder) => {
+                let attrs = create_folder_attrs(&folder);
+                reply.entry(&self.fuse_duration, &attrs, folder.folder_id as u64)
+            }
+            Err(err) => reply.error(err.into()),
+        };
     }
 
     fn mknod(
@@ -667,8 +685,19 @@ impl Filesystem for PCloudFs {
         name: &OsStr,
         reply: fuser::ReplyEmpty,
     ) {
-        log::warn!("rmdir() parent={} name={:?}", parent, name);
-        reply.error(Error::NotImplemented.into());
+        log::debug!("rmdir() parent={} name={:?}", parent, name);
+        let name = match name.to_str() {
+            Some(value) => value,
+            None => {
+                log::error!("Path component is not UTF-8");
+                reply.error(Error::InvalidArgument.into());
+                return;
+            }
+        };
+        match self.service.remove_folder(parent, name) {
+            Ok(_) => reply.ok(),
+            Err(err) => reply.error(err.into()),
+        }
     }
 
     fn statfs(&mut self, _req: &fuser::Request<'_>, ino: u64, reply: fuser::ReplyStatfs) {

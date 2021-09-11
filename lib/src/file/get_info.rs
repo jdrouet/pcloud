@@ -31,7 +31,7 @@ impl BinaryClient {
         identifier: I,
     ) -> Result<CheckSumFile, Error> {
         let params: FileIdentifier = identifier.into();
-        let result = self.send_command("checksumfile", &params.to_binary_params(), false, 0)?;
+        let result = self.send_command("checksumfile", &params.to_binary_params())?;
         let result: Response<CheckSumFile> = serde_json::from_value(result)?;
         result.payload()
     }

@@ -61,7 +61,7 @@ impl HttpClient {
 
 impl BinaryClient {
     pub fn user_info(&mut self, params: &Params) -> Result<Payload, Error> {
-        let result = self.send_command("userinfo", &params.to_binary_params(), false, 0)?;
+        let result = self.send_command("userinfo", &params.to_binary_params())?;
         let result: Response<Payload> = serde_json::from_value(result)?;
         result.payload()
     }

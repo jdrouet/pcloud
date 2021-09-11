@@ -1,6 +1,7 @@
 pub mod close;
 pub mod open;
 pub mod pread;
+pub mod pwrite;
 pub mod read;
 pub mod seek;
 pub mod size;

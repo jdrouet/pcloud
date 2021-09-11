@@ -22,7 +22,6 @@ fn main() {
     let service = service::PCloudService::default();
 
     let options = vec![
-        MountOption::RO,
         MountOption::AutoUnmount,
         MountOption::NoExec,
         MountOption::NoAtime,

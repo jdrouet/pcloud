@@ -11,7 +11,7 @@ pub struct Payload {
 impl BinaryClient {
     pub fn get_ip(&mut self) -> Result<Payload, Error> {
         let params = Vec::new();
-        let result = self.send_command("getip", &params, false, 0)?;
+        let result = self.send_command("getip", &params)?;
         let result: Response<Payload> = serde_json::from_value(result)?;
         result.payload()
     }

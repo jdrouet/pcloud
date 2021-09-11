@@ -30,7 +30,7 @@ impl BinaryClient {
         identifier: I,
     ) -> Result<Folder, Error> {
         let identifier = identifier.into();
-        let result = self.send_command("deletefolder", &identifier.to_binary_params(), false, 0)?;
+        let result = self.send_command("deletefolder", &identifier.to_binary_params())?;
         let result: Response<FolderResponse> = serde_json::from_value(result)?;
         result.payload().map(|item| item.metadata)
     }
@@ -69,12 +69,7 @@ impl BinaryClient {
         identifier: I,
     ) -> Result<RecursivePayload, Error> {
         let identifier = identifier.into();
-        let result = self.send_command(
-            "deletefolderrecursive",
-            &identifier.to_binary_params(),
-            false,
-            0,
-        )?;
+        let result = self.send_command("deletefolderrecursive", &identifier.to_binary_params())?;
         let result: Response<RecursivePayload> = serde_json::from_value(result)?;
         result.payload()
     }

@@ -83,7 +83,7 @@ impl HttpClient {
 
 impl BinaryClient {
     pub fn rename_folder(&mut self, params: &Params) -> Result<Folder, Error> {
-        let result = self.send_command("renamefolder", &params.to_binary_params(), false, 0)?;
+        let result = self.send_command("renamefolder", &params.to_binary_params())?;
         let result: Response<FolderResponse> = serde_json::from_value(result)?;
         result.payload().map(|item| item.metadata)
     }

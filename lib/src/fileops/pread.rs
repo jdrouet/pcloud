@@ -31,7 +31,7 @@ impl Params {
 
 impl BinaryClient {
     pub fn file_pread(&mut self, params: &Params) -> Result<Vec<u8>, Error> {
-        let res = self.send_command("file_pread", &params.to_binary_params(), false, 0)?;
+        let res = self.send_command("file_pread", &params.to_binary_params())?;
         let res: Response<Payload> = serde_json::from_value(res)?;
         let length = res.payload().map(|value| value.data).map_err(|err| {
             log::error!("unable to read the length: {:?}", err);

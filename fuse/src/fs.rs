@@ -337,25 +337,15 @@ impl Filesystem for PCloudFs {
             .filter_map(|item| item.as_file())
             .find(|item| item.base.name == name);
         if let Some(file) = file {
-            let file_attr = fuser::FileAttr {
-                ino: (file.file_id + 1) as u64,
-                size: 0,
-                blocks: 0,
-                blksize: 1,
-                atime: UNIX_EPOCH,
-                mtime: UNIX_EPOCH,
-                ctime: UNIX_EPOCH,
-                crtime: UNIX_EPOCH,
-                kind: fuser::FileType::RegularFile,
-                perm: 0o666,
-                nlink: 0,
-                uid: 1000,
-                gid: 1000,
-                rdev: 0,
-                flags: 0o666,
-            };
+            let file_attr = create_file_attrs(&file);
 
-            reply.created(&self.fuse_duration, &file_attr, 42, handle, 0o666)
+            reply.created(
+                &self.fuse_duration,
+                &file_attr,
+                file.file_id as u64,
+                handle,
+                0o666,
+            )
         } else {
             log::error!("Unable to find the created file");
             reply.error(Error::NotFound.into());

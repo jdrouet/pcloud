@@ -168,7 +168,7 @@ mod tests {
         let dc = Region::mock();
         let api = HttpClient::new(creds, dc);
         let error = api.list_folder(&Params::new(0)).await.unwrap_err();
-        assert!(matches!(error, crate::error::Error::Payload(_, _)));
+        assert!(matches!(error, crate::error::Error::Protocol(_, _)));
         m.assert();
     }
 

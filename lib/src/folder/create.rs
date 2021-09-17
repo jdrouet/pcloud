@@ -124,7 +124,7 @@ mod tests {
             .create_folder(&Params::new("testing", 0))
             .await
             .unwrap_err();
-        assert!(matches!(error, crate::error::Error::Payload(_, _)));
+        assert!(matches!(error, crate::error::Error::Protocol(_, _)));
         m.assert();
     }
 

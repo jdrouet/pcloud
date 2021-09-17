@@ -1,5 +1,6 @@
 use pcloud::binary::BinaryClient;
 use pcloud::entry::{Entry, File, Folder};
+use pcloud::error::Error as PCloudError;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -14,6 +15,26 @@ pub enum Error {
     NotFound,
     NotImplemented,
     PermissionDenied,
+}
+
+impl Error {
+    fn from_code(code: u16, message: String) -> Self {
+        log::warn!("error: {}, message: {}", code, message);
+        Self::InvalidArgument
+    }
+
+    fn should_reconnect(&self) -> bool {
+        matches!(self, Self::Network)
+    }
+}
+
+impl From<PCloudError> for Error {
+    fn from(err: PCloudError) -> Self {
+        match err {
+            PCloudError::Protocol(code, message) => Self::from_code(code, message),
+            _ => Self::Network,
+        }
+    }
 }
 
 impl From<Error> for i32 {
@@ -102,14 +123,15 @@ impl PCloudService {
             Ok(res) => Ok(res),
             Err(err) => {
                 log::warn!("unable to perform action: {:?}", err);
-                if count > 0 {
+                let fuse_error = Error::from(err);
+                if count > 0 && fuse_error.should_reconnect() {
                     self.reconnect().map_err(|reco_err| {
                         log::warn!("unable to reconnect: {:?}", reco_err);
                         Error::Network
                     })?;
                     self.with_retry(count - 1, func)
                 } else {
-                    Err(Error::Network)
+                    Err(fuse_error)
                 }
             }
         }

@@ -15,7 +15,7 @@ mod tests {
     #[test]
     fn reading() {
         let creds = Credentials::from_env();
-        let mut client = BinaryClient::new(Region::Europe, creds).unwrap();
+        let mut client = BinaryClient::new(Region::eu(), creds).unwrap();
         let params = super::open::Params::new(0).identifier(5837100991.into());
         let fd = client.file_open(&params).unwrap();
         let params = super::read::Params::new(fd, 8);

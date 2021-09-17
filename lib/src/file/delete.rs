@@ -68,7 +68,7 @@ mod tests {
             )
             .create();
         let creds = Credentials::AccessToken("access-token".into());
-        let dc = Region::Test;
+        let dc = Region::mock();
         let api = HttpClient::new(creds, dc);
         api.delete_file(42).await.unwrap();
         m.assert();

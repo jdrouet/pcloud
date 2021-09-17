@@ -19,7 +19,7 @@ pub enum Response<T> {
 impl<T> Response<T> {
     pub fn payload(self) -> Result<T, Error> {
         match self {
-            Self::Error { result, error } => Err(Error::Payload(result, error)),
+            Self::Error { result, error } => Err(Error::Protocol(result, error)),
             Self::Success { payload, .. } => Ok(payload),
         }
     }

@@ -2,8 +2,7 @@ use crate::credentials::Credentials;
 use crate::region::Region;
 use serde_json::Value as JsonValue;
 use std::io::prelude::*;
-use std::io::Error as IoError;
-use std::io::Read;
+use std::io::{Error as IoError, Read};
 use std::net::TcpStream;
 
 pub(crate) fn build_buffer(len: usize) -> Vec<u8> {
@@ -261,14 +260,29 @@ impl From<IoError> for Error {
 pub struct BinaryClient {
     pub(crate) stream: TcpStream,
     credentials: Credentials,
+    region: Region,
 }
 
 impl BinaryClient {
     pub fn new(region: Region, credentials: Credentials) -> Result<Self, Error> {
-        let address = format!("{}:{}", region.address(), 8398);
+        log::debug!("connecting to {}", region.binary_url());
         Ok(Self {
-            stream: TcpStream::connect(address)?,
+            stream: TcpStream::connect(region.binary_url())?,
             credentials,
+            region,
+        })
+    }
+
+    pub fn reconnect(&mut self) -> Result<(), Error> {
+        self.stream = TcpStream::connect(self.region.binary_url())?;
+        Ok(())
+    }
+
+    pub fn try_clone(&self) -> Result<Self, Error> {
+        Ok(Self {
+            stream: self.stream.try_clone()?,
+            credentials: self.credentials.clone(),
+            region: self.region.clone(),
         })
     }
 
@@ -285,7 +299,7 @@ impl BinaryClient {
         if data.is_empty() {
             cmd.push(method.len() as u8);
         } else {
-            let arr: [u8; 8] = data.len().to_le_bytes();
+            let arr: [u8; 8] = (data.len() as u64).to_le_bytes();
             cmd.push(method.len() as u8 + 0x80);
             arr.iter().for_each(|v| cmd.push(*v));
         }
@@ -338,7 +352,7 @@ mod tests {
     #[tokio::test]
     async fn execute_list_root() {
         let creds = Credentials::from_env();
-        let mut protocol = BinaryClient::new(Region::Europe, creds).unwrap();
+        let mut protocol = BinaryClient::new(Region::eu(), creds).unwrap();
         let params: Vec<(&str, Value)> = vec![("folderid", Value::Number(0))];
         let result = protocol.send_command("listfolder", &params).unwrap();
         assert!(result.is_object());

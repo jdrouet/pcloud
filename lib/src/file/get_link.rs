@@ -62,7 +62,7 @@ mod tests {
 }"#)
 .create();
         let creds = Credentials::AccessToken("access-token".into());
-        let dc = Region::Test;
+        let dc = Region::mock();
         let api = HttpClient::new(creds, dc);
         let result = api.get_link_file(42).await.unwrap();
         assert_eq!(result, "https://edef2.pcloud.com/DLZCAt2vXZejNfL5ZruLVZZTk2ev7Z2ZZNR5ZZdoz6ZXZQZZErw4bH0PfzBQt3LlgXMliXVtietX/SAkdyBjkA7mQABbT.bin");

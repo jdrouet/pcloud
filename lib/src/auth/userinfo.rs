@@ -85,7 +85,7 @@ mod tests {
     #[test]
     fn binary_success() {
         let creds = Credentials::from_env();
-        let mut client = BinaryClient::new(Region::Europe, creds).unwrap();
+        let mut client = BinaryClient::new(Region::eu(), creds).unwrap();
         let params = super::Params::default();
         client.user_info(&params).unwrap();
     }

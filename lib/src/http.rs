@@ -35,11 +35,11 @@ impl HttpClient {
     }
 
     pub fn new_eu(credentials: Credentials) -> Self {
-        Self::new(credentials, Region::Europe)
+        Self::new(credentials, Region::eu())
     }
 
     pub fn new_us(credentials: Credentials) -> Self {
-        Self::new(credentials, Region::UnitedStates)
+        Self::new(credentials, Region::us())
     }
 
     pub fn from_env() -> Self {
@@ -77,7 +77,7 @@ impl HttpClient {
     }
 
     fn build_url(&self, method: &str) -> String {
-        format!("{}/{}", self.region.base_url(), method)
+        format!("{}/{}", self.region.http_url(), method)
     }
 
     pub(crate) async fn get_request<T: serde::de::DeserializeOwned>(

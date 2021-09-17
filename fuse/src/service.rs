@@ -84,6 +84,36 @@ impl PCloudService {
             folder_cache: RefCell::new(TtlCache::new(20)),
         }
     }
+
+    fn reconnect(&mut self) -> Result<(), pcloud::error::Error> {
+        log::warn!("reconnecting");
+        self.inner.reconnect()?;
+        self.next_handle = AtomicU64::new(1);
+        self.entry_handles = Mutex::new(HashMap::new());
+        Ok(())
+    }
+
+    fn with_retry<V>(
+        &mut self,
+        count: u8,
+        func: impl Fn(&mut PCloudService) -> Result<V, pcloud::error::Error>,
+    ) -> Result<V, Error> {
+        match func(self) {
+            Ok(res) => Ok(res),
+            Err(err) => {
+                log::warn!("unable to perform action: {:?}", err);
+                if count > 0 {
+                    self.reconnect().map_err(|reco_err| {
+                        log::warn!("unable to reconnect: {:?}", reco_err);
+                        Error::Network
+                    })?;
+                    self.with_retry(count - 1, func)
+                } else {
+                    Err(Error::Network)
+                }
+            }
+        }
+    }
 }
 
 impl Default for PCloudService {
@@ -106,13 +136,8 @@ impl PCloudService {
     }
 
     pub fn fetch_file(&mut self, inode: u64) -> Result<File, Error> {
-        self.inner
-            .get_info_file(inode as usize - 1)
+        self.with_retry(1, |this| this.inner.get_info_file(inode as usize - 1))
             .map(|res| self.add_file(inode, res.metadata))
-            .map_err(|err| {
-                log::warn!("unable to fetch file: {:?}", err);
-                Error::Network
-            })
     }
 
     pub fn get_file(&mut self, inode: u64) -> Result<File, Error> {
@@ -143,13 +168,8 @@ impl PCloudService {
 
     pub fn fetch_folder(&mut self, inode: u64) -> Result<Folder, Error> {
         let params = pcloud::folder::list::Params::new(inode as usize - 1);
-        self.inner
-            .list_folder(&params)
+        self.with_retry(1, |this| this.inner.list_folder(&params))
             .map(|res| self.add_folder(inode, res))
-            .map_err(|err| {
-                log::warn!("unable to fetch folder: {:?}", err);
-                Error::Network
-            })
     }
 
     pub fn get_folder(&mut self, inode: u64) -> Result<Folder, Error> {
@@ -262,10 +282,7 @@ impl PCloudService {
         } else {
             pcloud::fileops::open::Params::new(0x0000).identifier(file_id.into())
         };
-        let handle = self.inner.file_open(&params).map_err(|err| {
-            log::warn!("unable to open file: {:?}", err);
-            Error::Network
-        })?;
+        let handle = self.with_retry(1, |this| this.inner.file_open(&params))?;
         Ok(self.allocate_file(file_id, handle, read, write))
     }
 }
@@ -288,10 +305,7 @@ impl PCloudService {
         }
         let handle = self.get_file_handle(fh).ok_or(Error::InvalidArgument)?;
         let params = pcloud::fileops::pread::Params::new(handle, size as usize, offset as usize);
-        self.inner.file_pread(&params).map_err(|err| {
-            log::warn!("unable to read file: {:?}", err);
-            Error::Network
-        })
+        self.with_retry(0, |this| this.inner.file_pread(&params))
     }
 }
 
@@ -300,13 +314,8 @@ impl PCloudService {
         let params = pcloud::fileops::open::Params::new(0x0040)
             .folder_id((parent - 1) as usize)
             .name(name.to_string());
-        self.inner
-            .file_open(&params)
+        self.with_retry(1, |this| this.inner.file_open(&params))
             .map(|value| value as u64)
-            .map_err(|err| {
-                log::warn!("unable to open file: {:?}", err);
-                Error::Network
-            })
     }
 }
 
@@ -323,10 +332,7 @@ impl PCloudService {
         }
         let handle = self.get_file_handle(fh).ok_or(Error::InvalidArgument)?;
         let params = pcloud::fileops::pwrite::Params::new(handle, offset as usize, data);
-        self.inner.file_pwrite(&params).map_err(|err| {
-            log::warn!("unable to read file: {:?}", err);
-            Error::Network
-        })
+        self.with_retry(0, |this| this.inner.file_pwrite(&params))
     }
 }
 
@@ -340,13 +346,7 @@ impl PCloudService {
             .find(|f| f.base.name == fname);
         if let Some(file) = file {
             self.folder_cache.borrow_mut().remove(&parent);
-            self.inner
-                .delete_file(file.file_id)
-                .map(|_| ())
-                .map_err(|err| {
-                    log::warn!("unable to read file: {:?}", err);
-                    Error::Network
-                })
+            self.with_retry(1, |this| this.inner.delete_file(file.file_id).map(|_| ()))
         } else {
             Err(Error::NotFound)
         }
@@ -365,18 +365,12 @@ impl PCloudService {
             self.remove_folder_from_cache(parent.folder_id as u64 + 1);
             self.remove_folder_from_cache(new_parent.folder_id as u64 + 1);
             let params = pcloud::file::rename::Params::new_move(file.file_id, new_parent.folder_id);
-            self.inner.rename_file(&params).map_err(|err| {
-                log::warn!("unable to move file: {:?}", err);
-                Error::PermissionDenied
-            })?;
+            self.with_retry(1, |this| this.inner.rename_file(&params))?;
         }
         if file.base.name != new_name {
             self.remove_folder_from_cache(parent.folder_id as u64 + 1);
             let params = pcloud::file::rename::Params::new_rename(file.file_id, new_name);
-            self.inner.rename_file(&params).map_err(|err| {
-                log::warn!("unable to rename file: {:?}", err);
-                Error::PermissionDenied
-            })?;
+            self.with_retry(1, |this| this.inner.rename_file(&params))?;
         }
         Ok(())
     }
@@ -393,18 +387,12 @@ impl PCloudService {
             self.remove_folder_from_cache(new_parent.folder_id as u64 + 1);
             let params =
                 pcloud::folder::rename::Params::new_move(folder.folder_id, new_parent.folder_id);
-            self.inner.rename_folder(&params).map_err(|err| {
-                log::warn!("unable to move folder: {:?}", err);
-                Error::PermissionDenied
-            })?;
+            self.with_retry(1, |this| this.inner.rename_folder(&params))?;
         }
         if folder.base.name != new_name {
             self.remove_folder_from_cache(parent.folder_id as u64 + 1);
             let params = pcloud::folder::rename::Params::new_rename(folder.folder_id, new_name);
-            self.inner.rename_folder(&params).map_err(|err| {
-                log::warn!("unable to rename folder: {:?}", err);
-                Error::PermissionDenied
-            })?;
+            self.with_retry(1, |this| this.inner.rename_folder(&params))?;
         }
         Ok(())
     }
@@ -434,10 +422,7 @@ impl PCloudService {
     pub fn create_folder(&mut self, parent_id: u64, name: &str) -> Result<Folder, Error> {
         self.remove_folder_from_cache(parent_id);
         let params = pcloud::folder::create::Params::new(name, parent_id as usize - 1);
-        self.inner.create_folder(&params).map_err(|err| {
-            log::warn!("unable to create folder: {:?}", err);
-            Error::PermissionDenied
-        })
+        self.with_retry(1, |this| this.inner.create_folder(&params))
     }
 }
 
@@ -451,9 +436,6 @@ impl PCloudService {
             .filter_map(|item| item.as_folder())
             .find(|item| item.base.name == name)
             .ok_or(Error::NotFound)?;
-        self.inner.delete_folder(folder.folder_id).map_err(|err| {
-            log::warn!("unable to create folder: {:?}", err);
-            Error::PermissionDenied
-        })
+        self.with_retry(1, |this| this.inner.delete_folder(folder.folder_id))
     }
 }

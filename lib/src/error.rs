@@ -9,6 +9,15 @@ pub enum Error {
     Upload(std::io::Error),
 }
 
+impl Error {
+    pub fn as_binary(&self) -> Option<&crate::binary::Error> {
+        match self {
+            Self::Binary(inner) => Some(&inner),
+            _ => None,
+        }
+    }
+}
+
 impl From<reqwest::Error> for Error {
     fn from(err: reqwest::Error) -> Self {
         Self::Reqwest(err)

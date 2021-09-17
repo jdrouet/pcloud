@@ -173,7 +173,7 @@ mod tests {
             .create();
 
         let creds = Credentials::AccessToken("access-token".into());
-        let dc = Region::Test;
+        let dc = Region::mock();
         let api = HttpClient::new(creds, dc);
         //
         let cursor = std::io::Cursor::new("hello world!");

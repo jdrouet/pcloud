@@ -146,7 +146,7 @@ mod tests {
             )
             .create();
         let creds = Credentials::AccessToken("access-token".into());
-        let dc = Region::Test;
+        let dc = Region::mock();
         let api = HttpClient::new(creds, dc);
         let payload = api.list_folder(&Params::new(0)).await.unwrap();
         assert_eq!(payload.base.parent_folder_id, Some(0));
@@ -165,7 +165,7 @@ mod tests {
             .with_body(r#"{ "result": 1020, "error": "something went wrong" }"#)
             .create();
         let creds = Credentials::AccessToken("access-token".into());
-        let dc = Region::Test;
+        let dc = Region::mock();
         let api = HttpClient::new(creds, dc);
         let error = api.list_folder(&Params::new(0)).await.unwrap_err();
         assert!(matches!(error, crate::error::Error::Payload(_, _)));
@@ -174,7 +174,7 @@ mod tests {
 
     #[test]
     fn binary_success() {
-        let mut client = BinaryClient::new(Region::Europe, Credentials::from_env()).unwrap();
+        let mut client = BinaryClient::new(Region::eu(), Credentials::from_env()).unwrap();
         let res = client.list_folder(&Params::new(0)).unwrap();
         assert_eq!(res.base.name, "/");
     }

@@ -98,7 +98,7 @@ mod tests {
             )
             .create();
         let creds = Credentials::AccessToken("access-token".into());
-        let dc = Region::Test;
+        let dc = Region::mock();
         let api = HttpClient::new(creds, dc);
         let result = api.create_folder(&Params::new("testing", 0)).await.unwrap();
         assert_eq!(result.base.name, "testing");
@@ -118,7 +118,7 @@ mod tests {
             .with_body(r#"{ "result": 1020, "error": "something went wrong" }"#)
             .create();
         let creds = Credentials::AccessToken("access-token".into());
-        let dc = Region::Test;
+        let dc = Region::mock();
         let api = HttpClient::new(creds, dc);
         let error = api
             .create_folder(&Params::new("testing", 0))
@@ -132,7 +132,7 @@ mod tests {
     #[ignore]
     fn binary_success() {
         let name = crate::tests::random_name();
-        let mut client = BinaryClient::new(Region::Europe, Credentials::from_env()).unwrap();
+        let mut client = BinaryClient::new(Region::eu(), Credentials::from_env()).unwrap();
         let res = client
             .create_folder(&Params::new(name.as_str(), 0))
             .unwrap();

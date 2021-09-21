@@ -9,6 +9,7 @@ pub struct Payload {
 }
 
 impl BinaryClient {
+    #[tracing::instrument(skip(self))]
     pub fn file_size(&mut self, fd: usize) -> Result<Payload, Error> {
         let params = vec![("fd", BinaryValue::Number(fd as u64))];
         let res = self.send_command("file_size", &params)?;

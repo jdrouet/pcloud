@@ -28,12 +28,13 @@ impl<'d> Params<'d> {
 }
 
 impl BinaryClient {
+    #[tracing::instrument(skip(self))]
     pub fn file_pwrite(&mut self, params: &Params) -> Result<usize, Error> {
         let res =
             self.send_command_with_data("file_pwrite", &params.to_binary_params(), params.data)?;
         let res: Response<Payload> = serde_json::from_value(res)?;
         res.payload().map(|value| value.bytes).map_err(|err| {
-            log::error!("unable to read the result: {:?}", err);
+            tracing::error!("unable to read the result: {:?}", err);
             Error::ResponseFormat
         })
     }

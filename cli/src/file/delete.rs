@@ -7,14 +7,15 @@ pub struct Command {
 }
 
 impl Command {
+    #[tracing::instrument(skip_all)]
     pub async fn execute(&self, pcloud: HttpClient) {
         match pcloud.delete_file(self.file_id).await {
             Ok(_) => {
-                log::info!("file deleted");
+                tracing::info!("file deleted");
                 std::process::exit(exitcode::OK);
             }
             Err(err) => {
-                log::error!("unable to delete file: {:?}", err);
+                tracing::error!("unable to delete file: {:?}", err);
                 std::process::exit(exitcode::DATAERR);
             }
         }

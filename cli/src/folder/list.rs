@@ -32,6 +32,7 @@ impl Command {
         }
     }
 
+    #[tracing::instrument(skip_all)]
     pub async fn execute(&self, pcloud: HttpClient, folder_id: usize) {
         let params = Params::new(folder_id);
         match pcloud.list_folder(&params).await {
@@ -40,7 +41,7 @@ impl Command {
                 std::process::exit(exitcode::OK);
             }
             Err(err) => {
-                log::error!("unable to delete folder: {:?}", err);
+                tracing::error!("unable to delete folder: {:?}", err);
                 std::process::exit(exitcode::DATAERR);
             }
         }

@@ -9,15 +9,16 @@ pub struct Command {
 }
 
 impl Command {
+    #[tracing::instrument(skip_all)]
     pub async fn execute(&self, pcloud: HttpClient) {
         let params = Params::new_rename(self.file_id, self.filename.clone());
         match pcloud.rename_file(&params).await {
             Ok(_) => {
-                log::info!("file renamed");
+                tracing::info!("file renamed");
                 std::process::exit(exitcode::OK);
             }
             Err(err) => {
-                log::error!("unable to rename file: {:?}", err);
+                tracing::error!("unable to rename file: {:?}", err);
                 std::process::exit(exitcode::DATAERR);
             }
         }

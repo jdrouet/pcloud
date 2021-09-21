@@ -15,7 +15,10 @@ struct Opts {
 }
 
 fn main() {
-    env_logger::init();
+    tracing_subscriber::fmt()
+        .with_env_filter(std::env::var("LOG").unwrap_or_else(|_| String::from("info")))
+        .try_init()
+        .expect("couldn't init logger");
 
     let opts = Opts::parse();
 

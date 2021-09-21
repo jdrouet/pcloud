@@ -73,6 +73,7 @@ impl HttpClient {
     /// * `folder_id` - ID of the folder to rename.
     /// * `name` - New name for the folder
     ///
+    #[tracing::instrument(skip(self))]
     pub async fn rename_folder(&self, params: &Params) -> Result<Folder, Error> {
         let result: Response<FolderResponse> = self
             .get_request("renamefolder", &params.to_http_params())
@@ -82,6 +83,7 @@ impl HttpClient {
 }
 
 impl BinaryClient {
+    #[tracing::instrument(skip(self))]
     pub fn rename_folder(&mut self, params: &Params) -> Result<Folder, Error> {
         let result = self.send_command("renamefolder", &params.to_binary_params())?;
         let result: Response<FolderResponse> = serde_json::from_value(result)?;

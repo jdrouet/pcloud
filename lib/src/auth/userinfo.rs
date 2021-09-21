@@ -51,6 +51,7 @@ impl Params {
 }
 
 impl HttpClient {
+    #[tracing::instrument(skip(self))]
     pub async fn user_info(&self, params: &Params) -> Result<Payload, Error> {
         let result: Response<Payload> = self
             .get_request("userinfo", &params.to_http_params())
@@ -60,6 +61,7 @@ impl HttpClient {
 }
 
 impl BinaryClient {
+    #[tracing::instrument(skip(self))]
     pub fn user_info(&mut self, params: &Params) -> Result<Payload, Error> {
         let result = self.send_command("userinfo", &params.to_binary_params())?;
         let result: Response<Payload> = serde_json::from_value(result)?;

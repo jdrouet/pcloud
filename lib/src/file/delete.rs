@@ -7,7 +7,11 @@ use crate::http::HttpClient;
 use crate::request::Response;
 
 impl HttpClient {
-    pub async fn delete_file<I: Into<FileIdentifier>>(&self, identifier: I) -> Result<File, Error> {
+    #[tracing::instrument(skip(self))]
+    pub async fn delete_file<I: Into<FileIdentifier> + std::fmt::Debug>(
+        &self,
+        identifier: I,
+    ) -> Result<File, Error> {
         let params: FileIdentifier = identifier.into();
         let result: Response<FileResponse> = self
             .get_request("deletefile", &params.to_http_params())
@@ -17,7 +21,11 @@ impl HttpClient {
 }
 
 impl BinaryClient {
-    pub fn delete_file<I: Into<FileIdentifier>>(&mut self, identifier: I) -> Result<File, Error> {
+    #[tracing::instrument(skip(self))]
+    pub fn delete_file<I: Into<FileIdentifier> + std::fmt::Debug>(
+        &mut self,
+        identifier: I,
+    ) -> Result<File, Error> {
         let identifier = identifier.into();
         let result = self.send_command("deletefile", &identifier.to_binary_params())?;
         let result: Response<FileResponse> = serde_json::from_value(result)?;

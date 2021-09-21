@@ -92,6 +92,7 @@ pub struct Command {
 }
 
 impl Command {
+    #[tracing::instrument(skip(self, pcloud), level = "info")]
     async fn download_file(
         &self,
         pcloud: &HttpClient,
@@ -108,6 +109,7 @@ impl Command {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, pcloud), level = "info")]
     async fn download_folder(
         &self,
         pcloud: &HttpClient,
@@ -150,6 +152,7 @@ impl Command {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, pcloud), level = "info")]
     async fn upload_file(
         &self,
         pcloud: &HttpClient,
@@ -167,6 +170,7 @@ impl Command {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, pcloud), level = "info")]
     async fn upload_folder(
         &self,
         pcloud: &HttpClient,
@@ -230,6 +234,7 @@ impl Command {
     }
 
     #[async_recursion]
+    #[tracing::instrument(skip(self, pcloud), level = "info")]
     async fn sync_folder(
         &self,
         pcloud: &HttpClient,

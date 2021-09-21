@@ -55,11 +55,6 @@ impl Region {
     fn from_split_env() -> Option<Self> {
         let http_url = std::env::var("PCLOUD_REGION_HTTP_URL").ok()?;
         let binary_url = std::env::var("PCLOUD_REGION_BINARY_URL").ok()?;
-        log::debug!(
-            "creating region from split env {}, {}",
-            http_url,
-            binary_url
-        );
 
         Some(Self::new(http_url, binary_url))
     }
@@ -74,7 +69,6 @@ impl Region {
 
     fn from_name_env() -> Option<Self> {
         let name = std::env::var("PCLOUD_REGION").ok()?;
-        log::debug!("creating region from name {}", name);
         Self::from_name(name.as_str())
     }
 

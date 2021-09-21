@@ -57,6 +57,7 @@ impl Params {
 }
 
 impl BinaryClient {
+    #[tracing::instrument(skip(self))]
     pub fn file_open(&mut self, params: &Params) -> Result<usize, Error> {
         let res = self.send_command("file_open", &params.to_binary_params())?;
         let res: Response<Payload> = serde_json::from_value(res)?;

@@ -9,6 +9,7 @@ pub struct Payload {
 }
 
 impl BinaryClient {
+    #[tracing::instrument(skip(self))]
     pub fn get_ip(&mut self) -> Result<Payload, Error> {
         let params = Vec::new();
         let result = self.send_command("getip", &params)?;

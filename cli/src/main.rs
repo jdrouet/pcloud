@@ -50,7 +50,10 @@ impl Command {
 
 #[tokio::main]
 async fn main() {
-    env_logger::init();
+    tracing_subscriber::fmt()
+        .with_env_filter(std::env::var("LOG").unwrap_or_else(|_| String::from("info")))
+        .try_init()
+        .expect("couldn't init logger");
 
     let cmd = Command::parse();
     let pcloud = config::Config::from_path(&cmd.config())

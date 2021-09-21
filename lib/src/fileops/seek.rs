@@ -35,6 +35,7 @@ impl Params {
 }
 
 impl BinaryClient {
+    #[tracing::instrument(skip(self))]
     pub fn file_seek(&mut self, params: &Params) -> Result<usize, Error> {
         let params = params.to_binary_params();
         let result = self.send_command("file_seek", &params)?;

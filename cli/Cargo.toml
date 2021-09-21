@@ -1,5 +1,7 @@
 [package]
 name = "pcloud-cli"
+description = "CLI for pcloud"
+authors = ["Jeremie Drouet <jeremie.drouet@gmail.com>"]
 version = "0.1.0"
 edition = "2018"
 

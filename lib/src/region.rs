@@ -64,14 +64,18 @@ impl Region {
         Some(Self::new(http_url, binary_url))
     }
 
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "eu" | "EU" => Some(Self::eu()),
+            "us" | "US" => Some(Self::us()),
+            _ => None,
+        }
+    }
+
     fn from_name_env() -> Option<Self> {
         let name = std::env::var("PCLOUD_REGION").ok()?;
         log::debug!("creating region from name {}", name);
-        match name.as_str() {
-            "eu" => Some(Self::eu()),
-            "us" => Some(Self::us()),
-            _ => None,
-        }
+        Self::from_name(name.as_str())
     }
 
     pub fn from_env() -> Self {

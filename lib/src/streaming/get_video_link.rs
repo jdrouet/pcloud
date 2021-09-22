@@ -67,6 +67,7 @@ impl Params {
 }
 
 impl HttpClient {
+    #[tracing::instrument(skip(self))]
     pub async fn get_video_link(&self, params: &Params) -> Result<String, Error> {
         let result: Response<Payload> = self
             .get_request("getvideolink", &params.to_http_params())

@@ -30,14 +30,12 @@ impl From<reqwest::Error> for Error {
 
 impl From<crate::binary::Error> for Error {
     fn from(err: crate::binary::Error) -> Self {
-        log::error!("unable to execute command: {:?}", err);
         Self::Binary(err)
     }
 }
 
 impl From<serde_json::Error> for Error {
     fn from(err: serde_json::Error) -> Self {
-        log::error!("serialize issue: {:?}", err);
         Self::SerdeJson(err)
     }
 }

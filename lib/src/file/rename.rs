@@ -110,6 +110,7 @@ impl Params {
 }
 
 impl HttpClient {
+    #[tracing::instrument(skip(self))]
     pub async fn rename_file(&self, params: &Params) -> Result<File, Error> {
         let result: Response<FileResponse> = self
             .get_request("renamefile", &params.to_http_params())
@@ -119,6 +120,7 @@ impl HttpClient {
 }
 
 impl BinaryClient {
+    #[tracing::instrument(skip(self))]
     pub fn rename_file(&mut self, params: &Params) -> Result<File, Error> {
         let result = self.send_command("renamefile", &params.to_binary_params())?;
         let result: Response<FileResponse> = serde_json::from_value(result)?;

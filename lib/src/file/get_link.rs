@@ -20,7 +20,8 @@ impl Payload {
 }
 
 impl HttpClient {
-    pub async fn get_link_file<I: Into<FileIdentifier>>(
+    #[tracing::instrument(skip(self))]
+    pub async fn get_link_file<I: Into<FileIdentifier> + std::fmt::Debug>(
         &self,
         identifier: I,
     ) -> Result<String, Error> {

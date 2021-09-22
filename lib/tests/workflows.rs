@@ -6,7 +6,9 @@ use rand::Rng;
 use std::io::Cursor;
 
 fn init() {
-    let _ = env_logger::builder().is_test(true).try_init();
+    let _ = tracing_subscriber::fmt()
+        .with_env_filter("debug")
+        .try_init();
 }
 
 fn create_folder() -> String {

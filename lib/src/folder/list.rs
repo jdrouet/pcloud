@@ -91,6 +91,7 @@ impl HttpClient {
     ///
     /// * `folder_id` - ID of the folder.
     ///
+    #[tracing::instrument(skip(self))]
     pub async fn list_folder(&self, params: &Params) -> Result<Folder, Error> {
         let result: Response<FolderResponse> = self
             .get_request("listfolder", &params.to_http_params())
@@ -100,6 +101,7 @@ impl HttpClient {
 }
 
 impl BinaryClient {
+    #[tracing::instrument(skip(self))]
     pub fn list_folder(&mut self, params: &Params) -> Result<Folder, Error> {
         let result = self.send_command("listfolder", &params.to_binary_params())?;
         let result: Response<FolderResponse> = serde_json::from_value(result)?;

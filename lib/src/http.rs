@@ -6,7 +6,7 @@ pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PK
 pub const DEFAULT_PART_SIZE: usize = 10485760;
 
 /// Client for the pCloud REST API
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct HttpClient {
     pub(crate) client: reqwest::Client,
     credentials: Credentials,

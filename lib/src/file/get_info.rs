@@ -13,7 +13,8 @@ pub struct CheckSumFile {
 }
 
 impl HttpClient {
-    pub async fn get_info_file<I: Into<FileIdentifier>>(
+    #[tracing::instrument(skip(self))]
+    pub async fn get_info_file<I: Into<FileIdentifier> + std::fmt::Debug>(
         &self,
         identifier: I,
     ) -> Result<CheckSumFile, Error> {
@@ -26,7 +27,8 @@ impl HttpClient {
 }
 
 impl BinaryClient {
-    pub fn get_info_file<I: Into<FileIdentifier>>(
+    #[tracing::instrument(skip(self))]
+    pub fn get_info_file<I: Into<FileIdentifier> + std::fmt::Debug>(
         &mut self,
         identifier: I,
     ) -> Result<CheckSumFile, Error> {

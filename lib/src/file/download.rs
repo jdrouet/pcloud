@@ -11,7 +11,8 @@ impl HttpClient {
     /// * `identifier` - ID or path to the file to download.
     /// * `write` - Where to write the file.
     ///
-    pub async fn download_file<I: Into<FileIdentifier>, W: Write>(
+    #[tracing::instrument(skip(self, write))]
+    pub async fn download_file<I: Into<FileIdentifier> + std::fmt::Debug, W: Write>(
         &self,
         identifier: I,
         mut write: W,

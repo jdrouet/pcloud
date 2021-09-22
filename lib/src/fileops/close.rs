@@ -3,6 +3,7 @@ use crate::error::Error;
 use crate::request::Response;
 
 impl BinaryClient {
+    #[tracing::instrument(skip(self))]
     pub fn file_close(&mut self, fd: usize) -> Result<(), Error> {
         let params = vec![("fd", BinaryValue::Number(fd as u64))];
         let res = self.send_command("file_close", &params)?;

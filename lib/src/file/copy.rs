@@ -5,6 +5,7 @@ use crate::error::Error;
 use crate::http::HttpClient;
 use crate::request::Response;
 
+#[derive(Debug)]
 pub struct Params {
     file_id: usize,
     to_folder_id: usize,
@@ -34,6 +35,7 @@ impl Params {
 }
 
 impl HttpClient {
+    #[tracing::instrument(skip(self))]
     pub async fn copy_file(&self, params: &Params) -> Result<File, Error> {
         let result: Response<FileResponse> = self
             .get_request("copyfile", &params.to_http_params())
@@ -43,6 +45,7 @@ impl HttpClient {
 }
 
 impl BinaryClient {
+    #[tracing::instrument(skip(self))]
     pub fn copy_file(&mut self, params: &Params) -> Result<File, Error> {
         let result = self.send_command("copyfile", &params.to_binary_params())?;
         let result: Response<FileResponse> = serde_json::from_value(result)?;

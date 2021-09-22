@@ -88,6 +88,7 @@ impl HttpClient {
     /// * `filename` - Name of the file to create.
     /// * `folder_id` - ID of the folder where to upload the file.
     ///
+    #[tracing::instrument(skip(self, input))]
     pub async fn upload_file<R: Read>(
         &self,
         input: R,

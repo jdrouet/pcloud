@@ -42,6 +42,7 @@ impl HttpClient {
     /// * `name` - Name of the folder.
     /// * `parent_id` - ID of the parent folder. Use 0 for the root folder.
     ///
+    #[tracing::instrument(skip(self))]
     pub async fn create_folder(&self, params: &Params) -> Result<Folder, Error> {
         let result: Response<FolderResponse> = self
             .get_request("createfolder", &params.to_http_params())
@@ -51,6 +52,7 @@ impl HttpClient {
 }
 
 impl BinaryClient {
+    #[tracing::instrument(skip(self))]
     pub fn create_folder(&mut self, params: &Params) -> Result<Folder, Error> {
         let result = self.send_command("createfolder", &params.to_binary_params())?;
         let result: Response<FolderResponse> = serde_json::from_value(result)?;

@@ -25,16 +25,17 @@ impl Command {
             .unwrap()
     }
 
+    #[tracing::instrument(skip_all)]
     pub async fn execute(&self, pcloud: HttpClient) {
         let file = File::open(&self.path).expect("unable to open file");
         let filename = self.filename();
         match pcloud.upload_file(&file, &filename, self.folder_id).await {
             Ok(res) => {
-                log::info!("file uploaded: {}", res.file_id);
+                tracing::info!("file uploaded: {}", res.file_id);
                 std::process::exit(exitcode::OK);
             }
             Err(err) => {
-                log::error!("unable to upload file: {:?}", err);
+                tracing::error!("unable to upload file: {:?}", err);
                 std::process::exit(exitcode::DATAERR);
             }
         }

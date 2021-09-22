@@ -264,8 +264,8 @@ pub struct BinaryClient {
 }
 
 impl BinaryClient {
+    #[tracing::instrument]
     pub fn new(region: Region, credentials: Credentials) -> Result<Self, Error> {
-        log::debug!("connecting to {}", region.binary_url());
         Ok(Self {
             stream: TcpStream::connect(region.binary_url())?,
             credentials,
@@ -273,6 +273,7 @@ impl BinaryClient {
         })
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn reconnect(&mut self) -> Result<(), Error> {
         self.stream = TcpStream::connect(self.region.binary_url())?;
         Ok(())

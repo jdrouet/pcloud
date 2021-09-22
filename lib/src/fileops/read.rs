@@ -28,16 +28,17 @@ impl Params {
 }
 
 impl BinaryClient {
+    #[tracing::instrument(skip(self))]
     pub fn file_read(&mut self, params: &Params) -> Result<Vec<u8>, Error> {
         let res = self.send_command("file_read", &params.to_binary_params())?;
         let res: Response<Payload> = serde_json::from_value(res)?;
         let length = res.payload().map(|value| value.data).map_err(|err| {
-            log::error!("unable to read the length: {:?}", err);
+            tracing::error!("unable to read the length: {:?}", err);
             Error::ResponseFormat
         })?;
         let mut buffer: Vec<u8> = build_buffer(length);
         self.stream.read(&mut buffer).map_err(|err| {
-            log::error!("unable to read the data: {:?}", err);
+            tracing::error!("unable to read the data: {:?}", err);
             Error::ResponseFormat
         })?;
         Ok(buffer)

@@ -51,7 +51,8 @@ impl HttpClient {
     ///
     /// * `folder_id` - ID of the folder to delete.
     ///
-    pub async fn delete_folder_recursive<I: Into<FolderIdentifier>>(
+    #[tracing::instrument(skip(self))]
+    pub async fn delete_folder_recursive<I: Into<FolderIdentifier> + std::fmt::Debug>(
         &self,
         identifier: I,
     ) -> Result<RecursivePayload, Error> {
@@ -64,7 +65,8 @@ impl HttpClient {
 }
 
 impl BinaryClient {
-    pub fn delete_folder_recursive<I: Into<FolderIdentifier>>(
+    #[tracing::instrument(skip(self))]
+    pub fn delete_folder_recursive<I: Into<FolderIdentifier> + std::fmt::Debug>(
         &mut self,
         identifier: I,
     ) -> Result<RecursivePayload, Error> {

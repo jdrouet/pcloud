@@ -18,8 +18,8 @@ pub enum Error {
 }
 
 impl Error {
+    #[tracing::instrument]
     fn from_code(code: u16, message: String) -> Self {
-        log::warn!("error: {}, message: {}", code, message);
         Self::InvalidArgument
     }
 
@@ -106,8 +106,8 @@ impl PCloudService {
         }
     }
 
+    #[tracing::instrument(skip_all)]
     fn reconnect(&mut self) -> Result<(), pcloud::error::Error> {
-        log::warn!("reconnecting");
         self.inner.reconnect()?;
         self.next_handle = AtomicU64::new(1);
         self.entry_handles = Mutex::new(HashMap::new());
@@ -122,11 +122,11 @@ impl PCloudService {
         match func(self) {
             Ok(res) => Ok(res),
             Err(err) => {
-                log::warn!("unable to perform action: {:?}", err);
+                tracing::warn!("unable to perform action: {:?}", err);
                 let fuse_error = Error::from(err);
                 if count > 0 && fuse_error.should_reconnect() {
                     self.reconnect().map_err(|reco_err| {
-                        log::warn!("unable to reconnect: {:?}", reco_err);
+                        tracing::warn!("unable to reconnect: {:?}", reco_err);
                         Error::Network
                     })?;
                     self.with_retry(count - 1, func)
@@ -222,7 +222,7 @@ impl PCloudService {
         if let Some(value) = handles.get(&fh).map(|x| x.read) {
             value
         } else {
-            log::error!("Undefined entry handle: {}", fh);
+            tracing::error!("Undefined entry handle: {}", fh);
             false
         }
     }
@@ -235,7 +235,7 @@ impl PCloudService {
         if let Some(value) = handles.get(&fh).map(|x| x.write) {
             value
         } else {
-            log::error!("Undefined entry handle: {}", fh);
+            tracing::error!("Undefined entry handle: {}", fh);
             false
         }
     }

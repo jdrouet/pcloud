@@ -1,6 +1,6 @@
 use async_recursion::async_recursion;
 use clap::Clap;
-use pcloud::entry::{Entry, Folder};
+use pcloud::entry::{Entry, File, Folder};
 use pcloud::error::Error as PCloudError;
 use pcloud::folder::list::Params;
 use pcloud::http::HttpClient;
@@ -92,6 +92,41 @@ pub struct Command {
 }
 
 impl Command {
+    async fn download_file(
+        &self,
+        pcloud: &HttpClient,
+        remote_name: &str,
+        remote_file: &File,
+        local_path: &Path,
+    ) -> Result<(), Error> {
+        let path = local_path.join(remote_name);
+        let file = fs::File::create(&path)?;
+        pcloud.download_file(remote_file.file_id, file).await?;
+        if self.remove_after_download {
+            pcloud.delete_file(remote_file.file_id).await?;
+        }
+        Ok(())
+    }
+
+    async fn download_folder(
+        &self,
+        pcloud: &HttpClient,
+        remote_name: &str,
+        remote_folder: &Folder,
+        local_path: &Path,
+    ) -> Result<(), Error> {
+        let local_folder = local_path.join(remote_name);
+        fs::create_dir(&local_folder)?;
+        self.sync_folder(pcloud, remote_folder, &local_folder)
+            .await?;
+        if self.remove_after_download {
+            pcloud
+                .delete_folder_recursive(remote_folder.folder_id)
+                .await?;
+        }
+        Ok(())
+    }
+
     async fn sync_remote_entries(
         &self,
         pcloud: &HttpClient,
@@ -102,28 +137,48 @@ impl Command {
         for remote_name in remote_names {
             match remote_entries.get(remote_name) {
                 Some(Entry::File(remote_file)) => {
-                    let local_path = path.join(remote_name);
-                    let local_file = fs::File::create(&local_path)?;
-                    pcloud
-                        .download_file(remote_file.file_id, local_file)
+                    self.download_file(pcloud, remote_name, remote_file, path)
                         .await?;
-                    if self.remove_after_download {
-                        pcloud.delete_file(remote_file.file_id).await?;
-                    }
                 }
                 Some(Entry::Folder(remote_folder)) => {
-                    let local_folder = path.join(remote_name);
-                    fs::create_dir(&local_folder)?;
-                    self.sync_folder(pcloud, remote_folder, &local_folder)
+                    self.download_folder(pcloud, remote_name, remote_folder, path)
                         .await?;
-                    if self.remove_after_download {
-                        pcloud
-                            .delete_folder_recursive(remote_folder.folder_id)
-                            .await?;
-                    }
                 }
                 None => {}
             }
+        }
+        Ok(())
+    }
+
+    async fn upload_file(
+        &self,
+        pcloud: &HttpClient,
+        local_name: &str,
+        local_file: &Path,
+        remote_folder: &Folder,
+    ) -> Result<(), Error> {
+        let file = fs::File::open(local_file)?;
+        pcloud
+            .upload_file(&file, local_name, remote_folder.folder_id)
+            .await?;
+        if self.remove_after_upload {
+            fs::remove_file(&local_file)?;
+        }
+        Ok(())
+    }
+
+    async fn upload_folder(
+        &self,
+        pcloud: &HttpClient,
+        local_name: &str,
+        local_folder: &Path,
+        remote_folder: &Folder,
+    ) -> Result<(), Error> {
+        let params = pcloud::folder::create::Params::new(local_name, remote_folder.folder_id);
+        let created = pcloud.create_folder(&params).await?;
+        self.sync_folder(pcloud, &created, local_folder).await?;
+        if self.remove_after_upload {
+            fs::remove_dir_all(local_folder)?;
         }
         Ok(())
     }
@@ -138,21 +193,10 @@ impl Command {
         for local_name in local_names {
             match local_entries.get(local_name) {
                 Some(LocalEntry::File(path)) => {
-                    let file = fs::File::open(path)?;
-                    pcloud
-                        .upload_file(&file, local_name, folder.folder_id)
-                        .await?;
-                    if self.remove_after_upload {
-                        fs::remove_file(&path)?;
-                    }
+                    self.upload_file(pcloud, local_name, path, folder).await?;
                 }
                 Some(LocalEntry::Folder(path)) => {
-                    let params = pcloud::folder::create::Params::new(local_name, folder.folder_id);
-                    let created = pcloud.create_folder(&params).await?;
-                    self.sync_folder(pcloud, &created, path).await?;
-                    if self.remove_after_upload {
-                        fs::remove_dir_all(path)?;
-                    }
+                    self.upload_folder(pcloud, local_name, path, folder).await?;
                 }
                 None => {}
             }

@@ -32,8 +32,9 @@ impl Command {
         }
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, level = "info")]
     pub async fn execute(&self, pcloud: HttpClient, folder_id: usize) {
+        tracing::info!("listing folder {}", folder_id);
         let params = Params::new(folder_id);
         match pcloud.list_folder(&params).await {
             Ok(res) => {

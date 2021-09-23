@@ -9,6 +9,7 @@ use crate::request::Response;
 pub struct Params {
     name: String,
     parent_id: usize,
+    ignore_exists: bool,
 }
 
 impl Params {
@@ -16,6 +17,20 @@ impl Params {
         Self {
             name: name.into(),
             parent_id,
+            ignore_exists: false,
+        }
+    }
+
+    pub fn ignore_exists(mut self, value: bool) -> Self {
+        self.ignore_exists = value;
+        self
+    }
+
+    fn method(&self) -> &str {
+        if self.ignore_exists {
+            "createfolderifnotexists"
+        } else {
+            "createfolder"
         }
     }
 
@@ -45,7 +60,7 @@ impl HttpClient {
     #[tracing::instrument(skip(self))]
     pub async fn create_folder(&self, params: &Params) -> Result<Folder, Error> {
         let result: Response<FolderResponse> = self
-            .get_request("createfolder", &params.to_http_params())
+            .get_request(params.method(), &params.to_http_params())
             .await?;
         result.payload().map(|item| item.metadata)
     }
@@ -54,7 +69,7 @@ impl HttpClient {
 impl BinaryClient {
     #[tracing::instrument(skip(self))]
     pub fn create_folder(&mut self, params: &Params) -> Result<Folder, Error> {
-        let result = self.send_command("createfolder", &params.to_binary_params())?;
+        let result = self.send_command(params.method(), &params.to_binary_params())?;
         let result: Response<FolderResponse> = serde_json::from_value(result)?;
         result.payload().map(|item| item.metadata)
     }

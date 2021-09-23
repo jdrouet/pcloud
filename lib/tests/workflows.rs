@@ -64,10 +64,8 @@ async fn complete() {
     let filename = create_filename("bin");
     let mut filecontent = create_file(1024 * 1024 * 10); // 10Mo
     let cursor = Cursor::new(&mut filecontent);
-    let file = client
-        .upload_file(cursor, &filename, folder.folder_id)
-        .await
-        .unwrap();
+    let params = pcloud::file::upload::Params::new(filename.as_str(), folder.folder_id);
+    let file = client.upload_file(cursor, &params).await.unwrap();
     // get file info
     let file_info = client.get_info_file(file.file_id).await.unwrap();
     assert_eq!(file_info.metadata.file_id, file.file_id);

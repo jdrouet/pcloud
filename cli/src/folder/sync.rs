@@ -80,19 +80,22 @@ fn get_local_entries(path: &Path) -> Result<HashMap<String, LocalEntry>, Error> 
 
 #[derive(Clap)]
 pub struct Command {
-    #[clap(long)]
+    #[clap(long, about = "Disable uploading local files.")]
     disable_upload: bool,
-    #[clap(long)]
+    #[clap(long, about = "Remove local files when uploaded.")]
     remove_after_upload: bool,
-    #[clap(long)]
+    #[clap(long, about = "Disable downloading rmote files.")]
     disable_download: bool,
-    #[clap(long)]
+    #[clap(long, about = "Remote remove files when downloaded.")]
     remove_after_download: bool,
+    #[clap(long, about = "Keep partial file if upload fails.")]
+    allow_partial_upload: bool,
+    #[clap(about = "Local folder to synchronize.")]
     path: PathBuf,
 }
 
 impl Command {
-    #[tracing::instrument(skip(self, pcloud), level = "info")]
+    #[tracing::instrument(skip_all, level = "info")]
     async fn download_file(
         &self,
         pcloud: &HttpClient,
@@ -100,16 +103,19 @@ impl Command {
         remote_file: &File,
         local_path: &Path,
     ) -> Result<(), Error> {
+        tracing::info!("downloading {} to {:?}", remote_name, local_path);
         let path = local_path.join(remote_name);
         let file = fs::File::create(&path)?;
         pcloud.download_file(remote_file.file_id, file).await?;
+        tracing::info!("downloaded {} successfully", remote_name);
         if self.remove_after_download {
+            tracing::info!("deleting {}", remote_name);
             pcloud.delete_file(remote_file.file_id).await?;
         }
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, pcloud), level = "info")]
+    #[tracing::instrument(skip_all, level = "info")]
     async fn download_folder(
         &self,
         pcloud: &HttpClient,
@@ -117,11 +123,14 @@ impl Command {
         remote_folder: &Folder,
         local_path: &Path,
     ) -> Result<(), Error> {
+        tracing::info!("downloading folder {} to {:?}", remote_name, local_path);
         let local_folder = local_path.join(remote_name);
         fs::create_dir(&local_folder)?;
         self.sync_folder(pcloud, remote_folder, &local_folder)
             .await?;
+        tracing::info!("downloaded folder {:?}", local_folder);
         if self.remove_after_download {
+            tracing::info!("deleting folder {}", remote_name);
             pcloud
                 .delete_folder_recursive(remote_folder.folder_id)
                 .await?;
@@ -152,7 +161,7 @@ impl Command {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, pcloud), level = "info")]
+    #[tracing::instrument(skip_all, level = "info")]
     async fn upload_file(
         &self,
         pcloud: &HttpClient,
@@ -160,17 +169,20 @@ impl Command {
         local_file: &Path,
         remote_folder: &Folder,
     ) -> Result<(), Error> {
+        tracing::info!("uploading {:?} to {}", local_file, remote_folder.folder_id);
         let file = fs::File::open(local_file)?;
-        pcloud
-            .upload_file(&file, local_name, remote_folder.folder_id)
-            .await?;
+        let params = pcloud::file::upload::Params::new(local_name, remote_folder.folder_id)
+            .no_partial(!self.allow_partial_upload);
+        pcloud.upload_file(&file, &params).await?;
+        tracing::info!("uploaded {:?}", local_file);
         if self.remove_after_upload {
+            tracing::info!("deleting file {:?}", local_file);
             fs::remove_file(&local_file)?;
         }
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, pcloud), level = "info")]
+    #[tracing::instrument(skip_all, level = "info")]
     async fn upload_folder(
         &self,
         pcloud: &HttpClient,
@@ -178,10 +190,18 @@ impl Command {
         local_folder: &Path,
         remote_folder: &Folder,
     ) -> Result<(), Error> {
-        let params = pcloud::folder::create::Params::new(local_name, remote_folder.folder_id);
+        tracing::info!(
+            "uploading folder {:?} to {}",
+            local_folder,
+            remote_folder.folder_id
+        );
+        let params = pcloud::folder::create::Params::new(local_name, remote_folder.folder_id)
+            .ignore_exists(true);
         let created = pcloud.create_folder(&params).await?;
+        tracing::info!("uploaded folder {:?}", local_folder);
         self.sync_folder(pcloud, &created, local_folder).await?;
         if self.remove_after_upload {
+            tracing::info!("deleting folder {:?}", local_folder);
             fs::remove_dir_all(local_folder)?;
         }
         Ok(())

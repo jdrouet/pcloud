@@ -5,6 +5,28 @@ use crate::http::HttpClient;
 use crate::request::Response;
 use std::io::Read;
 
+#[derive(Debug)]
+pub struct Params<'a> {
+    filename: &'a str,
+    folder_id: usize,
+    no_partial: bool,
+}
+
+impl<'a> Params<'a> {
+    pub fn new(filename: &'a str, folder_id: usize) -> Self {
+        Self {
+            filename,
+            folder_id,
+            no_partial: false,
+        }
+    }
+
+    pub fn no_partial(mut self, value: bool) -> Self {
+        self.no_partial = value;
+        self
+    }
+}
+
 #[derive(Debug, serde::Deserialize)]
 struct CreateUploadPayload {
     #[serde(rename = "uploadid")]
@@ -49,9 +71,14 @@ impl<R: Read> ChunkReader<R> {
 }
 
 impl HttpClient {
-    async fn create_upload_file(&self) -> Result<usize, Error> {
+    async fn create_upload_file(&self, no_partial: bool) -> Result<usize, Error> {
+        let params = if no_partial {
+            vec![("nopartial", 1.to_string())]
+        } else {
+            Vec::new()
+        };
         let result: Response<CreateUploadPayload> =
-            self.get_request("upload_create", &Vec::new()).await?;
+            self.get_request("upload_create", &params).await?;
         result.payload().map(|item| item.upload_id)
     }
 
@@ -88,15 +115,14 @@ impl HttpClient {
     /// * `filename` - Name of the file to create.
     /// * `folder_id` - ID of the folder where to upload the file.
     ///
-    #[tracing::instrument(skip(self, input))]
-    pub async fn upload_file<R: Read>(
+    #[tracing::instrument(skip_all)]
+    pub async fn upload_file<'a, R: Read>(
         &self,
-        input: R,
-        filename: &str,
-        folder_id: usize,
+        reader: R,
+        params: &'a Params<'a>,
     ) -> Result<File, Error> {
-        let upload_id = self.create_upload_file().await?;
-        let mut reader = ChunkReader::new(input, self.upload_part_size);
+        let upload_id = self.create_upload_file(params.no_partial).await?;
+        let mut reader = ChunkReader::new(reader, self.upload_part_size);
 
         let upload_id_str = upload_id.to_string();
 
@@ -109,7 +135,8 @@ impl HttpClient {
             self.write_chunk_file(&params, chunk).await?;
         }
 
-        self.save_file(upload_id, filename, folder_id).await
+        self.save_file(upload_id, &params.filename, params.folder_id)
+            .await
     }
 }
 
@@ -178,7 +205,8 @@ mod tests {
         let api = HttpClient::new(creds, dc);
         //
         let cursor = std::io::Cursor::new("hello world!");
-        let result = api.upload_file(cursor, "testing.txt", 0).await.unwrap();
+        let params = super::Params::new("testing.txt", 0).no_partial(true);
+        let result = api.upload_file(cursor, &params).await.unwrap();
         assert_eq!(result.base.name, "testing.txt");
         m_create.assert();
         m_write.assert();

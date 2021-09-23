@@ -5,10 +5,12 @@ use std::path::PathBuf;
 
 #[derive(Clap)]
 pub struct Command {
-    #[clap(long)]
+    #[clap(long, about = "Name of the created remote file.")]
     filename: Option<String>,
-    #[clap(long, default_value = "0")]
+    #[clap(long, default_value = "0", about = "Folder to store the file in.")]
     folder_id: usize,
+    #[clap(long, about = "Keep partial file if upload fails.")]
+    allow_partial_upload: bool,
     path: PathBuf,
 }
 
@@ -29,7 +31,9 @@ impl Command {
     pub async fn execute(&self, pcloud: HttpClient) {
         let file = File::open(&self.path).expect("unable to open file");
         let filename = self.filename();
-        match pcloud.upload_file(&file, &filename, self.folder_id).await {
+        let params = pcloud::file::upload::Params::new(filename.as_str(), self.folder_id)
+            .no_partial(!self.allow_partial_upload);
+        match pcloud.upload_file(&file, &params).await {
             Ok(res) => {
                 tracing::info!("file uploaded: {}", res.file_id);
                 std::process::exit(exitcode::OK);

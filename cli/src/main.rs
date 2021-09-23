@@ -15,6 +15,8 @@ struct Command {
         about = "Path to load the configuration file. Default to ~/.config/pcloud.json. If not found, loading from environment."
     )]
     config: Option<PathBuf>,
+    #[clap(short, long)]
+    verbose: bool,
     #[clap(subcommand)]
     subcmd: SubCommand,
 }
@@ -46,16 +48,21 @@ impl Command {
             SubCommand::File(sub) => sub.execute(pcloud).await,
         }
     }
+
+    fn set_log_level(&self) {
+        if self.verbose {
+            tracing_subscriber::fmt()
+                .with_env_filter("info")
+                .try_init()
+                .expect("couldn't init logger");
+        }
+    }
 }
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt()
-        .with_env_filter(std::env::var("LOG").unwrap_or_else(|_| String::from("info")))
-        .try_init()
-        .expect("couldn't init logger");
-
     let cmd = Command::parse();
+    cmd.set_log_level();
     let pcloud = config::Config::from_path(&cmd.config())
         .map(|cfg| cfg.build())
         .unwrap_or_else(|_| HttpClient::from_env());

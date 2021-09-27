@@ -254,7 +254,7 @@ impl Command {
     }
 
     #[async_recursion]
-    #[tracing::instrument(skip(self, pcloud), level = "info")]
+    #[tracing::instrument(skip_all, level = "info")]
     async fn sync_folder(
         &self,
         pcloud: &HttpClient,

@@ -1,12 +1,12 @@
 [package]
 name = "pcloud-fuse"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-pcloud = { path = "../lib" }
+pcloud = { path = "../lib", version = "0.2" }
 #
 clap = { version = "3.0.0-beta.4" }
 fuser = { version = "^0.8" }

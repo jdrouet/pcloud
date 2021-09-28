@@ -1105,7 +1105,7 @@ checksum = "acbf547ad0c65e31259204bd90935776d1c693cec2f4ff7abb7a1bbbd40dfe58"
 
 [[package]]
 name = "pcloud"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "mockito",
@@ -1120,7 +1120,7 @@ dependencies = [
 
 [[package]]
 name = "pcloud-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-recursion",
  "clap",
@@ -1136,7 +1136,7 @@ dependencies = [
 
 [[package]]
 name = "pcloud-fuse"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "fuser",
@@ -1149,7 +1149,7 @@ dependencies = [
 
 [[package]]
 name = "pcloud-http-server"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "actix-web",
  "env_logger",

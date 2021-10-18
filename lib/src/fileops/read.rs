@@ -1,4 +1,4 @@
-use crate::binary::{build_buffer, BinaryClient, Value as BinaryValue};
+use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::error::Error;
 use crate::request::Response;
 use std::io::Read;
@@ -30,14 +30,15 @@ impl Params {
 impl BinaryClient {
     #[tracing::instrument(skip(self))]
     pub fn file_read(&mut self, params: &Params) -> Result<Vec<u8>, Error> {
+        eprintln!("file_read({}, {})", params.fd, params.count);
         let res = self.send_command("file_read", &params.to_binary_params())?;
         let res: Response<Payload> = serde_json::from_value(res)?;
         let length = res.payload().map(|value| value.data).map_err(|err| {
             tracing::error!("unable to read the length: {:?}", err);
             Error::ResponseFormat
         })?;
-        let mut buffer: Vec<u8> = build_buffer(length);
-        self.stream.read(&mut buffer).map_err(|err| {
+        let mut buffer: Vec<u8> = vec![0; length];
+        self.stream.read_exact(&mut buffer).map_err(|err| {
             tracing::error!("unable to read the data: {:?}", err);
             Error::ResponseFormat
         })?;

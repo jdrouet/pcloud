@@ -22,10 +22,6 @@ impl Error {
     fn from_code(code: u16, message: String) -> Self {
         Self::InvalidArgument
     }
-
-    fn should_reconnect(&self) -> bool {
-        matches!(self, Self::Network)
-    }
 }
 
 impl From<PCloudError> for Error {
@@ -105,37 +101,6 @@ impl PCloudService {
             folder_cache: RefCell::new(TtlCache::new(20)),
         }
     }
-
-    #[tracing::instrument(skip_all)]
-    fn reconnect(&mut self) -> Result<(), pcloud::error::Error> {
-        self.inner.reconnect()?;
-        self.next_handle = AtomicU64::new(1);
-        self.entry_handles = Mutex::new(HashMap::new());
-        Ok(())
-    }
-
-    fn with_retry<V>(
-        &mut self,
-        count: u8,
-        func: impl Fn(&mut PCloudService) -> Result<V, pcloud::error::Error>,
-    ) -> Result<V, Error> {
-        match func(self) {
-            Ok(res) => Ok(res),
-            Err(err) => {
-                tracing::warn!("unable to perform action: {:?}", err);
-                let fuse_error = Error::from(err);
-                if count > 0 && fuse_error.should_reconnect() {
-                    self.reconnect().map_err(|reco_err| {
-                        tracing::warn!("unable to reconnect: {:?}", reco_err);
-                        Error::Network
-                    })?;
-                    self.with_retry(count - 1, func)
-                } else {
-                    Err(fuse_error)
-                }
-            }
-        }
-    }
 }
 
 impl Default for PCloudService {
@@ -158,8 +123,13 @@ impl PCloudService {
     }
 
     pub fn fetch_file(&mut self, inode: u64) -> Result<File, Error> {
-        self.with_retry(1, |this| this.inner.get_info_file(inode as usize - 1))
+        self.inner
+            .get_info_file(inode as usize - 1)
             .map(|res| self.add_file(inode, res.metadata))
+            .map_err(|err| {
+                tracing::error!("unable to fetch file: {:?}", err);
+                Error::Network
+            })
     }
 
     pub fn get_file(&mut self, inode: u64) -> Result<File, Error> {
@@ -190,8 +160,13 @@ impl PCloudService {
 
     pub fn fetch_folder(&mut self, inode: u64) -> Result<Folder, Error> {
         let params = pcloud::folder::list::Params::new(inode as usize - 1);
-        self.with_retry(1, |this| this.inner.list_folder(&params))
+        self.inner
+            .list_folder(&params)
             .map(|res| self.add_folder(inode, res))
+            .map_err(|err| {
+                tracing::error!("unable to fetch file: {:?}", err);
+                Error::Network
+            })
     }
 
     pub fn get_folder(&mut self, inode: u64) -> Result<Folder, Error> {
@@ -304,7 +279,10 @@ impl PCloudService {
         } else {
             pcloud::fileops::open::Params::new(0x0000).identifier(file_id.into())
         };
-        let handle = self.with_retry(1, |this| this.inner.file_open(&params))?;
+        let handle = self.inner.file_open(&params).map_err(|err| {
+            tracing::error!("unable to fetch file: {:?}", err);
+            Error::Network
+        })?;
         Ok(self.allocate_file(file_id, handle, read, write))
     }
 }
@@ -327,7 +305,10 @@ impl PCloudService {
         }
         let handle = self.get_file_handle(fh).ok_or(Error::InvalidArgument)?;
         let params = pcloud::fileops::pread::Params::new(handle, size as usize, offset as usize);
-        self.with_retry(0, |this| this.inner.file_pread(&params))
+        self.inner.file_pread(&params).map_err(|err| {
+            tracing::error!("unable to read: {:?}", err);
+            Error::Network
+        })
     }
 }
 
@@ -336,8 +317,13 @@ impl PCloudService {
         let params = pcloud::fileops::open::Params::new(0x0040)
             .folder_id((parent - 1) as usize)
             .name(name.to_string());
-        self.with_retry(1, |this| this.inner.file_open(&params))
-            .map(|value| value as u64)
+        self.inner
+            .file_open(&params)
+            .map(|item| item as u64)
+            .map_err(|err| {
+                tracing::error!("unable to read: {:?}", err);
+                Error::Network
+            })
     }
 }
 
@@ -354,21 +340,25 @@ impl PCloudService {
         }
         let handle = self.get_file_handle(fh).ok_or(Error::InvalidArgument)?;
         let params = pcloud::fileops::pwrite::Params::new(handle, offset as usize, data);
-        self.with_retry(0, |this| this.inner.file_pwrite(&params))
+        self.inner.file_pwrite(&params).map_err(|err| {
+            tracing::error!("unable to read: {:?}", err);
+            Error::Network
+        })
     }
 }
 
 impl PCloudService {
     pub fn remove_file(&mut self, parent: u64, fname: &str) -> Result<(), Error> {
         let folder = self.get_folder(parent)?;
-        let files = folder.contents.unwrap_or_default();
-        let file = files
-            .into_iter()
-            .filter_map(|f| f.as_file())
-            .find(|f| f.base.name == fname);
-        if let Some(file) = file {
+        if let Some(file) = folder.find_file(fname) {
             self.folder_cache.borrow_mut().remove(&parent);
-            self.with_retry(1, |this| this.inner.delete_file(file.file_id).map(|_| ()))
+            self.inner
+                .delete_file(file.file_id)
+                .map(|_| ())
+                .map_err(|err| {
+                    tracing::error!("unable to read: {:?}", err);
+                    Error::Network
+                })
         } else {
             Err(Error::NotFound)
         }
@@ -387,12 +377,18 @@ impl PCloudService {
             self.remove_folder_from_cache(parent.folder_id as u64 + 1);
             self.remove_folder_from_cache(new_parent.folder_id as u64 + 1);
             let params = pcloud::file::rename::Params::new_move(file.file_id, new_parent.folder_id);
-            self.with_retry(1, |this| this.inner.rename_file(&params))?;
+            self.inner.rename_file(&params).map_err(|err| {
+                tracing::error!("unable to read: {:?}", err);
+                Error::Network
+            })?;
         }
         if file.base.name != new_name {
             self.remove_folder_from_cache(parent.folder_id as u64 + 1);
             let params = pcloud::file::rename::Params::new_rename(file.file_id, new_name);
-            self.with_retry(1, |this| this.inner.rename_file(&params))?;
+            self.inner.rename_file(&params).map_err(|err| {
+                tracing::error!("unable to read: {:?}", err);
+                Error::Network
+            })?;
         }
         Ok(())
     }
@@ -409,12 +405,18 @@ impl PCloudService {
             self.remove_folder_from_cache(new_parent.folder_id as u64 + 1);
             let params =
                 pcloud::folder::rename::Params::new_move(folder.folder_id, new_parent.folder_id);
-            self.with_retry(1, |this| this.inner.rename_folder(&params))?;
+            self.inner.rename_folder(&params).map_err(|err| {
+                tracing::error!("unable to read: {:?}", err);
+                Error::Network
+            })?;
         }
         if folder.base.name != new_name {
             self.remove_folder_from_cache(parent.folder_id as u64 + 1);
             let params = pcloud::folder::rename::Params::new_rename(folder.folder_id, new_name);
-            self.with_retry(1, |this| this.inner.rename_folder(&params))?;
+            self.inner.rename_folder(&params).map_err(|err| {
+                tracing::error!("unable to read: {:?}", err);
+                Error::Network
+            })?;
         }
         Ok(())
     }
@@ -427,11 +429,7 @@ impl PCloudService {
         new_name: &str,
     ) -> Result<(), Error> {
         let parent = self.get_folder(parent_id)?;
-        let entry = parent
-            .contents
-            .as_ref()
-            .and_then(|list| list.into_iter().find(|item| item.base().name == name))
-            .ok_or(Error::NotFound)?;
+        let entry = parent.find_entry(name).ok_or(Error::NotFound)?;
         let new_parent = self.get_folder(new_parent_id)?;
         match entry {
             Entry::File(file) => self.rename_file(&parent, file, &new_parent, new_name),
@@ -444,7 +442,10 @@ impl PCloudService {
     pub fn create_folder(&mut self, parent_id: u64, name: &str) -> Result<Folder, Error> {
         self.remove_folder_from_cache(parent_id);
         let params = pcloud::folder::create::Params::new(name, parent_id as usize - 1);
-        self.with_retry(1, |this| this.inner.create_folder(&params))
+        self.inner.create_folder(&params).map_err(|err| {
+            tracing::error!("unable to read: {:?}", err);
+            Error::Network
+        })
     }
 }
 
@@ -452,12 +453,10 @@ impl PCloudService {
     pub fn remove_folder(&mut self, parent_id: u64, name: &str) -> Result<Folder, Error> {
         let parent = self.get_folder(parent_id)?;
         self.remove_folder_from_cache(parent_id);
-        let children = parent.contents.unwrap_or_default();
-        let folder = children
-            .into_iter()
-            .filter_map(|item| item.as_folder())
-            .find(|item| item.base.name == name)
-            .ok_or(Error::NotFound)?;
-        self.with_retry(1, |this| this.inner.delete_folder(folder.folder_id))
+        let folder = parent.find_folder(name).ok_or(Error::NotFound)?;
+        self.inner.delete_folder(folder.folder_id).map_err(|err| {
+            tracing::error!("unable to read: {:?}", err);
+            Error::Network
+        })
     }
 }

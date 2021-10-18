@@ -308,12 +308,7 @@ impl Filesystem for PCloudFs {
             Ok(folder) => folder,
             Err(err) => return reply.error(err.into()),
         };
-        let children = parent.contents.unwrap_or_default();
-        let file = children
-            .into_iter()
-            .filter_map(|item| item.as_file())
-            .find(|item| item.base.name == name);
-        if let Some(file) = file {
+        if let Some(file) = parent.find_file(name) {
             let file_attr = create_file_attrs(&file);
 
             reply.created(
@@ -329,7 +324,7 @@ impl Filesystem for PCloudFs {
         };
     }
 
-    #[tracing::instrument(skip(self, _req, data, reply))]
+    #[tracing::instrument(skip_all)]
     fn write(
         &mut self,
         _req: &fuser::Request<'_>,

@@ -5,12 +5,6 @@ use std::io::prelude::*;
 use std::io::{Error as IoError, Read};
 use std::net::TcpStream;
 
-pub(crate) fn build_buffer(len: usize) -> Vec<u8> {
-    let mut res = Vec::with_capacity(len);
-    (0..len).for_each(|_| res.push(0));
-    res
-}
-
 fn bytes_to_u64(bytes: &[u8]) -> u64 {
     let mut buffer: [u8; 8] = [0; 8];
     buffer[..bytes.len()].clone_from_slice(bytes);
@@ -27,7 +21,7 @@ impl BinaryReader {
         let mut length: [u8; 4] = [0; 4];
         reader.read_exact(&mut length)?;
         let length = u32::from_le_bytes(length) as usize;
-        let mut buffer = build_buffer(length);
+        let mut buffer = vec![0; length];
         reader.read_exact(&mut buffer)?;
         Ok(Self { buffer, offset: 0 })
     }

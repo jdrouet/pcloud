@@ -58,7 +58,7 @@ pub struct PCloudFs {
 }
 
 impl PCloudFs {
-    pub fn new(service: PCloudService, _folder_id: usize, _data_dir: String) -> Self {
+    pub fn new(service: PCloudService) -> Self {
         Self {
             service,
             fuse_duration: Duration::new(2, 0),
@@ -67,7 +67,6 @@ impl PCloudFs {
 }
 
 impl Filesystem for PCloudFs {
-    #[tracing::instrument(skip_all)]
     fn init(
         &mut self,
         _req: &fuser::Request,
@@ -76,10 +75,9 @@ impl Filesystem for PCloudFs {
         Ok(())
     }
 
-    #[tracing::instrument(skip_all)]
     fn destroy(&mut self, _req: &fuser::Request) {}
 
-    #[tracing::instrument(skip(self, _req, reply))]
+    #[tracing::instrument(skip_all)]
     fn lookup(
         &mut self,
         _req: &fuser::Request<'_>,
@@ -110,10 +108,9 @@ impl Filesystem for PCloudFs {
         }
     }
 
-    #[tracing::instrument(skip(self, _req))]
-    fn forget(&mut self, _req: &fuser::Request<'_>, ino: u64, nlookup: u64) {}
+    fn forget(&mut self, _req: &fuser::Request<'_>, _ino: u64, _nlookup: u64) {}
 
-    #[tracing::instrument(skip(self, _req, reply))]
+    #[tracing::instrument(skip_all)]
     fn opendir(&mut self, _req: &fuser::Request, inode: u64, flags: i32, reply: fuser::ReplyOpen) {
         match self.service.open_folder(inode, flags) {
             Ok(fh) => {
@@ -125,7 +122,7 @@ impl Filesystem for PCloudFs {
         };
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
+    #[tracing::instrument(skip_all)]
     fn readdir(
         &mut self,
         _req: &fuser::Request<'_>,
@@ -164,23 +161,22 @@ impl Filesystem for PCloudFs {
         reply.ok();
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
     fn readdirplus(
         &mut self,
         _req: &fuser::Request<'_>,
-        ino: u64,
-        fh: u64,
+        _ino: u64,
+        _fh: u64,
         _offset: i64,
         reply: fuser::ReplyDirectoryPlus,
     ) {
         reply.error(Error::NotImplemented.into());
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
+    #[tracing::instrument(skip_all)]
     fn releasedir(
         &mut self,
         _req: &fuser::Request,
-        inode: u64,
+        _inode: u64,
         fh: u64,
         _flags: i32,
         reply: fuser::ReplyEmpty,
@@ -189,11 +185,11 @@ impl Filesystem for PCloudFs {
         reply.ok();
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
+    #[tracing::instrument(skip_all)]
     fn flush(
         &mut self,
         _req: &fuser::Request,
-        inode: u64,
+        _inode: u64,
         _fh: u64,
         _lock_owner: u64,
         reply: fuser::ReplyEmpty,
@@ -201,11 +197,11 @@ impl Filesystem for PCloudFs {
         reply.ok();
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
+    #[tracing::instrument(skip_all)]
     fn release(
         &mut self,
         _req: &fuser::Request,
-        inode: u64,
+        _inode: u64,
         fh: u64,
         _flags: i32,
         _lock_owner: Option<u64>,
@@ -216,12 +212,17 @@ impl Filesystem for PCloudFs {
         reply.ok();
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
-    fn access(&mut self, _req: &fuser::Request<'_>, ino: u64, mask: i32, reply: fuser::ReplyEmpty) {
+    fn access(
+        &mut self,
+        _req: &fuser::Request<'_>,
+        _ino: u64,
+        _mask: i32,
+        reply: fuser::ReplyEmpty,
+    ) {
         reply.ok();
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
+    #[tracing::instrument(skip_all)]
     fn open(&mut self, _req: &fuser::Request<'_>, ino: u64, flags: i32, reply: fuser::ReplyOpen) {
         match self.service.open_file(ino, flags) {
             Ok(res) => {
@@ -233,7 +234,7 @@ impl Filesystem for PCloudFs {
         }
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
+    #[tracing::instrument(skip_all)]
     fn read(
         &mut self,
         _req: &fuser::Request<'_>,
@@ -241,7 +242,7 @@ impl Filesystem for PCloudFs {
         fh: u64,
         offset: i64,
         size: u32,
-        flags: i32,
+        _flags: i32,
         _lock_owner: Option<u64>,
         reply: fuser::ReplyData,
     ) {
@@ -255,33 +256,31 @@ impl Filesystem for PCloudFs {
         };
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
     fn fallocate(
         &mut self,
         _req: &fuser::Request<'_>,
-        ino: u64,
-        fh: u64,
-        offset: i64,
-        length: i64,
-        mode: i32,
+        _ino: u64,
+        _fh: u64,
+        _offset: i64,
+        _length: i64,
+        _mode: i32,
         reply: fuser::ReplyEmpty,
     ) {
         reply.error(Error::NotImplemented.into());
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
     fn bmap(
         &mut self,
         _req: &fuser::Request<'_>,
-        ino: u64,
-        blocksize: u32,
-        idx: u64,
+        _ino: u64,
+        _blocksize: u32,
+        _idx: u64,
         reply: fuser::ReplyBmap,
     ) {
         reply.error(Error::NotImplemented.into());
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
+    #[tracing::instrument(skip_all)]
     fn create(
         &mut self,
         _req: &fuser::Request<'_>,
@@ -343,7 +342,7 @@ impl Filesystem for PCloudFs {
         };
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
+    #[tracing::instrument(skip_all)]
     fn getattr(&mut self, _req: &fuser::Request<'_>, ino: u64, reply: fuser::ReplyAttr) {
         match self.service.get_folder(ino) {
             Ok(folder) => {
@@ -360,7 +359,7 @@ impl Filesystem for PCloudFs {
         };
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
+    #[tracing::instrument(skip_all)]
     fn setattr(
         &mut self,
         _req: &fuser::Request<'_>,
@@ -385,12 +384,11 @@ impl Filesystem for PCloudFs {
         }
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
     fn setlk(
         &mut self,
         _req: &fuser::Request<'_>,
-        ino: u64,
-        fh: u64,
+        _ino: u64,
+        _fh: u64,
         _lock_owner: u64,
         _start: u64,
         _end: u64,
@@ -402,12 +400,11 @@ impl Filesystem for PCloudFs {
         reply.error(Error::NotImplemented.into());
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
     fn getlk(
         &mut self,
         _req: &fuser::Request<'_>,
-        ino: u64,
-        fh: u64,
+        _ino: u64,
+        _fh: u64,
         _lock_owner: u64,
         _start: u64,
         _end: u64,
@@ -418,16 +415,15 @@ impl Filesystem for PCloudFs {
         reply.error(Error::NotImplemented.into());
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
     fn copy_file_range(
         &mut self,
         _req: &fuser::Request<'_>,
-        ino_in: u64,
-        fh_in: u64,
-        offset_in: i64,
-        ino_out: u64,
-        fh_out: u64,
-        offset_out: i64,
+        _ino_in: u64,
+        _fh_in: u64,
+        _offset_in: i64,
+        _ino_out: u64,
+        _fh_out: u64,
+        _offset_out: i64,
         _len: u64,
         _flags: u32,
         reply: fuser::ReplyWrite,
@@ -435,48 +431,44 @@ impl Filesystem for PCloudFs {
         reply.error(Error::NotImplemented.into());
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
     fn fsync(
         &mut self,
         _req: &fuser::Request<'_>,
-        ino: u64,
-        fh: u64,
+        _ino: u64,
+        _fh: u64,
         _datasync: bool,
         reply: fuser::ReplyEmpty,
     ) {
         reply.error(Error::NotImplemented.into());
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
     fn fsyncdir(
         &mut self,
         _req: &fuser::Request<'_>,
-        ino: u64,
-        fh: u64,
+        _ino: u64,
+        _fh: u64,
         _datasync: bool,
         reply: fuser::ReplyEmpty,
     ) {
         reply.error(Error::NotImplemented.into());
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
     fn getxattr(
         &mut self,
         _req: &fuser::Request<'_>,
-        ino: u64,
-        name: &OsStr,
+        _ino: u64,
+        _name: &OsStr,
         _size: u32,
         reply: fuser::ReplyXattr,
     ) {
         reply.error(Error::NotImplemented.into());
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
     fn setxattr(
         &mut self,
         _req: &fuser::Request<'_>,
-        ino: u64,
-        name: &OsStr,
+        _ino: u64,
+        _name: &OsStr,
         _value: &[u8],
         _flags: i32,
         _position: u32,
@@ -485,23 +477,21 @@ impl Filesystem for PCloudFs {
         reply.error(Error::NotImplemented.into());
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
     fn removexattr(
         &mut self,
         _req: &fuser::Request<'_>,
-        ino: u64,
-        name: &OsStr,
+        _ino: u64,
+        _name: &OsStr,
         reply: fuser::ReplyEmpty,
     ) {
         reply.error(Error::NotImplemented.into());
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
     fn ioctl(
         &mut self,
         _req: &fuser::Request<'_>,
-        ino: u64,
-        fh: u64,
+        _ino: u64,
+        _fh: u64,
         _flags: u32,
         _cmd: u32,
         _in_data: &[u8],
@@ -511,35 +501,32 @@ impl Filesystem for PCloudFs {
         reply.error(Error::NotImplemented.into());
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
     fn link(
         &mut self,
         _req: &fuser::Request<'_>,
-        ino: u64,
-        newparent: u64,
+        _ino: u64,
+        _newparent: u64,
         _newname: &OsStr,
         reply: fuser::ReplyEntry,
     ) {
         reply.error(Error::NotImplemented.into());
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
     fn listxattr(
         &mut self,
         _req: &fuser::Request<'_>,
-        ino: u64,
+        _ino: u64,
         _size: u32,
         reply: fuser::ReplyXattr,
     ) {
         reply.error(Error::NotImplemented.into());
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
     fn lseek(
         &mut self,
         _req: &fuser::Request<'_>,
-        ino: u64,
-        fh: u64,
+        _ino: u64,
+        _fh: u64,
         _offset: i64,
         _whence: i32,
         reply: fuser::ReplyLseek,
@@ -547,7 +534,7 @@ impl Filesystem for PCloudFs {
         reply.error(Error::NotImplemented.into());
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
+    #[tracing::instrument(skip_all)]
     fn mkdir(
         &mut self,
         _req: &fuser::Request<'_>,
@@ -574,12 +561,11 @@ impl Filesystem for PCloudFs {
         };
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
     fn mknod(
         &mut self,
         _req: &fuser::Request<'_>,
-        parent: u64,
-        name: &OsStr,
+        _parent: u64,
+        _name: &OsStr,
         _mode: u32,
         _umask: u32,
         _rdev: u32,
@@ -588,12 +574,11 @@ impl Filesystem for PCloudFs {
         reply.error(Error::NotImplemented.into());
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
-    fn readlink(&mut self, _req: &fuser::Request<'_>, ino: u64, reply: fuser::ReplyData) {
+    fn readlink(&mut self, _req: &fuser::Request<'_>, _ino: u64, reply: fuser::ReplyData) {
         reply.error(Error::NotImplemented.into());
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
+    #[tracing::instrument(skip_all)]
     fn rename(
         &mut self,
         _req: &fuser::Request<'_>,
@@ -626,7 +611,7 @@ impl Filesystem for PCloudFs {
         }
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
+    #[tracing::instrument(skip_all)]
     fn rmdir(
         &mut self,
         _req: &fuser::Request<'_>,
@@ -648,12 +633,11 @@ impl Filesystem for PCloudFs {
         }
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
-    fn statfs(&mut self, _req: &fuser::Request<'_>, ino: u64, reply: fuser::ReplyStatfs) {
+    fn statfs(&mut self, _req: &fuser::Request<'_>, _ino: u64, reply: fuser::ReplyStatfs) {
         reply.error(Error::NotImplemented.into());
     }
 
-    #[tracing::instrument(skip(self, _req, reply))]
+    #[tracing::instrument(skip_all)]
     fn unlink(
         &mut self,
         _req: &fuser::Request<'_>,

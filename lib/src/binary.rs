@@ -259,7 +259,7 @@ pub struct BinaryClient {
 
 impl BinaryClient {
     #[tracing::instrument]
-    pub fn new(region: Region, credentials: Credentials) -> Result<Self, Error> {
+    pub fn new(credentials: Credentials, region: Region) -> Result<Self, Error> {
         Ok(Self {
             stream: TcpStream::connect(region.binary_url())?,
             credentials,
@@ -282,7 +282,7 @@ impl BinaryClient {
     }
 
     pub fn from_env() -> Result<Self, Error> {
-        Self::new(Region::from_env(), Credentials::from_env())
+        Self::new(Credentials::from_env(), Region::from_env())
     }
 
     fn read_result(&mut self) -> Result<JsonValue, Error> {
@@ -347,7 +347,7 @@ mod tests {
     #[tokio::test]
     async fn execute_list_root() {
         let creds = Credentials::from_env();
-        let mut protocol = BinaryClient::new(Region::eu(), creds).unwrap();
+        let mut protocol = BinaryClient::new(creds, Region::eu()).unwrap();
         let params: Vec<(&str, Value)> = vec![("folderid", Value::Number(0))];
         let result = protocol.send_command("listfolder", &params).unwrap();
         assert!(result.is_object());

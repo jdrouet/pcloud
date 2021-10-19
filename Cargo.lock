@@ -1139,9 +1139,12 @@ name = "pcloud-fuse"
 version = "0.2.0"
 dependencies = [
  "clap",
+ "dirs",
  "fuser",
  "libc",
  "pcloud",
+ "serde",
+ "serde_json",
  "tracing",
  "tracing-subscriber",
  "ttl_cache",

@@ -18,7 +18,7 @@ async fn downloading_with_read() {
     let (file_id, expected) = http_download_file().await;
     //
     let creds = Credentials::from_env();
-    let mut client = BinaryClient::new(Region::eu(), creds).unwrap();
+    let mut client = BinaryClient::new(creds, Region::eu()).unwrap();
     //
     let params = pcloud::fileops::open::Params::new(0).identifier(file_id.into());
     let fd = client.file_open(&params).unwrap();

@@ -149,7 +149,7 @@ mod tests {
     #[ignore]
     fn binary_success() {
         let name = crate::tests::random_name();
-        let mut client = BinaryClient::new(Region::eu(), Credentials::from_env()).unwrap();
+        let mut client = BinaryClient::new(Credentials::from_env(), Region::eu()).unwrap();
         let res = client
             .create_folder(&Params::new(name.as_str(), 0))
             .unwrap();

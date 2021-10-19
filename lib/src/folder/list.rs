@@ -176,7 +176,7 @@ mod tests {
 
     #[test]
     fn binary_success() {
-        let mut client = BinaryClient::new(Region::eu(), Credentials::from_env()).unwrap();
+        let mut client = BinaryClient::new(Credentials::from_env(), Region::eu()).unwrap();
         let res = client.list_folder(&Params::new(0)).unwrap();
         assert_eq!(res.base.name, "/");
     }

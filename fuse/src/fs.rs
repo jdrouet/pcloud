@@ -5,6 +5,26 @@ use std::ffi::OsStr;
 use std::os::raw::c_int;
 use std::time::{Duration, UNIX_EPOCH};
 
+macro_rules! parse_str {
+    ($value:ident, $reply:ident) => {
+        if let Some(value) = $value.to_str() {
+            value
+        } else {
+            tracing::error!("Path component is not UTF-8");
+            return $reply.error(Error::InvalidArgument.into());
+        }
+    };
+}
+
+macro_rules! resolve {
+    ($value:expr, $reply:ident) => {
+        match $value {
+            Ok(value) => value,
+            Err(err) => return $reply.error(err.into()),
+        }
+    };
+}
+
 fn create_file_attrs(file: &File) -> fuser::FileAttr {
     fuser::FileAttr {
         ino: (file.file_id + 1) as u64,
@@ -85,17 +105,8 @@ impl Filesystem for PCloudFs {
         name: &OsStr,
         reply: fuser::ReplyEntry,
     ) {
-        let name = if let Some(value) = name.to_str() {
-            value
-        } else {
-            tracing::error!("Path component is not UTF-8");
-            reply.error(Error::InvalidArgument.into());
-            return;
-        };
-        let parent = match self.service.get_folder(parent) {
-            Ok(value) => value,
-            Err(err) => return reply.error(err.into()),
-        };
+        let name = parse_str!(name, reply);
+        let parent = resolve!(self.service.get_folder(parent), reply);
         let entries = parent.contents.clone().unwrap_or_default();
         let entry = entries.iter().find(|item| item.base().name == name);
 
@@ -132,10 +143,7 @@ impl Filesystem for PCloudFs {
         mut reply: fuser::ReplyDirectory,
     ) {
         assert!(offset >= 0);
-        let folder = match self.service.get_folder(inode) {
-            Ok(value) => value,
-            Err(err) => return reply.error(err.into()),
-        };
+        let folder = resolve!(self.service.get_folder(inode), reply);
         let children = folder.contents.unwrap_or_default();
         for (index, entry) in children.iter().skip(offset as usize).enumerate() {
             let buffer_full = match entry {
@@ -185,7 +193,6 @@ impl Filesystem for PCloudFs {
         reply.ok();
     }
 
-    #[tracing::instrument(skip_all)]
     fn flush(
         &mut self,
         _req: &fuser::Request,
@@ -291,22 +298,9 @@ impl Filesystem for PCloudFs {
         _flags: i32,
         reply: fuser::ReplyCreate,
     ) {
-        let name = match name.to_str() {
-            Some(value) => value,
-            None => {
-                tracing::error!("Path component is not UTF-8");
-                reply.error(Error::InvalidArgument.into());
-                return;
-            }
-        };
-        let handle = match self.service.create_file(parent_id, name) {
-            Ok(handle) => handle,
-            Err(err) => return reply.error(err.into()),
-        };
-        let parent = match self.service.fetch_folder(parent_id) {
-            Ok(folder) => folder,
-            Err(err) => return reply.error(err.into()),
-        };
+        let name = parse_str!(name, reply);
+        let handle = resolve!(self.service.create_file(parent_id, name), reply);
+        let parent = resolve!(self.service.fetch_folder(parent_id), reply);
         if let Some(file) = parent.find_file(name) {
             let file_attr = create_file_attrs(&file);
 
@@ -544,14 +538,7 @@ impl Filesystem for PCloudFs {
         _umask: u32,
         reply: fuser::ReplyEntry,
     ) {
-        let name = match name.to_str() {
-            Some(value) => value,
-            None => {
-                tracing::error!("Path component is not UTF-8");
-                reply.error(Error::InvalidArgument.into());
-                return;
-            }
-        };
+        let name = parse_str!(name, reply);
         match self.service.create_folder(parent, name) {
             Ok(folder) => {
                 let attrs = create_folder_attrs(&folder);
@@ -589,22 +576,8 @@ impl Filesystem for PCloudFs {
         _flags: u32,
         reply: fuser::ReplyEmpty,
     ) {
-        let name = match name.to_str() {
-            Some(value) => value,
-            None => {
-                tracing::error!("Path component is not UTF-8");
-                reply.error(Error::InvalidArgument.into());
-                return;
-            }
-        };
-        let new_name = match new_name.to_str() {
-            Some(value) => value,
-            None => {
-                tracing::error!("Path component is not UTF-8");
-                reply.error(Error::InvalidArgument.into());
-                return;
-            }
-        };
+        let name = parse_str!(name, reply);
+        let new_name = parse_str!(new_name, reply);
         match self.service.rename(parent, name, new_parent, new_name) {
             Ok(_) => reply.ok(),
             Err(err) => reply.error(err.into()),
@@ -619,14 +592,7 @@ impl Filesystem for PCloudFs {
         name: &OsStr,
         reply: fuser::ReplyEmpty,
     ) {
-        let name = match name.to_str() {
-            Some(value) => value,
-            None => {
-                tracing::error!("Path component is not UTF-8");
-                reply.error(Error::InvalidArgument.into());
-                return;
-            }
-        };
+        let name = parse_str!(name, reply);
         match self.service.remove_folder(parent, name) {
             Ok(_) => reply.ok(),
             Err(err) => reply.error(err.into()),
@@ -645,14 +611,7 @@ impl Filesystem for PCloudFs {
         name: &OsStr,
         reply: fuser::ReplyEmpty,
     ) {
-        let name = match name.to_str() {
-            Some(value) => value,
-            None => {
-                tracing::error!("Path component is not UTF-8");
-                reply.error(Error::InvalidArgument.into());
-                return;
-            }
-        };
+        let name = parse_str!(name, reply);
         match self.service.remove_file(parent, name) {
             Ok(_) => reply.ok(),
             Err(err) => reply.error(err.into()),

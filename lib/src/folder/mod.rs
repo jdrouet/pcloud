@@ -68,7 +68,7 @@ mod tests {
     #[test]
     fn binary_success() {
         let creds = Credentials::from_env();
-        let mut client = BinaryClient::new(Region::eu(), creds).unwrap();
+        let mut client = BinaryClient::new(creds, Region::eu()).unwrap();
         let folder = client
             .create_folder(&super::create::Params::new(crate::tests::random_name(), 0))
             .unwrap();

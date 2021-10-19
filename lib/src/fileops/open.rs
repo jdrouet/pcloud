@@ -75,7 +75,7 @@ mod tests {
     #[test]
     fn open_existing_file() {
         let creds = Credentials::from_env();
-        let mut client = BinaryClient::new(Region::eu(), creds).unwrap();
+        let mut client = BinaryClient::new(creds, Region::eu()).unwrap();
         let params = Params::new(0).identifier(5837100991.into());
         client.file_open(&params).unwrap();
     }

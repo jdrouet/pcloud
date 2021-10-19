@@ -81,6 +81,30 @@ impl PartialOrd for Folder {
     }
 }
 
+impl Folder {
+    pub fn find_entry(&self, name: &str) -> Option<&Entry> {
+        self.contents
+            .as_ref()
+            .and_then(|list| list.iter().find(|item| item.base().name == name))
+    }
+
+    pub fn find_file(&self, name: &str) -> Option<&File> {
+        self.contents.as_ref().and_then(|list| {
+            list.iter()
+                .filter_map(|item| item.as_file())
+                .find(|item| item.base.name == name)
+        })
+    }
+
+    pub fn find_folder(&self, name: &str) -> Option<&Folder> {
+        self.contents.as_ref().and_then(|list| {
+            list.iter()
+                .filter_map(|item| item.as_folder())
+                .find(|item| item.base.name == name)
+        })
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(untagged)]
 pub enum Entry {
@@ -140,7 +164,14 @@ impl Entry {
         matches!(self, Self::File(_))
     }
 
-    pub fn as_file(self) -> Option<File> {
+    pub fn into_file(self) -> Option<File> {
+        match self {
+            Self::File(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    pub fn as_file(&self) -> Option<&File> {
         match self {
             Self::File(value) => Some(value),
             _ => None,
@@ -158,7 +189,14 @@ impl Entry {
         matches!(self, Self::Folder(_))
     }
 
-    pub fn as_folder(self) -> Option<Folder> {
+    pub fn into_folder(self) -> Option<Folder> {
+        match self {
+            Self::Folder(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    pub fn as_folder(&self) -> Option<&Folder> {
         match self {
             Self::Folder(value) => Some(value),
             _ => None,

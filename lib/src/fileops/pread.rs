@@ -1,7 +1,9 @@
-use crate::binary::{build_buffer, BinaryClient, Value as BinaryValue};
+use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::error::Error;
 use crate::request::Response;
 use std::io::Read;
+
+const MAX_SIZE: usize = 1024 * 64;
 
 #[derive(Debug, serde::Deserialize)]
 pub struct Payload {
@@ -23,7 +25,10 @@ impl Params {
     fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
         vec![
             ("fd", BinaryValue::Number(self.fd as u64)),
-            ("count", BinaryValue::Number(self.count as u64)),
+            (
+                "count",
+                BinaryValue::Number(MAX_SIZE.min(self.count) as u64),
+            ),
             ("offset", BinaryValue::Number(self.offset as u64)),
         ]
     }
@@ -38,8 +43,11 @@ impl BinaryClient {
             tracing::error!("unable to read the length: {:?}", err);
             Error::ResponseFormat
         })?;
-        let mut buffer: Vec<u8> = build_buffer(length);
-        self.stream.read(&mut buffer).map_err(|err| {
+        if length == 0 {
+            return Ok(Vec::new());
+        }
+        let mut buffer: Vec<u8> = vec![0; length];
+        self.stream.read_exact(&mut buffer).map_err(|err| {
             tracing::error!("unable to read the data: {:?}", err);
             Error::ResponseFormat
         })?;

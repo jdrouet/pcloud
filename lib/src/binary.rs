@@ -5,12 +5,6 @@ use std::io::prelude::*;
 use std::io::{Error as IoError, Read};
 use std::net::TcpStream;
 
-pub(crate) fn build_buffer(len: usize) -> Vec<u8> {
-    let mut res = Vec::with_capacity(len);
-    (0..len).for_each(|_| res.push(0));
-    res
-}
-
 fn bytes_to_u64(bytes: &[u8]) -> u64 {
     let mut buffer: [u8; 8] = [0; 8];
     buffer[..bytes.len()].clone_from_slice(bytes);
@@ -27,7 +21,7 @@ impl BinaryReader {
         let mut length: [u8; 4] = [0; 4];
         reader.read_exact(&mut length)?;
         let length = u32::from_le_bytes(length) as usize;
-        let mut buffer = build_buffer(length);
+        let mut buffer = vec![0; length];
         reader.read_exact(&mut buffer)?;
         Ok(Self { buffer, offset: 0 })
     }
@@ -265,7 +259,7 @@ pub struct BinaryClient {
 
 impl BinaryClient {
     #[tracing::instrument]
-    pub fn new(region: Region, credentials: Credentials) -> Result<Self, Error> {
+    pub fn new(credentials: Credentials, region: Region) -> Result<Self, Error> {
         Ok(Self {
             stream: TcpStream::connect(region.binary_url())?,
             credentials,
@@ -288,7 +282,7 @@ impl BinaryClient {
     }
 
     pub fn from_env() -> Result<Self, Error> {
-        Self::new(Region::from_env(), Credentials::from_env())
+        Self::new(Credentials::from_env(), Region::from_env())
     }
 
     fn read_result(&mut self) -> Result<JsonValue, Error> {
@@ -353,7 +347,7 @@ mod tests {
     #[tokio::test]
     async fn execute_list_root() {
         let creds = Credentials::from_env();
-        let mut protocol = BinaryClient::new(Region::eu(), creds).unwrap();
+        let mut protocol = BinaryClient::new(creds, Region::eu()).unwrap();
         let params: Vec<(&str, Value)> = vec![("folderid", Value::Number(0))];
         let result = protocol.send_command("listfolder", &params).unwrap();
         assert!(result.is_object());

@@ -58,7 +58,7 @@ struct EntryHandle {
 }
 
 impl EntryHandle {
-    fn folder(_folder_id: usize, read: bool, write: bool) -> Self {
+    fn folder(read: bool, write: bool) -> Self {
         Self {
             inner: EntryId::Folder,
             read,
@@ -66,7 +66,7 @@ impl EntryHandle {
         }
     }
 
-    fn file(_file_id: usize, handle: usize, read: bool, write: bool) -> Self {
+    fn file(handle: usize, read: bool, write: bool) -> Self {
         Self {
             inner: EntryId::File { handle },
             read,
@@ -216,6 +216,7 @@ impl PCloudService {
     }
 
     pub fn release(&mut self, fh: u64) {
+        tracing::trace!("release fh={}", fh);
         let mut handles = self
             .entry_handles
             .lock()
@@ -254,21 +255,20 @@ fn decode_flag(flags: i32) -> Result<(bool, bool), Error> {
 
 // open folder
 impl PCloudService {
-    fn allocate_folder(&mut self, folder_id: usize, read: bool, write: bool) -> u64 {
-        self.allocate_entry(EntryHandle::folder(folder_id, read, write))
+    fn allocate_folder(&mut self, read: bool, write: bool) -> u64 {
+        self.allocate_entry(EntryHandle::folder(read, write))
     }
 
-    pub fn open_folder(&mut self, inode: u64, flags: i32) -> Result<u64, Error> {
-        let folder_id = (inode - 1) as usize;
+    pub fn open_folder(&mut self, _inode: u64, flags: i32) -> Result<u64, Error> {
         let (read, write) = decode_flag(flags)?;
-        Ok(self.allocate_folder(folder_id, read, write))
+        Ok(self.allocate_folder(read, write))
     }
 }
 
 // open file
 impl PCloudService {
-    fn allocate_file(&mut self, file_id: usize, handle: usize, read: bool, write: bool) -> u64 {
-        self.allocate_entry(EntryHandle::file(file_id, handle, read, write))
+    fn allocate_file(&mut self, handle: usize, read: bool, write: bool) -> u64 {
+        self.allocate_entry(EntryHandle::file(handle, read, write))
     }
 
     pub fn open_file(&mut self, inode: u64, flags: i32) -> Result<u64, Error> {
@@ -283,7 +283,7 @@ impl PCloudService {
             tracing::error!("unable to fetch file: {:?}", err);
             Error::Network
         })?;
-        Ok(self.allocate_file(file_id, handle, read, write))
+        Ok(self.allocate_file(handle, read, write))
     }
 }
 
@@ -297,29 +297,23 @@ impl PCloudService {
         size: u32,
     ) -> Result<Vec<u8>, Error> {
         if !self.can_read(fh) {
+            tracing::warn!("does not have right to read on inode={} fh={}", inode, fh);
             return Err(Error::PermissionDenied);
         }
+        tracing::trace!("reading len={} from fh={} at offset={}", size, fh, offset);
         let file = self.get_file(inode)?;
         if file.size == Some(0) {
+            tracing::warn!("file ino={} fh={} is empty", inode, fh);
             return Ok(Vec::new());
         }
         let handle = self.get_file_handle(fh).ok_or(Error::InvalidArgument)?;
         let params = pcloud::fileops::pread::Params::new(handle, size as usize, offset as usize);
-        self.inner.file_pread(&params).map_err(|err| {
-            tracing::error!("unable to read: {:?}", err);
-            Error::Network
-        })
-    }
-}
-
-impl PCloudService {
-    pub fn create_file(&mut self, parent: u64, name: &str) -> Result<u64, Error> {
-        let params = pcloud::fileops::open::Params::new(0x0040)
-            .folder_id((parent - 1) as usize)
-            .name(name.to_string());
         self.inner
-            .file_open(&params)
-            .map(|item| item as u64)
+            .file_pread(&params)
+            .map(|data| {
+                tracing::trace!("received {} bytes", data.len());
+                data
+            })
             .map_err(|err| {
                 tracing::error!("unable to read: {:?}", err);
                 Error::Network
@@ -328,20 +322,49 @@ impl PCloudService {
 }
 
 impl PCloudService {
+    pub fn create_file(&mut self, parent: u64, name: &str) -> Result<u64, Error> {
+        let params = pcloud::fileops::open::Params::new(0x0042)
+            .folder_id((parent - 1) as usize)
+            .name(name.to_string());
+        let handle = self
+            .inner
+            .file_open(&params)
+            .map(|item| item as u64)
+            .map_err(|err| {
+                tracing::error!(
+                    "unable to read parent={}, name={:?}: {:?}",
+                    parent,
+                    name,
+                    err
+                );
+                Error::Network
+            })?;
+        Ok(self.allocate_file(handle as usize, true, true))
+    }
+}
+
+impl PCloudService {
     pub fn write_file(
         &mut self,
-        _inode: u64,
+        inode: u64,
         fh: u64,
         offset: i64,
         data: &[u8],
     ) -> Result<usize, Error> {
         if !self.can_write(fh) {
+            tracing::warn!("does not have right to write on inode={} fh={}", inode, fh);
             return Err(Error::PermissionDenied);
         }
+        tracing::trace!(
+            "writing len={} to fh={} at offset={}",
+            data.len(),
+            fh,
+            offset
+        );
         let handle = self.get_file_handle(fh).ok_or(Error::InvalidArgument)?;
         let params = pcloud::fileops::pwrite::Params::new(handle, offset as usize, data);
         self.inner.file_pwrite(&params).map_err(|err| {
-            tracing::error!("unable to read: {:?}", err);
+            tracing::error!("unable to read inode={}, fh={}: {:?}", inode, fh, err);
             Error::Network
         })
     }

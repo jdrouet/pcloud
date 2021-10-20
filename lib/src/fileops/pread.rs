@@ -35,8 +35,7 @@ impl Params {
 }
 
 impl BinaryClient {
-    #[tracing::instrument(skip(self))]
-    pub fn file_pread(&mut self, params: &Params) -> Result<Vec<u8>, Error> {
+    fn file_pread_part(&mut self, params: &Params) -> Result<Vec<u8>, Error> {
         let res = self.send_command("file_pread", &params.to_binary_params())?;
         let res: Response<Payload> = serde_json::from_value(res)?;
         let length = res.payload().map(|value| value.data).map_err(|err| {
@@ -51,6 +50,18 @@ impl BinaryClient {
             tracing::error!("unable to read the data: {:?}", err);
             Error::ResponseFormat
         })?;
+        Ok(buffer)
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub fn file_pread(&mut self, params: &Params) -> Result<Vec<u8>, Error> {
+        let mut buffer = Vec::new();
+        while buffer.len() < params.count {
+            let count = params.count.min(MAX_SIZE);
+            let part_params = Params::new(params.fd, count, params.offset + buffer.len());
+            let part = self.file_pread_part(&part_params)?;
+            buffer.extend(part);
+        }
         Ok(buffer)
     }
 }

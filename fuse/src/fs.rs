@@ -92,6 +92,7 @@ impl Filesystem for PCloudFs {
         _req: &fuser::Request,
         _config: &mut fuser::KernelConfig,
     ) -> Result<(), c_int> {
+        tracing::trace!("init");
         Ok(())
     }
 
@@ -119,7 +120,9 @@ impl Filesystem for PCloudFs {
         }
     }
 
-    fn forget(&mut self, _req: &fuser::Request<'_>, _ino: u64, _nlookup: u64) {}
+    fn forget(&mut self, _req: &fuser::Request<'_>, ino: u64, _nlookup: u64) {
+        tracing::trace!("forget ino={}", ino);
+    }
 
     #[tracing::instrument(skip_all)]
     fn opendir(&mut self, _req: &fuser::Request, inode: u64, flags: i32, reply: fuser::ReplyOpen) {
@@ -172,11 +175,12 @@ impl Filesystem for PCloudFs {
     fn readdirplus(
         &mut self,
         _req: &fuser::Request<'_>,
-        _ino: u64,
-        _fh: u64,
+        ino: u64,
+        fh: u64,
         _offset: i64,
         reply: fuser::ReplyDirectoryPlus,
     ) {
+        tracing::trace!("read dir plus ino={} fh={}", ino, fh);
         reply.error(Error::NotImplemented.into());
     }
 
@@ -196,11 +200,12 @@ impl Filesystem for PCloudFs {
     fn flush(
         &mut self,
         _req: &fuser::Request,
-        _inode: u64,
-        _fh: u64,
+        ino: u64,
+        fh: u64,
         _lock_owner: u64,
         reply: fuser::ReplyEmpty,
     ) {
+        tracing::trace!("flush ino={} fh={}", ino, fh);
         reply.ok();
     }
 
@@ -222,10 +227,11 @@ impl Filesystem for PCloudFs {
     fn access(
         &mut self,
         _req: &fuser::Request<'_>,
-        _ino: u64,
+        ino: u64,
         _mask: i32,
         reply: fuser::ReplyEmpty,
     ) {
+        tracing::trace!("access ino={}", ino);
         reply.ok();
     }
 
@@ -266,24 +272,26 @@ impl Filesystem for PCloudFs {
     fn fallocate(
         &mut self,
         _req: &fuser::Request<'_>,
-        _ino: u64,
-        _fh: u64,
+        ino: u64,
+        fh: u64,
         _offset: i64,
         _length: i64,
         _mode: i32,
         reply: fuser::ReplyEmpty,
     ) {
+        tracing::trace!("fallocate ino={} fh={}", ino, fh);
         reply.error(Error::NotImplemented.into());
     }
 
     fn bmap(
         &mut self,
         _req: &fuser::Request<'_>,
-        _ino: u64,
+        ino: u64,
         _blocksize: u32,
         _idx: u64,
         reply: fuser::ReplyBmap,
     ) {
+        tracing::trace!("bmap ino={}", ino);
         reply.error(Error::NotImplemented.into());
     }
 
@@ -412,38 +420,47 @@ impl Filesystem for PCloudFs {
     fn copy_file_range(
         &mut self,
         _req: &fuser::Request<'_>,
-        _ino_in: u64,
-        _fh_in: u64,
+        ino_in: u64,
+        fh_in: u64,
         _offset_in: i64,
-        _ino_out: u64,
-        _fh_out: u64,
+        ino_out: u64,
+        fh_out: u64,
         _offset_out: i64,
         _len: u64,
         _flags: u32,
         reply: fuser::ReplyWrite,
     ) {
+        tracing::trace!(
+            "copy file range ino_in={} fh_in={} ino_out={} fh_out={}",
+            ino_in,
+            fh_in,
+            ino_out,
+            fh_out
+        );
         reply.error(Error::NotImplemented.into());
     }
 
     fn fsync(
         &mut self,
         _req: &fuser::Request<'_>,
-        _ino: u64,
-        _fh: u64,
+        ino: u64,
+        fh: u64,
         _datasync: bool,
         reply: fuser::ReplyEmpty,
     ) {
+        tracing::trace!("fsync ino={} fh={}", ino, fh);
         reply.error(Error::NotImplemented.into());
     }
 
     fn fsyncdir(
         &mut self,
         _req: &fuser::Request<'_>,
-        _ino: u64,
-        _fh: u64,
+        ino: u64,
+        fh: u64,
         _datasync: bool,
         reply: fuser::ReplyEmpty,
     ) {
+        tracing::trace!("fsyncdir ino={} fh={}", ino, fh);
         reply.error(Error::NotImplemented.into());
     }
 
@@ -484,14 +501,15 @@ impl Filesystem for PCloudFs {
     fn ioctl(
         &mut self,
         _req: &fuser::Request<'_>,
-        _ino: u64,
-        _fh: u64,
+        ino: u64,
+        fh: u64,
         _flags: u32,
         _cmd: u32,
         _in_data: &[u8],
         _out_size: u32,
         reply: fuser::ReplyIoctl,
     ) {
+        tracing::trace!("ioctl ino={} fh={}", ino, fh);
         reply.error(Error::NotImplemented.into());
     }
 
@@ -551,13 +569,14 @@ impl Filesystem for PCloudFs {
     fn mknod(
         &mut self,
         _req: &fuser::Request<'_>,
-        _parent: u64,
-        _name: &OsStr,
+        parent: u64,
+        name: &OsStr,
         _mode: u32,
         _umask: u32,
         _rdev: u32,
         reply: fuser::ReplyEntry,
     ) {
+        tracing::trace!("mknod parent={} name={:?}", parent, name);
         reply.error(Error::NotImplemented.into());
     }
 
@@ -599,7 +618,8 @@ impl Filesystem for PCloudFs {
         }
     }
 
-    fn statfs(&mut self, _req: &fuser::Request<'_>, _ino: u64, reply: fuser::ReplyStatfs) {
+    fn statfs(&mut self, _req: &fuser::Request<'_>, ino: u64, reply: fuser::ReplyStatfs) {
+        tracing::trace!("statfs ino={}", ino);
         reply.error(Error::NotImplemented.into());
     }
 

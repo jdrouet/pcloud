@@ -28,8 +28,7 @@ impl<'d> Params<'d> {
 }
 
 impl BinaryClient {
-    #[tracing::instrument(skip(self))]
-    pub fn file_pwrite(&mut self, params: &Params) -> Result<usize, Error> {
+    fn file_pwrite_part(&mut self, params: &Params) -> Result<usize, Error> {
         let res =
             self.send_command_with_data("file_pwrite", &params.to_binary_params(), params.data)?;
         let res: Response<Payload> = serde_json::from_value(res)?;
@@ -37,5 +36,16 @@ impl BinaryClient {
             tracing::error!("unable to read the result: {:?}", err);
             Error::ResponseFormat
         })
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub fn file_pwrite(&mut self, params: &Params) -> Result<usize, Error> {
+        let mut offset = 0;
+        for chunk in params.data.chunks(super::MAX_BLOCK_SIZE) {
+            let chunk_params = Params::new(params.fd, offset, chunk);
+            self.file_pwrite_part(&chunk_params)?;
+            offset += chunk.len();
+        }
+        Ok(offset)
     }
 }

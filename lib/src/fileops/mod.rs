@@ -6,6 +6,8 @@ pub mod read;
 pub mod seek;
 pub mod size;
 
+const MAX_BLOCK_SIZE: usize = 1024 * 64;
+
 #[cfg(test)]
 mod tests {
     use crate::binary::BinaryClient;

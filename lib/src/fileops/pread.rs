@@ -3,8 +3,6 @@ use crate::error::Error;
 use crate::request::Response;
 use std::io::Read;
 
-const MAX_SIZE: usize = 1024 * 64;
-
 #[derive(Debug, serde::Deserialize)]
 pub struct Payload {
     data: usize,
@@ -27,7 +25,7 @@ impl Params {
             ("fd", BinaryValue::Number(self.fd as u64)),
             (
                 "count",
-                BinaryValue::Number(MAX_SIZE.min(self.count) as u64),
+                BinaryValue::Number(super::MAX_BLOCK_SIZE.min(self.count) as u64),
             ),
             ("offset", BinaryValue::Number(self.offset as u64)),
         ]
@@ -57,7 +55,7 @@ impl BinaryClient {
     pub fn file_pread(&mut self, params: &Params) -> Result<Vec<u8>, Error> {
         let mut buffer = Vec::new();
         while buffer.len() < params.count {
-            let count = params.count.min(MAX_SIZE);
+            let count = params.count.min(super::MAX_BLOCK_SIZE);
             let part_params = Params::new(params.fd, count, params.offset + buffer.len());
             let part = self.file_pread_part(&part_params)?;
             buffer.extend(part);

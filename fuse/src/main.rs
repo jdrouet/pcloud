@@ -18,6 +18,8 @@ struct Opts {
     config: Option<PathBuf>,
     #[clap(long, default_value = "info")]
     log_level: String,
+    #[clap(long, short)]
+    read_only: bool,
     mount_point: PathBuf,
 }
 
@@ -38,6 +40,20 @@ impl Opts {
             .try_init()
             .expect("couldn't init logger");
     }
+
+    fn options(&self) -> Vec<MountOption> {
+        let mut options = vec![
+            MountOption::AutoUnmount,
+            MountOption::NoExec,
+            MountOption::NoAtime,
+        ];
+        if self.read_only {
+            options.push(MountOption::RO);
+        } else {
+            options.push(MountOption::RW);
+        }
+        options
+    }
 }
 
 fn main() {
@@ -53,11 +69,7 @@ fn main() {
 
     let service = service::PCloudService::new(client);
 
-    let options = vec![
-        MountOption::AutoUnmount,
-        MountOption::NoExec,
-        MountOption::NoAtime,
-    ];
+    let options = opts.options();
 
     fuser::mount2(
         fs::PCloudFs::new(service),

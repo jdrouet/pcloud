@@ -4,10 +4,10 @@ mod moving;
 mod rename;
 mod upload;
 
-use clap::Clap;
+use clap::Parser;
 use pcloud::http::HttpClient;
 
-#[derive(Clap)]
+#[derive(Parser)]
 pub struct Command {
     #[clap(subcommand)]
     subcommand: SubCommand,
@@ -19,7 +19,7 @@ impl Command {
     }
 }
 
-#[derive(Clap)]
+#[derive(Parser)]
 enum SubCommand {
     Delete(delete::Command),
     Download(download::Command),

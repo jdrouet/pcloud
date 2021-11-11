@@ -1,5 +1,5 @@
 use async_recursion::async_recursion;
-use clap::Clap;
+use clap::Parser;
 use pcloud::entry::{Entry, File, Folder};
 use pcloud::error::Error as PCloudError;
 use pcloud::folder::list::Params;
@@ -78,7 +78,7 @@ fn get_local_entries(path: &Path) -> Result<HashMap<String, LocalEntry>, Error> 
     Ok(result)
 }
 
-#[derive(Clap)]
+#[derive(Parser)]
 pub struct Command {
     #[clap(long, about = "Disable uploading local files.")]
     disable_upload: bool,

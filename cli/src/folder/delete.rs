@@ -1,7 +1,7 @@
-use clap::Clap;
+use clap::Parser;
 use pcloud::http::HttpClient;
 
-#[derive(Clap)]
+#[derive(Parser)]
 pub struct Command {
     #[clap(short, long)]
     recursive: bool,

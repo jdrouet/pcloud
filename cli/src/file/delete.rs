@@ -1,7 +1,7 @@
-use clap::Clap;
+use clap::Parser;
 use pcloud::http::HttpClient;
 
-#[derive(Clap)]
+#[derive(Parser)]
 pub struct Command {
     file_id: usize,
 }

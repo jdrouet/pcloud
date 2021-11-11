@@ -3,10 +3,10 @@ mod delete;
 mod list;
 mod sync;
 
-use clap::Clap;
+use clap::Parser;
 use pcloud::http::HttpClient;
 
-#[derive(Clap)]
+#[derive(Parser)]
 pub struct Command {
     #[clap(default_value = "0")]
     folder_id: usize,
@@ -20,7 +20,7 @@ impl Command {
     }
 }
 
-#[derive(Clap)]
+#[derive(Parser)]
 enum SubCommand {
     Create(create::Command),
     Delete(delete::Command),

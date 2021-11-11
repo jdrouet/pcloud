@@ -2,11 +2,11 @@ mod config;
 mod file;
 mod folder;
 
-use clap::{crate_authors, crate_description, crate_version, Clap};
+use clap::{crate_authors, crate_description, crate_version, Parser};
 use pcloud::http::HttpClient;
 use std::path::PathBuf;
 
-#[derive(Clap)]
+#[derive(Parser)]
 #[clap(about = crate_description!(), author = crate_authors!(), version = crate_version!())]
 struct Command {
     #[clap(
@@ -33,7 +33,7 @@ impl Command {
     }
 }
 
-#[derive(Clap)]
+#[derive(Parser)]
 enum SubCommand {
     #[clap(about = "Folder related sub command")]
     Folder(folder::Command),

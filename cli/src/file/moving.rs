@@ -1,8 +1,8 @@
-use clap::Clap;
+use clap::Parser;
 use pcloud::file::rename::Params;
 use pcloud::http::HttpClient;
 
-#[derive(Clap)]
+#[derive(Parser)]
 pub struct Command {
     file_id: usize,
     folder_id: usize,

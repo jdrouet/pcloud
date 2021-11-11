@@ -1,8 +1,8 @@
-use clap::Clap;
+use clap::Parser;
 use pcloud::folder::create::Params;
 use pcloud::http::HttpClient;
 
-#[derive(Clap)]
+#[derive(Parser)]
 pub struct Command {
     name: String,
 }

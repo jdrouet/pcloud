@@ -1,9 +1,9 @@
-use clap::Clap;
+use clap::Parser;
 use pcloud::entry::Entry;
 use pcloud::folder::list::Params;
 use pcloud::http::HttpClient;
 
-#[derive(Clap)]
+#[derive(Parser)]
 pub struct Command;
 
 impl Command {

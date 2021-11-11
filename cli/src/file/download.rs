@@ -1,9 +1,9 @@
-use clap::Clap;
+use clap::Parser;
 use pcloud::http::HttpClient;
 use std::fs::File;
 use std::path::PathBuf;
 
-#[derive(Clap)]
+#[derive(Parser)]
 pub struct Command {
     file_id: usize,
     path: PathBuf,

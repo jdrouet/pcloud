@@ -2,6 +2,12 @@ EXTRA_ARGS?=
 EXTRA_TAGS?=
 VERSION?=local
 
+publish:
+	cd lib && cargo publish ${EXTRA_ARGS}
+	cd cli && cargo publish ${EXTRA_ARGS}
+	cd fuse && cargo publish ${EXTRA_ARGS}
+	cd http-server && cargo publish ${EXTRA_ARGS}
+
 clean:
 	rm -rf target/release target/i386 target/amd64 target/arm32v7 target/arm64v8
 

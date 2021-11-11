@@ -4,6 +4,9 @@ description = "CLI for pcloud"
 authors = ["Jeremie Drouet <jeremie.drouet@gmail.com>"]
 version = "0.2.0"
 edition = "2018"
+license = "MIT"
+readme = "readme.md"
+repository = "https://github.com/jdrouet/pcloud"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

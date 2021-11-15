@@ -3,8 +3,9 @@ mod file;
 mod folder;
 
 use clap::{crate_authors, crate_description, crate_version, Parser};
-use pcloud::http::HttpClient;
+use pcloud::http::{reqwest, HttpClient};
 use std::path::PathBuf;
+use std::time::Duration;
 
 #[derive(Parser)]
 #[clap(about = crate_description!(), author = crate_authors!(), version = crate_version!())]
@@ -15,6 +16,10 @@ struct Command {
         about = "Path to load the configuration file. Default to ~/.config/pcloud.json. If not found, loading from environment."
     )]
     config: Option<PathBuf>,
+    #[clap(long, about = "Connection timeout in seconds.", default_value = "1.0")]
+    connect_timeout: f64,
+    #[clap(long, about = "Request timeout in seconds.", default_value = "1.0")]
+    request_timeout: f64,
     #[clap(short, long)]
     verbose: bool,
     #[clap(subcommand)]
@@ -22,6 +27,14 @@ struct Command {
 }
 
 impl Command {
+    fn client(&self) -> reqwest::Client {
+        HttpClient::client_builder()
+            .connect_timeout(Duration::from_secs_f64(self.connect_timeout))
+            .timeout(Duration::from_secs_f64(self.request_timeout))
+            .build()
+            .expect("couldn't build http client")
+    }
+
     fn config(&self) -> PathBuf {
         if let Some(ref cfg) = self.config {
             cfg.clone()
@@ -65,6 +78,7 @@ async fn main() {
     cmd.set_log_level();
     let pcloud = config::Config::from_path(&cmd.config())
         .map(|cfg| cfg.build())
-        .unwrap_or_else(|_| HttpClient::from_env());
+        .unwrap_or_else(|_| HttpClient::from_env())
+        .with_client(cmd.client());
     cmd.execute(pcloud).await;
 }

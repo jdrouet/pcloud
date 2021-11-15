@@ -1,3 +1,5 @@
+pub use reqwest;
+
 use crate::credentials::Credentials;
 use crate::error::Error;
 use crate::region::Region;
@@ -45,6 +47,15 @@ impl HttpClient {
     pub fn from_env() -> Self {
         Self::new(Credentials::from_env(), Region::from_env())
     }
+
+    pub fn with_client(mut self, client: reqwest::Client) -> Self {
+        self.client = client;
+        self
+    }
+
+    pub fn client_builder() -> reqwest::ClientBuilder {
+        reqwest::ClientBuilder::new().user_agent(USER_AGENT)
+    }
 }
 
 impl HttpClient {
@@ -70,8 +81,7 @@ async fn read_response<T: serde::de::DeserializeOwned>(
 
 impl HttpClient {
     pub(crate) fn create_client() -> reqwest::Client {
-        reqwest::ClientBuilder::new()
-            .user_agent(USER_AGENT)
+        Self::client_builder()
             .build()
             .expect("couldn't create reqwest client")
     }

@@ -1,6 +1,7 @@
-target
+.cache-rust-analyzer
 .git
 .github
 .tmp
 Dockerfile
 readme.md
+target

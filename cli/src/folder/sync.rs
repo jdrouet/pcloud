@@ -90,11 +90,40 @@ pub struct Command {
     remove_after_download: bool,
     #[clap(long, about = "Keep partial file if upload fails.")]
     allow_partial_upload: bool,
+    #[clap(
+        long,
+        about = "Number of consecutive retry per command.",
+        default_value = "5"
+    )]
+    retries: u8,
     #[clap(about = "Local folder to synchronize.")]
     path: PathBuf,
 }
 
 impl Command {
+    #[async_recursion]
+    async fn do_download_file(
+        &self,
+        pcloud: &HttpClient,
+        file_id: usize,
+        path: &Path,
+        retries: u8,
+    ) -> Result<(), Error> {
+        let file = fs::File::create(&path)?;
+        match pcloud.download_file(file_id, file).await {
+            Ok(_) => Ok(()),
+            Err(err) => {
+                tracing::warn!("couldn't download file: {:?}", err);
+                if let Some(retries) = retries.checked_sub(1) {
+                    tracing::debug!("retrying file download");
+                    self.do_download_file(pcloud, file_id, path, retries).await
+                } else {
+                    Err(err.into())
+                }
+            }
+        }
+    }
+
     #[tracing::instrument(skip_all, level = "info")]
     async fn download_file(
         &self,
@@ -105,8 +134,8 @@ impl Command {
     ) -> Result<(), Error> {
         tracing::info!("downloading {} to {:?}", remote_name, local_path);
         let path = local_path.join(remote_name);
-        let file = fs::File::create(&path)?;
-        pcloud.download_file(remote_file.file_id, file).await?;
+        self.do_download_file(pcloud, remote_file.file_id, &path, self.retries)
+            .await?;
         tracing::info!("downloaded {} successfully", remote_name);
         if self.remove_after_download {
             tracing::info!("deleting {}", remote_name);
@@ -161,6 +190,28 @@ impl Command {
         Ok(())
     }
 
+    #[async_recursion]
+    async fn do_upload_file<'a>(
+        &self,
+        pcloud: &HttpClient,
+        file: &fs::File,
+        params: &pcloud::file::upload::Params<'a>,
+        retries: u8,
+    ) -> Result<(), Error> {
+        match pcloud.upload_file(file, &params).await {
+            Ok(_) => Ok(()),
+            Err(err) => {
+                tracing::warn!("couldn't upload file: {:?}", err);
+                if let Some(retries) = retries.checked_sub(1) {
+                    tracing::debug!("retrying file upload");
+                    self.do_upload_file(pcloud, file, params, retries).await
+                } else {
+                    Err(err.into())
+                }
+            }
+        }
+    }
+
     #[tracing::instrument(skip_all, level = "info")]
     async fn upload_file(
         &self,
@@ -173,7 +224,8 @@ impl Command {
         let file = fs::File::open(local_file)?;
         let params = pcloud::file::upload::Params::new(local_name, remote_folder.folder_id)
             .no_partial(!self.allow_partial_upload);
-        pcloud.upload_file(&file, &params).await?;
+        self.do_upload_file(pcloud, &file, &params, self.retries)
+            .await?;
         tracing::info!("uploaded {:?}", local_file);
         if self.remove_after_upload {
             tracing::info!("deleting file {:?}", local_file);

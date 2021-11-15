@@ -18,7 +18,7 @@ struct Command {
     config: Option<PathBuf>,
     #[clap(long, about = "Connection timeout in seconds.", default_value = "1.0")]
     connect_timeout: f64,
-    #[clap(long, about = "Request timeout in seconds.", default_value = "1.0")]
+    #[clap(long, about = "Request timeout in seconds.", default_value = "10.0")]
     request_timeout: f64,
     #[clap(short, long)]
     verbose: bool,

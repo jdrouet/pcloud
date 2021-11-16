@@ -1,3 +1,5 @@
+ARG VERSION=local
+
 FROM --platform=$BUILDPLATFORM rust:slim-bullseye AS fetcher
 
 WORKDIR /code/cli
@@ -40,8 +42,13 @@ COPY http-server/src /code/http-server/src
 COPY lib/src /code/lib/src
 
 FROM builder as builder-all
+ARG VERSION
 
 RUN cargo build --offline --release
+
+RUN mv /code/target/release/pcloud-cli /code/target/release/pcloud-cli-${VERSION}-gnu \
+  && mv /code/target/release/pcloud-fuse /code/target/release/pcloud-fuse-${VERSION}-gnu \
+  && mv /code/target/release/pcloud-http-server /code/target/release/pcloud-http-server-${VERSION}-gnu
 
 FROM builder as builder-cli
 
@@ -49,9 +56,9 @@ RUN cargo build --offline --release --package pcloud-cli
 
 FROM --platform=$BUILDPLATFORM scratch AS artifact
 
-COPY --from=builder-all /code/target/release/pcloud-cli /pcloud-cli
-COPY --from=builder-all /code/target/release/pcloud-fuse /pcloud-fuse
-COPY --from=builder-all /code/target/release/pcloud-http-server /pcloud-http-server
+COPY --from=builder-all /code/target/release/pcloud-cli-* /
+COPY --from=builder-all /code/target/release/pcloud-fuse-* /
+COPY --from=builder-all /code/target/release/pcloud-http-server-* /
 
 FROM debian:bullseye-slim AS cli
 

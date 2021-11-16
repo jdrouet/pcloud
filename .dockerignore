@@ -1,4 +1,5 @@
 target
+.cache-rust-analyzer
 .git
 .github
 .tmp

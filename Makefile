@@ -16,10 +16,32 @@ build: prebuild build-i386 build-amd64 build-arm32v7 build-arm64v8
 prebuild: clean
 	mkdir -p target/release
 
+build-all: build-gnu build-musl
+
+build-musl:
+	docker buildx build \
+		--platform linux/amd64,linux/arm64/v8 \
+		--file=scripts/alpine.Dockerfile \
+		--build-arg VERSION=${VERSION} \
+		--tag=pcloud:builder \
+		--target=artifact \
+		--output type=local,dest=$(shell pwd)/target/ \
+		.
+
+build-gnu:
+	docker buildx build \
+		--platform linux/i386,linux/amd64,linux/arm64/v8,linux/arm/v7 \
+		--file=scripts/debian.Dockerfile \
+		--build-arg VERSION=${VERSION} \
+		--tag=pcloud:builder \
+		--target=artifact \
+		--output type=local,dest=$(shell pwd)/target/ \
+		.
+
 build-i386: build-i386-gnu
 
 build-i386-gnu:
-	docker build \
+	docker buildx build \
 		--platform linux/i386 \
 		--file=scripts/debian.Dockerfile \
 		--tag=pcloud:builder \
@@ -33,7 +55,7 @@ build-i386-gnu:
 build-amd64: build-amd64-gnu build-amd64-musl
 
 build-amd64-gnu:
-	docker build \
+	docker buildx build \
 		--platform linux/amd64 \
 		--file=scripts/debian.Dockerfile \
 		--tag=pcloud:builder \
@@ -59,7 +81,7 @@ build-amd64-musl:
 build-arm32v7: build-arm32v7-gnu
 
 build-arm32v7-gnu:
-	docker build \
+	docker buildx build \
 		--platform linux/arm/v7 \
 		--file=scripts/debian.Dockerfile \
 		--tag=pcloud:builder \
@@ -73,7 +95,7 @@ build-arm32v7-gnu:
 build-arm64v8: build-arm64v8-gnu build-arm64v8-musl
 
 build-arm64v8-gnu:
-	docker build \
+	docker buildx build \
 		--platform linux/arm64/v8 \
 		--file=scripts/debian.Dockerfile \
 		--tag=pcloud:builder \
@@ -85,7 +107,7 @@ build-arm64v8-gnu:
 	mv target/arm64v8/pcloud-http-server target/release/pcloud-http-server_${VERSION}_arm64v8-gnu
 
 build-arm64v8-musl:
-	docker build \
+	docker buildx build \
 		--platform linux/arm64/v8 \
 		--file=scripts/alpine.Dockerfile \
 		--tag=pcloud:builder \

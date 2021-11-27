@@ -1,0 +1,33 @@
+version: 2
+updates:
+  - package-ecosystem: "cargo"
+    directory: "/cli"
+    schedule:
+      interval: "daily"
+    labels:
+      - "cli"
+      - "dependencies"
+
+  - package-ecosystem: "cargo"
+    directory: "/fuse"
+    schedule:
+      interval: "daily"
+    labels:
+      - "fuse"
+      - "dependencies"
+
+  - package-ecosystem: "cargo"
+    directory: "/http-server"
+    schedule:
+      interval: "daily"
+    labels:
+      - "http-server"
+      - "dependencies"
+
+  - package-ecosystem: "cargo"
+    directory: "/lib"
+    schedule:
+      interval: "daily"
+    labels:
+      - "lib"
+      - "dependencies"

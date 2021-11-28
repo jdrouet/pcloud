@@ -26,7 +26,7 @@ RUN mkdir -p /code/.cargo \
 
 FROM rust:alpine AS builder
 
-RUN apk add --no-cache fuse-dev libc-dev pkgconfig
+RUN apk add --no-cache fuse-dev libc-dev musl-dev pkgconfig
 
 ENV USER=root
 
@@ -44,9 +44,9 @@ COPY lib/src /code/lib/src
 RUN cargo build --offline --release
 ARG VERSION
 
-RUN mv /code/target/release/pcloud-cli /code/target/release/pcloud-cli-${VERSION}-musl \
-  && mv /code/target/release/pcloud-fuse /code/target/release/pcloud-fuse-${VERSION}-musl \
-  && mv /code/target/release/pcloud-http-server /code/target/release/pcloud-http-server-${VERSION}-musl
+RUN cp /code/target/release/pcloud-cli /code/target/release/pcloud-cli-${VERSION}-musl \
+  && cp /code/target/release/pcloud-fuse /code/target/release/pcloud-fuse-${VERSION}-musl \
+  && cp /code/target/release/pcloud-http-server /code/target/release/pcloud-http-server-${VERSION}-musl
 
 FROM --platform=$BUILDPLATFORM scratch AS artifact
 

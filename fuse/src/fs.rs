@@ -96,8 +96,6 @@ impl Filesystem for PCloudFs {
         Ok(())
     }
 
-    fn destroy(&mut self, _req: &fuser::Request) {}
-
     #[tracing::instrument(skip_all)]
     fn lookup(
         &mut self,

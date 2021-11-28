@@ -1,4 +1,5 @@
 mod handler;
+mod render;
 
 use actix_web::{web, App, HttpServer};
 use pcloud::credentials::Credentials;

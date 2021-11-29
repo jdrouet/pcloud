@@ -44,11 +44,12 @@ impl ResponseError for Error {
     }
 }
 
+#[derive(Clone)]
 pub struct RootFolder(String);
 
 impl RootFolder {
-    pub fn from_env() -> Self {
-        Self(std::env::var("ROOT_FOLDER").unwrap_or_else(|_| "/".into()))
+    pub fn new(root: String) -> Self {
+        Self(root)
     }
 
     pub fn format(&self, path: &str) -> String {

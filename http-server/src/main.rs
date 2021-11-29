@@ -32,6 +32,14 @@ struct Command {
 
     #[clap(
         long,
+        env = "ROOT_FOLDER",
+        default_value = "/",
+        about = "Folder to serve by default."
+    )]
+    root_folder: String,
+
+    #[clap(
+        long,
         env = "HOST",
         default_value = "localhost",
         about = "Host to bind the server."
@@ -59,6 +67,10 @@ impl Command {
     fn binding(&self) -> String {
         format!("{}:{}", self.host, self.port)
     }
+
+    fn root_folder(&self) -> handler::RootFolder {
+        handler::RootFolder::new(self.root_folder.clone())
+    }
 }
 
 #[actix_web::main]
@@ -68,11 +80,12 @@ async fn main() -> std::io::Result<()> {
     let cmd = Command::parse();
 
     let client = cmd.client();
+    let root = cmd.root_folder();
 
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(client.clone()))
-            .app_data(web::Data::new(handler::RootFolder::from_env()))
+            .app_data(web::Data::new(root.clone()))
             .service(web::resource("{tail:.*}").to(handler::handle))
     })
     .bind(cmd.binding())?

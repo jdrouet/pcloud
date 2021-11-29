@@ -1133,6 +1133,7 @@ name = "pcloud-http-server"
 version = "0.2.1"
 dependencies = [
  "actix-web",
+ "clap",
  "env_logger",
  "human_bytes",
  "log",

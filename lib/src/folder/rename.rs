@@ -7,25 +7,19 @@ use crate::request::Response;
 
 #[derive(Debug)]
 pub enum Params {
-    Rename {
-        folder_id: usize,
-        name: String,
-    },
-    Move {
-        folder_id: usize,
-        to_folder_id: usize,
-    },
+    Rename { folder_id: u64, name: String },
+    Move { folder_id: u64, to_folder_id: u64 },
 }
 
 impl Params {
-    pub fn new_rename<S: Into<String>>(folder_id: usize, name: S) -> Self {
+    pub fn new_rename<S: Into<String>>(folder_id: u64, name: S) -> Self {
         Self::Rename {
             folder_id,
             name: name.into(),
         }
     }
 
-    pub fn new_move(folder_id: usize, to_folder_id: usize) -> Self {
+    pub fn new_move(folder_id: u64, to_folder_id: u64) -> Self {
         Self::Move {
             folder_id,
             to_folder_id,
@@ -51,15 +45,15 @@ impl Params {
     pub fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
         match self {
             Self::Rename { folder_id, name } => vec![
-                ("folderid", BinaryValue::Number(*folder_id as u64)),
+                ("folderid", BinaryValue::Number(*folder_id)),
                 ("toname", BinaryValue::Text(name.to_string())),
             ],
             Self::Move {
                 folder_id,
                 to_folder_id,
             } => vec![
-                ("folderid", BinaryValue::Number(*folder_id as u64)),
-                ("tofolderid", BinaryValue::Number(*to_folder_id as u64)),
+                ("folderid", BinaryValue::Number(*folder_id)),
+                ("tofolderid", BinaryValue::Number(*to_folder_id)),
             ],
         }
     }

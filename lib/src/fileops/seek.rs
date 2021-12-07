@@ -10,13 +10,13 @@ struct Payload {
 
 #[derive(Debug, Default)]
 pub struct Params {
-    fd: usize,
+    fd: u64,
     offset: i64,
     whence: u8,
 }
 
 impl Params {
-    pub fn new(fd: usize, pos: SeekFrom) -> Self {
+    pub fn new(fd: u64, pos: SeekFrom) -> Self {
         let (offset, whence): (i64, u8) = match pos {
             SeekFrom::Start(value) => (value as i64, 0),
             SeekFrom::Current(value) => (value, 1),
@@ -27,7 +27,7 @@ impl Params {
 
     fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
         vec![
-            ("fd", BinaryValue::Number(self.fd as u64)),
+            ("fd", BinaryValue::Number(self.fd)),
             ("offset", BinaryValue::Number(self.offset as u64)),
             ("whence", BinaryValue::Number(self.whence as u64)),
         ]

@@ -35,8 +35,8 @@ enum LocalEntry {
 impl LocalEntry {
     fn path(&self) -> &Path {
         match self {
-            Self::File(path) => &path,
-            Self::Folder(path) => &path,
+            Self::File(path) => path,
+            Self::Folder(path) => path,
         }
     }
 
@@ -242,12 +242,9 @@ impl Command {
                 .get(name)
                 .and_then(|remote| local_entries.get(name).map(|local| (name, remote, local)))
         }) {
-            match remote {
-                Entry::Folder(remote_folder) => {
-                    self.sync_folder(pcloud, remote_folder, local.path())
-                        .await?;
-                }
-                _ => {} // TODO check the newest version
+            if let Entry::Folder(remote_folder) = remote {
+                self.sync_folder(pcloud, remote_folder, local.path())
+                    .await?;
             }
         }
         Ok(())
@@ -293,7 +290,7 @@ impl Command {
         Ok(())
     }
 
-    pub async fn execute(&self, pcloud: HttpClient, folder_id: usize) {
+    pub async fn execute(&self, pcloud: HttpClient, folder_id: u64) {
         let params = Params::new(folder_id);
         let remote_folder = pcloud
             .list_folder(&params)

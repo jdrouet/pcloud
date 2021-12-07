@@ -98,7 +98,7 @@ impl BinaryReader {
             let data = self.get_bytes((ftype - 3) as usize);
             bytes_to_u64(&data) as usize
         };
-        cache.get(idx).cloned().ok_or_else(|| Error::TextCache(idx))
+        cache.get(idx).cloned().ok_or(Error::TextCache(idx))
     }
 
     fn parse_type(&mut self, cache: &mut Vec<String>, ftype: u8) -> Result<JsonValue, Error> {

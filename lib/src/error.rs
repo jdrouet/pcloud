@@ -16,7 +16,7 @@ impl Error {
 
     pub fn as_binary(&self) -> Option<&crate::binary::Error> {
         match self {
-            Self::Binary(value) => Some(&value),
+            Self::Binary(value) => Some(value),
             _ => None,
         }
     }

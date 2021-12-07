@@ -78,7 +78,7 @@ impl Params {
             Self::Move { from, to } => {
                 match from {
                     FileIdentifier::FileId(id) => {
-                        res.push(("fileid", BinaryValue::Number(*id as u64)));
+                        res.push(("fileid", BinaryValue::Number(*id)));
                     }
                     FileIdentifier::Path(value) => {
                         res.push(("path", BinaryValue::Text(value.to_string())));
@@ -86,7 +86,7 @@ impl Params {
                 };
                 match to {
                     FolderIdentifier::FolderId(id) => {
-                        res.push(("tofolderid", BinaryValue::Number(*id as u64)));
+                        res.push(("tofolderid", BinaryValue::Number(*id)));
                     }
                     FolderIdentifier::Path(value) => {
                         res.push(("topath", BinaryValue::Text(value.to_string())));
@@ -96,7 +96,7 @@ impl Params {
             Self::Rename { from, to_name } => {
                 match from {
                     FileIdentifier::FileId(id) => {
-                        res.push(("fileid", BinaryValue::Number(*id as u64)));
+                        res.push(("fileid", BinaryValue::Number(*id)));
                     }
                     FileIdentifier::Path(value) => {
                         res.push(("path", BinaryValue::Text(value.to_string())));

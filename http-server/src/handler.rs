@@ -52,7 +52,7 @@ impl RootFolder {
     }
 
     pub fn format(&self, path: &str) -> String {
-        let root = self.0.strip_suffix('/').unwrap_or(self.0.as_str());
+        let root = self.0.strip_suffix('/').unwrap_or_else(|| self.0.as_str());
         let sub = path.strip_prefix('/').unwrap_or(path);
         format!("{}/{}", root, sub)
     }

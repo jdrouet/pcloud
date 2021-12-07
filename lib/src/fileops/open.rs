@@ -5,14 +5,14 @@ use crate::request::Response;
 
 #[derive(Debug, serde::Deserialize)]
 pub struct Payload {
-    fd: usize,
+    fd: u64,
 }
 
 #[derive(Debug)]
 pub struct Params {
     flags: u16,
     identifier: Option<FileIdentifier>,
-    folder_id: Option<usize>,
+    folder_id: Option<u64>,
     name: Option<String>,
 }
 
@@ -31,7 +31,7 @@ impl Params {
         self
     }
 
-    pub fn folder_id(mut self, value: usize) -> Self {
+    pub fn folder_id(mut self, value: u64) -> Self {
         self.folder_id = Some(value);
         self
     }
@@ -47,7 +47,7 @@ impl Params {
             res.extend_from_slice(&identifier.to_binary_params());
         }
         if let Some(folder_id) = self.folder_id {
-            res.push(("folderid", BinaryValue::Number(folder_id as u64)));
+            res.push(("folderid", BinaryValue::Number(folder_id)));
         }
         if let Some(ref name) = self.name {
             res.push(("name", BinaryValue::Text(name.to_string())));
@@ -58,7 +58,7 @@ impl Params {
 
 impl BinaryClient {
     #[tracing::instrument(skip(self))]
-    pub fn file_open(&mut self, params: &Params) -> Result<usize, Error> {
+    pub fn file_open(&mut self, params: &Params) -> Result<u64, Error> {
         let res = self.send_command("file_open", &params.to_binary_params())?;
         let res: Response<Payload> = serde_json::from_value(res)?;
         res.payload().map(|value| value.fd)

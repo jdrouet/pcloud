@@ -75,6 +75,6 @@ impl Region {
     pub fn from_env() -> Self {
         Self::from_split_env()
             .or_else(Self::from_name_env)
-            .unwrap_or_else(Self::default)
+            .unwrap_or_default()
     }
 }

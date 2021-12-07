@@ -17,7 +17,7 @@ pub struct FileResponse {
 #[derive(Debug)]
 pub enum FileIdentifier {
     Path(String),
-    FileId(usize),
+    FileId(u64),
 }
 
 impl Default for FileIdentifier {
@@ -38,8 +38,8 @@ impl From<String> for FileIdentifier {
     }
 }
 
-impl From<usize> for FileIdentifier {
-    fn from(value: usize) -> Self {
+impl From<u64> for FileIdentifier {
+    fn from(value: u64) -> Self {
         Self::FileId(value)
     }
 }
@@ -55,7 +55,7 @@ impl FileIdentifier {
     pub fn to_binary_params(&self) -> Vec<(&str, BValue)> {
         match self {
             Self::Path(value) => vec![("path", BValue::Text(value.clone()))],
-            Self::FileId(value) => vec![("fileid", BValue::Number(*value as u64))],
+            Self::FileId(value) => vec![("fileid", BValue::Number(*value))],
         }
     }
 }

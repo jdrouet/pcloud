@@ -8,12 +8,12 @@ use crate::request::Response;
 #[derive(Debug)]
 pub struct Params {
     name: String,
-    parent_id: usize,
+    parent_id: u64,
     ignore_exists: bool,
 }
 
 impl Params {
-    pub fn new<S: Into<String>>(name: S, parent_id: usize) -> Self {
+    pub fn new<S: Into<String>>(name: S, parent_id: u64) -> Self {
         Self {
             name: name.into(),
             parent_id,
@@ -44,7 +44,7 @@ impl Params {
     pub fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
         vec![
             ("name", BinaryValue::Text(self.name.clone())),
-            ("folderid", BinaryValue::Number(self.parent_id as u64)),
+            ("folderid", BinaryValue::Number(self.parent_id)),
         ]
     }
 }

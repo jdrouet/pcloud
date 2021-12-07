@@ -9,7 +9,7 @@ pub struct Command {
 
 impl Command {
     #[tracing::instrument(skip_all)]
-    pub async fn execute(&self, pcloud: HttpClient, folder_id: usize) {
+    pub async fn execute(&self, pcloud: HttpClient, folder_id: u64) {
         let params = Params::new(&self.name, folder_id);
         match pcloud.create_folder(&params).await {
             Ok(res) => {

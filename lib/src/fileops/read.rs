@@ -10,18 +10,18 @@ pub struct Payload {
 
 #[derive(Debug)]
 pub struct Params {
-    fd: usize,
+    fd: u64,
     count: usize,
 }
 
 impl Params {
-    pub fn new(fd: usize, count: usize) -> Self {
+    pub fn new(fd: u64, count: usize) -> Self {
         Self { fd, count }
     }
 
     fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
         vec![
-            ("fd", BinaryValue::Number(self.fd as u64)),
+            ("fd", BinaryValue::Number(self.fd)),
             ("count", BinaryValue::Number(self.count as u64)),
         ]
     }
@@ -30,7 +30,6 @@ impl Params {
 impl BinaryClient {
     #[tracing::instrument(skip(self))]
     pub fn file_read(&mut self, params: &Params) -> Result<Vec<u8>, Error> {
-        eprintln!("file_read({}, {})", params.fd, params.count);
         let res = self.send_command("file_read", &params.to_binary_params())?;
         let res: Response<Payload> = serde_json::from_value(res)?;
         let length = res.payload().map(|value| value.data).map_err(|err| {

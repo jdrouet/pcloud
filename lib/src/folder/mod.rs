@@ -6,7 +6,7 @@ pub mod rename;
 use crate::binary::Value as BinaryValue;
 use crate::entry::Folder;
 
-pub const ROOT: usize = 0;
+pub const ROOT: u64 = 0;
 
 #[derive(Debug, serde::Deserialize)]
 pub(crate) struct FolderResponse {
@@ -16,7 +16,7 @@ pub(crate) struct FolderResponse {
 #[derive(Debug)]
 pub enum FolderIdentifier {
     Path(String),
-    FolderId(usize),
+    FolderId(u64),
 }
 
 impl Default for FolderIdentifier {
@@ -37,8 +37,8 @@ impl From<String> for FolderIdentifier {
     }
 }
 
-impl From<usize> for FolderIdentifier {
-    fn from(value: usize) -> Self {
+impl From<u64> for FolderIdentifier {
+    fn from(value: u64) -> Self {
         Self::FolderId(value)
     }
 }
@@ -54,7 +54,7 @@ impl FolderIdentifier {
     pub fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
         match self {
             Self::Path(value) => vec![("path", BinaryValue::Text(value.clone()))],
-            Self::FolderId(value) => vec![("folderid", BinaryValue::Number(*value as u64))],
+            Self::FolderId(value) => vec![("folderid", BinaryValue::Number(*value))],
         }
     }
 }

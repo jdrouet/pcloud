@@ -47,7 +47,7 @@ impl From<Error> for i32 {
 }
 
 enum EntryId {
-    File { handle: usize },
+    File { handle: u64 },
     Folder,
 }
 
@@ -66,7 +66,7 @@ impl EntryHandle {
         }
     }
 
-    fn file(handle: usize, read: bool, write: bool) -> Self {
+    fn file(handle: u64, read: bool, write: bool) -> Self {
         Self {
             inner: EntryId::File { handle },
             read,
@@ -124,7 +124,7 @@ impl PCloudService {
 
     pub fn fetch_file(&mut self, inode: u64) -> Result<File, Error> {
         self.inner
-            .get_info_file(inode as usize - 1)
+            .get_info_file(inode - 1)
             .map(|res| self.add_file(inode, res.metadata))
             .map_err(|err| {
                 tracing::error!("unable to fetch file: {:?}", err);
@@ -159,7 +159,7 @@ impl PCloudService {
     }
 
     pub fn fetch_folder(&mut self, inode: u64) -> Result<Folder, Error> {
-        let params = pcloud::folder::list::Params::new(inode as usize - 1);
+        let params = pcloud::folder::list::Params::new(inode - 1);
         self.inner
             .list_folder(&params)
             .map(|res| self.add_folder(inode, res))
@@ -224,7 +224,7 @@ impl PCloudService {
         handles.remove(&fh);
     }
 
-    fn get_file_handle(&self, fh: u64) -> Option<usize> {
+    fn get_file_handle(&self, fh: u64) -> Option<u64> {
         let handles = self
             .entry_handles
             .lock()
@@ -267,12 +267,12 @@ impl PCloudService {
 
 // open file
 impl PCloudService {
-    fn allocate_file(&mut self, handle: usize, read: bool, write: bool) -> u64 {
+    fn allocate_file(&mut self, handle: u64, read: bool, write: bool) -> u64 {
         self.allocate_entry(EntryHandle::file(handle, read, write))
     }
 
     pub fn open_file(&mut self, inode: u64, flags: i32) -> Result<u64, Error> {
-        let file_id = (inode - 1) as usize;
+        let file_id = inode - 1;
         let (read, write) = decode_flag(flags)?;
         let params = if write {
             pcloud::fileops::open::Params::new(0x0002).identifier(file_id.into())
@@ -324,22 +324,18 @@ impl PCloudService {
 impl PCloudService {
     pub fn create_file(&mut self, parent: u64, name: &str) -> Result<u64, Error> {
         let params = pcloud::fileops::open::Params::new(0x0042)
-            .folder_id((parent - 1) as usize)
+            .folder_id(parent - 1)
             .name(name.to_string());
-        let handle = self
-            .inner
-            .file_open(&params)
-            .map(|item| item as u64)
-            .map_err(|err| {
-                tracing::error!(
-                    "unable to read parent={}, name={:?}: {:?}",
-                    parent,
-                    name,
-                    err
-                );
-                Error::Network
-            })?;
-        Ok(self.allocate_file(handle as usize, true, true))
+        let handle = self.inner.file_open(&params).map_err(|err| {
+            tracing::error!(
+                "unable to read parent={}, name={:?}: {:?}",
+                parent,
+                name,
+                err
+            );
+            Error::Network
+        })?;
+        Ok(self.allocate_file(handle, true, true))
     }
 }
 
@@ -424,8 +420,8 @@ impl PCloudService {
         new_name: &str,
     ) -> Result<(), Error> {
         if parent.folder_id != new_parent.folder_id {
-            self.remove_folder_from_cache(parent.folder_id as u64 + 1);
-            self.remove_folder_from_cache(new_parent.folder_id as u64 + 1);
+            self.remove_folder_from_cache(parent.folder_id + 1);
+            self.remove_folder_from_cache(new_parent.folder_id + 1);
             let params =
                 pcloud::folder::rename::Params::new_move(folder.folder_id, new_parent.folder_id);
             self.inner.rename_folder(&params).map_err(|err| {
@@ -434,7 +430,7 @@ impl PCloudService {
             })?;
         }
         if folder.base.name != new_name {
-            self.remove_folder_from_cache(parent.folder_id as u64 + 1);
+            self.remove_folder_from_cache(parent.folder_id + 1);
             let params = pcloud::folder::rename::Params::new_rename(folder.folder_id, new_name);
             self.inner.rename_folder(&params).map_err(|err| {
                 tracing::error!("unable to read: {:?}", err);
@@ -464,7 +460,7 @@ impl PCloudService {
 impl PCloudService {
     pub fn create_folder(&mut self, parent_id: u64, name: &str) -> Result<Folder, Error> {
         self.remove_folder_from_cache(parent_id);
-        let params = pcloud::folder::create::Params::new(name, parent_id as usize - 1);
+        let params = pcloud::folder::create::Params::new(name, parent_id - 1);
         self.inner.create_folder(&params).map_err(|err| {
             tracing::error!("unable to read: {:?}", err);
             Error::Network

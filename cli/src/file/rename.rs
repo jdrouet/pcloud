@@ -4,7 +4,7 @@ use pcloud::http::HttpClient;
 
 #[derive(Parser)]
 pub struct Command {
-    file_id: usize,
+    file_id: u64,
     filename: String,
 }
 

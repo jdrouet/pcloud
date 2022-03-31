@@ -80,17 +80,23 @@ fn get_local_entries(path: &Path) -> Result<HashMap<String, LocalEntry>, Error> 
 
 #[derive(Parser)]
 pub struct Command {
-    #[clap(long, about = "Disable uploading local files.")]
+    /// Disable uploading local files.
+    #[clap(long)]
     disable_upload: bool,
-    #[clap(long, about = "Remove local files when uploaded.")]
+    /// Remove local files when uploaded.
+    #[clap(long)]
     remove_after_upload: bool,
-    #[clap(long, about = "Disable downloading rmote files.")]
+    /// Disable downloading remote files.
+    #[clap(long)]
     disable_download: bool,
-    #[clap(long, about = "Remote remove files when downloaded.")]
+    /// Remote remove files when downloaded.
+    #[clap(long)]
     remove_after_download: bool,
-    #[clap(long, about = "Keep partial file if upload fails.")]
+    /// Keep partial file if upload fails.
+    #[clap(long)]
     allow_partial_upload: bool,
-    #[clap(about = "Local folder to synchronize.")]
+    /// Local folder to synchronize.
+    #[clap()]
     path: PathBuf,
 }
 

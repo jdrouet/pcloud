@@ -2,18 +2,15 @@ mod config;
 mod file;
 mod folder;
 
-use clap::{crate_authors, crate_description, crate_version, Parser};
+use clap::Parser;
 use pcloud::http::HttpClient;
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[clap(about = crate_description!(), author = crate_authors!(), version = crate_version!())]
+#[clap(about, author, version)]
 struct Command {
-    #[clap(
-        short,
-        long,
-        about = "Path to load the configuration file. Default to ~/.config/pcloud.json. If not found, loading from environment."
-    )]
+    /// Path to load the configuration file. Default to ~/.config/pcloud.json. If not found, loading from environment.
+    #[clap(short, long)]
     config: Option<PathBuf>,
     #[clap(short, long)]
     verbose: bool,
@@ -35,9 +32,11 @@ impl Command {
 
 #[derive(Parser)]
 enum SubCommand {
-    #[clap(about = "Folder related sub command")]
+    /// Folder related sub command
+    #[clap()]
     Folder(folder::Command),
-    #[clap(about = "File related sub command")]
+    /// File related sub command
+    #[clap()]
     File(file::Command),
 }
 

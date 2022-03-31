@@ -5,11 +5,14 @@ use std::path::PathBuf;
 
 #[derive(Parser)]
 pub struct Command {
-    #[clap(long, about = "Name of the created remote file.")]
+    /// Name of the created remote file.
+    #[clap(long)]
     filename: Option<String>,
-    #[clap(long, default_value = "0", about = "Folder to store the file in.")]
+    /// Folder to store the file in.
+    #[clap(long, default_value = "0")]
     folder_id: u64,
-    #[clap(long, about = "Keep partial file if upload fails.")]
+    /// Keep partial file if upload fails.
+    #[clap(long)]
     allow_partial_upload: bool,
     path: PathBuf,
 }

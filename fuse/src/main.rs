@@ -2,19 +2,16 @@ mod config;
 mod fs;
 mod service;
 
-use clap::{crate_authors, crate_description, crate_version, Parser};
+use clap::Parser;
 use fuser::MountOption;
 use pcloud::binary::BinaryClient;
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[clap(about = crate_description!(), author = crate_authors!(), version = crate_version!())]
+#[clap(about, author, version)]
 struct Opts {
-    #[clap(
-        short,
-        long,
-        about = "Path to load the configuration file. Default to ~/.config/pcloud.json. If not found, loading from environment."
-    )]
+    /// Path to load the configuration file. Default to ~/.config/pcloud.json. If not found, loading from environment.
+    #[clap(short, long)]
     config: Option<PathBuf>,
     #[clap(long, default_value = "info")]
     log_level: String,

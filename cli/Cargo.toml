@@ -8,6 +8,15 @@ license = "MIT"
 readme = "readme.md"
 repository = "https://github.com/jdrouet/pcloud"
 
+[package.metadata.deb]
+extended-description = """
+Written in Rust, pcloud-cli is made to be fast, efficient and easy to use.
+"""
+assets = [
+  ["target/release/pcloud-cli", "usr/bin/", "755"],
+  ["readme.md", "usr/share/doc/pcloud-cli/README", "644"],
+]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]

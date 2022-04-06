@@ -28,16 +28,16 @@ impl Credentials {
 }
 
 impl Credentials {
-    pub fn from_env() -> Self {
+    pub fn from_env() -> Option<Self> {
         if let Ok(access_token) = std::env::var("PCLOUD_ACCESS_TOKEN") {
-            Self::AccessToken(access_token)
+            Some(Self::AccessToken(access_token))
         } else if let (Ok(username), Ok(password)) = (
             std::env::var("PCLOUD_USERNAME"),
             std::env::var("PCLOUD_PASSWORD"),
         ) {
-            Self::UserPassword { username, password }
+            Some(Self::UserPassword { username, password })
         } else {
-            panic!("unable to build from environment");
+            None
         }
     }
 }

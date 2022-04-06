@@ -251,6 +251,51 @@ impl From<IoError> for Error {
     }
 }
 
+#[derive(Debug)]
+pub enum BinaryClientBuilderError {
+    CredentialsMissing,
+    Io(IoError),
+}
+
+#[derive(Debug, Default)]
+pub struct BinaryClientBuilder {
+    credentials: Option<Credentials>,
+    region: Option<Region>,
+}
+
+impl BinaryClientBuilder {
+    pub fn from_env() -> Self {
+        Self {
+            credentials: Credentials::from_env(),
+            region: Region::from_env(),
+        }
+    }
+
+    pub fn set_credentials(mut self, value: Credentials) -> Self {
+        self.credentials = Some(value);
+        self
+    }
+
+    pub fn set_region(mut self, value: Region) -> Self {
+        self.region = Some(value);
+        self
+    }
+
+    pub fn build(self) -> Result<BinaryClient, BinaryClientBuilderError> {
+        let credentials = self
+            .credentials
+            .ok_or(BinaryClientBuilderError::CredentialsMissing)?;
+        let region = self.region.unwrap_or_default();
+
+        Ok(BinaryClient {
+            stream: TcpStream::connect(region.binary_url())
+                .map_err(BinaryClientBuilderError::Io)?,
+            credentials,
+            region,
+        })
+    }
+}
+
 pub struct BinaryClient {
     pub(crate) stream: TcpStream,
     credentials: Credentials,
@@ -258,7 +303,7 @@ pub struct BinaryClient {
 }
 
 impl BinaryClient {
-    #[tracing::instrument]
+    #[cfg(test)]
     pub fn new(credentials: Credentials, region: Region) -> Result<Self, Error> {
         Ok(Self {
             stream: TcpStream::connect(region.binary_url())?,
@@ -279,10 +324,6 @@ impl BinaryClient {
             credentials: self.credentials.clone(),
             region: self.region.clone(),
         })
-    }
-
-    pub fn from_env() -> Result<Self, Error> {
-        Self::new(Credentials::from_env(), Region::from_env())
     }
 
     fn read_result(&mut self) -> Result<JsonValue, Error> {

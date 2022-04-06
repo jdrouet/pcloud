@@ -78,7 +78,7 @@ impl BinaryClient {
 #[cfg(test)]
 mod tests {
     use super::Params;
-    use crate::binary::BinaryClient;
+    use crate::binary::BinaryClientBuilder;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;
     use crate::region::Region;
@@ -149,7 +149,7 @@ mod tests {
     #[ignore]
     fn binary_success() {
         let name = crate::tests::random_name();
-        let mut client = BinaryClient::new(Credentials::from_env(), Region::eu()).unwrap();
+        let mut client = BinaryClientBuilder::from_env().build().unwrap();
         let res = client
             .create_folder(&Params::new(name.as_str(), 0))
             .unwrap();

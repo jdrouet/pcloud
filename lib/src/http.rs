@@ -5,6 +5,76 @@ use crate::region::Region;
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
 pub const DEFAULT_PART_SIZE: usize = 10485760;
 
+#[derive(Debug)]
+pub enum HttpClientBuilderError {
+    CredentialsMissing,
+    Reqwest(reqwest::Error),
+}
+
+#[derive(Debug)]
+pub struct HttpClientBuilder {
+    client_builder: reqwest::ClientBuilder,
+    credentials: Option<Credentials>,
+    region: Option<Region>,
+    upload_part_size: usize,
+}
+
+impl Default for HttpClientBuilder {
+    fn default() -> Self {
+        Self {
+            client_builder: reqwest::ClientBuilder::default(),
+            credentials: None,
+            region: None,
+            upload_part_size: DEFAULT_PART_SIZE,
+        }
+    }
+}
+
+impl HttpClientBuilder {
+    pub fn from_env() -> Self {
+        Self {
+            client_builder: reqwest::ClientBuilder::default(),
+            credentials: Credentials::from_env(),
+            region: Region::from_env(),
+            upload_part_size: DEFAULT_PART_SIZE,
+        }
+    }
+
+    pub fn set_client_builder(mut self, value: reqwest::ClientBuilder) -> Self {
+        self.client_builder = value;
+        self
+    }
+
+    pub fn set_credentials(mut self, value: Credentials) -> Self {
+        self.credentials = Some(value);
+        self
+    }
+
+    pub fn set_region(mut self, value: Region) -> Self {
+        self.region = Some(value);
+        self
+    }
+
+    pub fn set_upload_part_size(mut self, value: usize) -> Self {
+        self.upload_part_size = value;
+        self
+    }
+
+    pub fn build(self) -> Result<HttpClient, HttpClientBuilderError> {
+        Ok(HttpClient {
+            client: self
+                .client_builder
+                .build()
+                .map_err(HttpClientBuilderError::Reqwest)?,
+            credentials: self
+                .credentials
+                .ok_or(HttpClientBuilderError::CredentialsMissing)?,
+            region: self.region.unwrap_or_default(),
+            upload_part_size: self.upload_part_size,
+        })
+    }
+}
+
 /// Client for the pCloud REST API
 #[derive(Clone)]
 pub struct HttpClient {
@@ -14,43 +84,18 @@ pub struct HttpClient {
     pub(crate) upload_part_size: usize,
 }
 
+#[cfg(test)]
 impl HttpClient {
-    /// Create new client for the pCloud REST API
-    ///
-    /// # Arguments
-    ///
-    /// * `credentials` - Credentials to use to connect.
-    /// * `region` - Region to connect to.
-    ///
-    /// # Returns
-    ///
-    /// A new instance of the client
     pub fn new(credentials: Credentials, region: Region) -> Self {
         Self {
-            client: Self::create_client(),
+            client: reqwest::ClientBuilder::default()
+                .user_agent(USER_AGENT)
+                .build()
+                .unwrap(),
             credentials,
             region,
             upload_part_size: DEFAULT_PART_SIZE,
         }
-    }
-
-    pub fn new_eu(credentials: Credentials) -> Self {
-        Self::new(credentials, Region::eu())
-    }
-
-    pub fn new_us(credentials: Credentials) -> Self {
-        Self::new(credentials, Region::us())
-    }
-
-    pub fn from_env() -> Self {
-        Self::new(Credentials::from_env(), Region::from_env())
-    }
-}
-
-impl HttpClient {
-    pub fn upload_part_size(mut self, value: usize) -> Self {
-        self.upload_part_size = value;
-        self
     }
 }
 
@@ -69,13 +114,6 @@ async fn read_response<T: serde::de::DeserializeOwned>(
 }
 
 impl HttpClient {
-    pub(crate) fn create_client() -> reqwest::Client {
-        reqwest::ClientBuilder::new()
-            .user_agent(USER_AGENT)
-            .build()
-            .expect("couldn't create reqwest client")
-    }
-
     fn build_url(&self, method: &str) -> String {
         format!("{}/{}", self.region.http_url(), method)
     }

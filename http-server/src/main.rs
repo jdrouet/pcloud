@@ -2,9 +2,7 @@ mod handler;
 mod render;
 
 use actix_web::{web, App, HttpServer};
-use pcloud::credentials::Credentials;
-use pcloud::http::HttpClient;
-use pcloud::region::Region;
+use pcloud::http::HttpClientBuilder;
 
 fn binding() -> String {
     let host = std::env::var("HOST").unwrap_or_else(|_| "localhost".into());
@@ -17,7 +15,9 @@ fn binding() -> String {
 async fn main() -> std::io::Result<()> {
     env_logger::init();
 
-    let client = HttpClient::new(Credentials::from_env(), Region::from_env());
+    let client = HttpClientBuilder::from_env()
+        .build()
+        .expect("couldn't build client");
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(client.clone()))

@@ -62,8 +62,7 @@ impl Command {
 async fn main() {
     let cmd = Command::parse();
     cmd.set_log_level();
-    let pcloud = config::Config::from_path(&cmd.config())
-        .map(|cfg| cfg.build())
-        .unwrap_or_else(|_| HttpClient::from_env());
+    let cfg = config::Config::from_path(&cmd.config()).unwrap_or_default();
+    let pcloud = cfg.build().expect("couldn't build client");
     cmd.execute(pcloud).await;
 }

@@ -1,5 +1,5 @@
 use pcloud::credentials::Credentials;
-use pcloud::http::HttpClient;
+use pcloud::http::{HttpClient, HttpClientBuilder, HttpClientBuilderError};
 use pcloud::region::Region;
 use serde::Deserialize;
 use std::path::Path;
@@ -30,10 +30,10 @@ impl RegionConfig {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Default, Deserialize)]
 pub struct Config {
-    credentials: CredentialsConfig,
-    region: RegionConfig,
+    credentials: Option<CredentialsConfig>,
+    region: Option<RegionConfig>,
 }
 
 impl Config {
@@ -43,9 +43,18 @@ impl Config {
         Ok(result)
     }
 
-    pub fn build(self) -> HttpClient {
-        let creds = self.credentials.build();
-        let region = self.region.build();
-        HttpClient::new(creds, region)
+    pub fn build(self) -> Result<HttpClient, HttpClientBuilderError> {
+        let builder = HttpClientBuilder::from_env();
+        let builder = if let Some(creds) = self.credentials.map(|c| c.build()) {
+            builder.set_credentials(creds)
+        } else {
+            builder
+        };
+        let builder = if let Some(region) = self.region.map(|c| c.build()) {
+            builder.set_region(region)
+        } else {
+            builder
+        };
+        builder.build()
     }
 }

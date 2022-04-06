@@ -1,4 +1,4 @@
-use pcloud::binary::{BinaryClient, Error};
+use pcloud::binary::{BinaryClient, BinaryClientBuilder, BinaryClientBuilderError};
 use pcloud::credentials::Credentials;
 use pcloud::region::Region;
 use serde::Deserialize;
@@ -30,10 +30,10 @@ impl RegionConfig {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Default, Deserialize)]
 pub struct Config {
-    credentials: CredentialsConfig,
-    region: RegionConfig,
+    credentials: Option<CredentialsConfig>,
+    region: Option<RegionConfig>,
 }
 
 impl Config {
@@ -43,9 +43,18 @@ impl Config {
         Ok(result)
     }
 
-    pub fn build(self) -> Result<BinaryClient, Error> {
-        let creds = self.credentials.build();
-        let region = self.region.build();
-        BinaryClient::new(creds, region)
+    pub fn build(self) -> Result<BinaryClient, BinaryClientBuilderError> {
+        let builder = BinaryClientBuilder::from_env();
+        let builder = if let Some(creds) = self.credentials.map(|c| c.build()) {
+            builder.set_credentials(creds)
+        } else {
+            builder
+        };
+        let builder = if let Some(region) = self.region.map(|c| c.build()) {
+            builder.set_region(region)
+        } else {
+            builder
+        };
+        builder.build()
     }
 }

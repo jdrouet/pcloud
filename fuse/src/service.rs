@@ -103,12 +103,6 @@ impl PCloudService {
     }
 }
 
-impl Default for PCloudService {
-    fn default() -> Self {
-        Self::new(BinaryClient::from_env().expect("couldn't build client"))
-    }
-}
-
 // get file
 impl PCloudService {
     fn add_file(&self, inode: u64, file: File) -> File {

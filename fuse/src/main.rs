@@ -4,7 +4,6 @@ mod service;
 
 use clap::Parser;
 use fuser::MountOption;
-use pcloud::binary::BinaryClient;
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -57,12 +56,8 @@ fn main() {
     let opts = Opts::parse();
     opts.set_log_level();
 
-    let client = if let Ok(config) = config::Config::from_path(&opts.config()) {
-        config.build()
-    } else {
-        BinaryClient::from_env()
-    }
-    .expect("couldn't create client");
+    let cfg = config::Config::from_path(&opts.config()).unwrap_or_default();
+    let client = cfg.build().expect("couldn't build client");
 
     let service = service::PCloudService::new(client);
 

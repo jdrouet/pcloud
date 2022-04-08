@@ -87,11 +87,7 @@ impl BinaryReader {
         Ok(res)
     }
 
-    fn parse_text_from_cache(
-        &mut self,
-        cache: &mut Vec<String>,
-        ftype: u8,
-    ) -> Result<String, Error> {
+    fn parse_text_from_cache(&mut self, cache: &mut [String], ftype: u8) -> Result<String, Error> {
         let idx = if (150..200).contains(&ftype) {
             (ftype - 150) as usize
         } else {

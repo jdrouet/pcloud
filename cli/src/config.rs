@@ -3,6 +3,7 @@ use pcloud::http::{HttpClient, HttpClientBuilder, HttpClientBuilderError};
 use pcloud::region::Region;
 use serde::Deserialize;
 use std::path::Path;
+use std::time::Duration;
 
 #[derive(Deserialize)]
 pub struct CredentialsConfig {
@@ -34,6 +35,7 @@ impl RegionConfig {
 pub struct Config {
     credentials: Option<CredentialsConfig>,
     region: Option<RegionConfig>,
+    timeout: Option<u64>,
 }
 
 impl Config {
@@ -45,6 +47,11 @@ impl Config {
 
     pub fn build(self) -> Result<HttpClient, HttpClientBuilderError> {
         let builder = HttpClientBuilder::from_env();
+        let builder = if let Some(timeout) = self.timeout.map(Duration::from_secs) {
+            builder.set_timeout(timeout)
+        } else {
+            builder
+        };
         let builder = if let Some(creds) = self.credentials.map(|c| c.build()) {
             builder.set_credentials(creds)
         } else {

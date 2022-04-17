@@ -1,6 +1,7 @@
 use crate::credentials::Credentials;
 use crate::error::Error;
 use crate::region::Region;
+use std::time::Duration;
 
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
 pub const DEFAULT_PART_SIZE: usize = 10485760;
@@ -16,6 +17,7 @@ pub struct HttpClientBuilder {
     client_builder: reqwest::ClientBuilder,
     credentials: Option<Credentials>,
     region: Option<Region>,
+    timeout: Option<Duration>,
     upload_part_size: usize,
 }
 
@@ -25,6 +27,7 @@ impl Default for HttpClientBuilder {
             client_builder: reqwest::ClientBuilder::default(),
             credentials: None,
             region: None,
+            timeout: None,
             upload_part_size: DEFAULT_PART_SIZE,
         }
     }
@@ -36,6 +39,7 @@ impl HttpClientBuilder {
             client_builder: reqwest::ClientBuilder::default(),
             credentials: Credentials::from_env(),
             region: Region::from_env(),
+            timeout: None,
             upload_part_size: DEFAULT_PART_SIZE,
         }
     }
@@ -55,15 +59,24 @@ impl HttpClientBuilder {
         self
     }
 
+    pub fn set_timeout(mut self, value: Duration) -> Self {
+        self.timeout = Some(value);
+        self
+    }
+
     pub fn set_upload_part_size(mut self, value: usize) -> Self {
         self.upload_part_size = value;
         self
     }
 
     pub fn build(self) -> Result<HttpClient, HttpClientBuilderError> {
+        let client_builder = if let Some(timeout) = self.timeout {
+            self.client_builder.timeout(timeout)
+        } else {
+            self.client_builder
+        };
         Ok(HttpClient {
-            client: self
-                .client_builder
+            client: client_builder
                 .build()
                 .map_err(HttpClientBuilderError::Reqwest)?,
             credentials: self

@@ -95,6 +95,9 @@ pub struct Command {
     /// Keep partial file if upload fails.
     #[clap(long)]
     allow_partial_upload: bool,
+    /// Number of allowed failure.
+    #[clap(long, default_value_t = 5)]
+    retries: usize,
     /// Local folder to synchronize.
     #[clap()]
     path: PathBuf,
@@ -167,7 +170,6 @@ impl Command {
         Ok(())
     }
 
-    #[tracing::instrument(skip_all, level = "info")]
     async fn upload_file(
         &self,
         pcloud: &HttpClient,
@@ -175,7 +177,6 @@ impl Command {
         local_file: &Path,
         remote_folder: &Folder,
     ) -> Result<(), Error> {
-        tracing::info!("uploading {:?} to {}", local_file, remote_folder.folder_id);
         let file = fs::File::open(local_file)?;
         let params = pcloud::file::upload::Params::new(local_name, remote_folder.folder_id)
             .no_partial(!self.allow_partial_upload);
@@ -183,9 +184,48 @@ impl Command {
         tracing::info!("uploaded {:?}", local_file);
         if self.remove_after_upload {
             tracing::info!("deleting file {:?}", local_file);
-            fs::remove_file(&local_file)?;
+            if let Err(error) = fs::remove_file(&local_file) {
+                tracing::warn!("unable to delete file {:?}: {:?}", local_file, error);
+            }
         }
         Ok(())
+    }
+
+    #[tracing::instrument(skip_all, level = "info")]
+    #[async_recursion::async_recursion]
+    async fn upload_file_with_retry(
+        &self,
+        pcloud: &HttpClient,
+        local_name: &str,
+        local_file: &Path,
+        remote_folder: &Folder,
+        retry: usize,
+    ) -> Result<(), Error> {
+        tracing::info!(
+            "uploading {:?} to {} (retry: {})",
+            local_file,
+            remote_folder.folder_id,
+            retry
+        );
+        if let Err(err) = self
+            .upload_file(pcloud, local_name, local_file, remote_folder)
+            .await
+        {
+            if retry > 0 {
+                self.upload_file_with_retry(
+                    pcloud,
+                    local_name,
+                    local_file,
+                    remote_folder,
+                    retry - 1,
+                )
+                .await
+            } else {
+                Err(err)
+            }
+        } else {
+            Ok(())
+        }
     }
 
     #[tracing::instrument(skip_all, level = "info")]
@@ -223,7 +263,8 @@ impl Command {
         for local_name in local_names {
             match local_entries.get(local_name) {
                 Some(LocalEntry::File(path)) => {
-                    self.upload_file(pcloud, local_name, path, folder).await?;
+                    self.upload_file_with_retry(pcloud, local_name, path, folder, self.retries)
+                        .await?;
                 }
                 Some(LocalEntry::Folder(path)) => {
                     self.upload_folder(pcloud, local_name, path, folder).await?;

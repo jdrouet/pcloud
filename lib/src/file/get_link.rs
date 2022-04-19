@@ -1,10 +1,35 @@
 use super::FileIdentifier;
 use crate::error::Error;
 use crate::http::HttpClient;
+use crate::prelude::Command;
 use crate::request::Response;
 
+#[derive(Debug)]
+pub struct FileLinkCommand {
+    identifier: FileIdentifier,
+}
+
+impl FileLinkCommand {
+    pub fn new(identifier: FileIdentifier) -> Self {
+        Self { identifier }
+    }
+}
+
+#[async_trait::async_trait(?Send)]
+impl Command for FileLinkCommand {
+    type Output = String;
+    type Error = Error;
+
+    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Self::Error> {
+        let result: Response<FileLink> = client
+            .get_request("getfilelink", &self.identifier.to_http_params())
+            .await?;
+        result.payload().map(|res| res.to_url())
+    }
+}
+
 #[derive(Debug, serde::Deserialize)]
-struct Payload {
+struct FileLink {
     // hash: usize,
     // size: usize,
     // expired: String,
@@ -12,31 +37,19 @@ struct Payload {
     path: String,
 }
 
-impl Payload {
+impl FileLink {
     fn to_url(&self) -> String {
         let host = self.hosts.get(0).unwrap();
         format!("https://{}{}", host, self.path)
     }
 }
 
-impl HttpClient {
-    #[tracing::instrument(skip(self))]
-    pub async fn get_link_file<I: Into<FileIdentifier> + std::fmt::Debug>(
-        &self,
-        identifier: I,
-    ) -> Result<String, Error> {
-        let params: FileIdentifier = identifier.into();
-        let result: Response<Payload> = self
-            .get_request("getfilelink", &params.to_http_params())
-            .await?;
-        result.payload().map(|res| res.to_url())
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use super::FileLinkCommand;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;
+    use crate::prelude::Command;
     use crate::region::Region;
     use mockito::{mock, Matcher};
 
@@ -65,7 +78,7 @@ mod tests {
         let creds = Credentials::AccessToken("access-token".into());
         let dc = Region::mock();
         let api = HttpClient::new(creds, dc);
-        let result = api.get_link_file(42).await.unwrap();
+        let result = FileLinkCommand::new(42.into()).execute(&api).await.unwrap();
         assert_eq!(result, "https://edef2.pcloud.com/DLZCAt2vXZejNfL5ZruLVZZTk2ev7Z2ZZNR5ZZdoz6ZXZQZZErw4bH0PfzBQt3LlgXMliXVtietX/SAkdyBjkA7mQABbT.bin");
         m.assert();
     }

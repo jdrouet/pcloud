@@ -1,5 +1,6 @@
 use super::FileIdentifier;
 use crate::error::Error;
+use crate::file::get_link::FileLinkCommand;
 use crate::http::HttpClient;
 use crate::prelude::Command;
 use std::io::Write;
@@ -22,7 +23,9 @@ impl<W: Write> Command for FileDownloadCommand<W> {
     type Error = Error;
 
     async fn execute(mut self, client: &HttpClient) -> Result<Self::Output, Self::Error> {
-        let link = client.get_link_file(self.identifier).await?;
+        let link = FileLinkCommand::new(self.identifier)
+            .execute(client)
+            .await?;
         let mut req = client.client.get(&link).send().await?;
         let mut size = 0;
         while let Some(chunk) = req.chunk().await? {

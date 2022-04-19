@@ -18,7 +18,6 @@ pub struct HttpClientBuilder {
     credentials: Option<Credentials>,
     region: Option<Region>,
     timeout: Option<Duration>,
-    upload_part_size: usize,
 }
 
 impl Default for HttpClientBuilder {
@@ -28,7 +27,6 @@ impl Default for HttpClientBuilder {
             credentials: None,
             region: None,
             timeout: None,
-            upload_part_size: DEFAULT_PART_SIZE,
         }
     }
 }
@@ -40,7 +38,6 @@ impl HttpClientBuilder {
             credentials: Credentials::from_env(),
             region: Region::from_env(),
             timeout: None,
-            upload_part_size: DEFAULT_PART_SIZE,
         }
     }
 
@@ -64,11 +61,6 @@ impl HttpClientBuilder {
         self
     }
 
-    pub fn set_upload_part_size(mut self, value: usize) -> Self {
-        self.upload_part_size = value;
-        self
-    }
-
     pub fn build(self) -> Result<HttpClient, HttpClientBuilderError> {
         let client_builder = if let Some(timeout) = self.timeout {
             self.client_builder.timeout(timeout)
@@ -83,7 +75,6 @@ impl HttpClientBuilder {
                 .credentials
                 .ok_or(HttpClientBuilderError::CredentialsMissing)?,
             region: self.region.unwrap_or_default(),
-            upload_part_size: self.upload_part_size,
         })
     }
 }
@@ -94,7 +85,6 @@ pub struct HttpClient {
     pub(crate) client: reqwest::Client,
     credentials: Credentials,
     region: Region,
-    pub(crate) upload_part_size: usize,
 }
 
 #[cfg(test)]
@@ -107,7 +97,6 @@ impl HttpClient {
                 .unwrap(),
             credentials,
             region,
-            upload_part_size: DEFAULT_PART_SIZE,
         }
     }
 }

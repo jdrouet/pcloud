@@ -2,28 +2,82 @@ use super::FileResponse;
 use crate::entry::File;
 use crate::error::Error;
 use crate::http::HttpClient;
+use crate::prelude::Command;
 use crate::request::Response;
 use std::io::Read;
 
+pub const DEFAULT_PART_SIZE: usize = 10485760;
+
 #[derive(Debug)]
-pub struct Params<'a> {
+pub struct FileUploadCommand<'a, R> {
     filename: &'a str,
     folder_id: u64,
+    reader: R,
     no_partial: bool,
+    part_size: usize,
 }
 
-impl<'a> Params<'a> {
-    pub fn new(filename: &'a str, folder_id: u64) -> Self {
+impl<'a, R: Read> FileUploadCommand<'a, R> {
+    pub fn new(filename: &'a str, folder_id: u64, reader: R) -> Self {
         Self {
             filename,
             folder_id,
+            reader,
             no_partial: false,
+            part_size: DEFAULT_PART_SIZE,
         }
     }
 
-    pub fn no_partial(mut self, value: bool) -> Self {
-        self.no_partial = value;
-        self
+    pub fn set_no_partial(&mut self, no_partial: bool) {
+        self.no_partial = no_partial;
+    }
+
+    pub fn set_part_size(&mut self, part_size: usize) {
+        self.part_size = part_size;
+    }
+
+    async fn create_upload_file(&self, client: &HttpClient) -> Result<u64, Error> {
+        let params = if self.no_partial {
+            vec![("nopartial", 1.to_string())]
+        } else {
+            Vec::new()
+        };
+        let result: Response<CreateUploadPayload> =
+            client.get_request("upload_create", &params).await?;
+        result.payload().map(|item| item.upload_id)
+    }
+}
+
+#[async_trait::async_trait(?Send)]
+impl<'a, R: Read> Command for FileUploadCommand<'a, R> {
+    type Output = File;
+    type Error = Error;
+
+    async fn execute(self, client: &HttpClient) -> Result<File, Error> {
+        let upload_id = self.create_upload_file(client).await?;
+        let mut reader = ChunkReader::new(self.reader, self.part_size);
+
+        let upload_id_str = upload_id.to_string();
+
+        while let (offset, Some(chunk)) = reader.next_chunk()? {
+            let offset = offset.to_string();
+            let params = vec![
+                ("uploadid", upload_id_str.to_string()),
+                ("uploadoffset", offset.to_string()),
+            ];
+            let response: Response<()> = client
+                .put_request_data("upload_write", &params, chunk)
+                .await?;
+            response.payload()?;
+        }
+
+        let params = vec![
+            ("uploadid", upload_id.to_string()),
+            ("name", self.filename.to_string()),
+            ("folderid", self.folder_id.to_string()),
+        ];
+        let result: Response<FileResponse> = client.get_request("upload_save", &params).await?;
+        result.payload().map(|item| item.metadata)
     }
 }
 
@@ -70,80 +124,12 @@ impl<R: Read> ChunkReader<R> {
     }
 }
 
-impl HttpClient {
-    async fn create_upload_file(&self, no_partial: bool) -> Result<u64, Error> {
-        let params = if no_partial {
-            vec![("nopartial", 1.to_string())]
-        } else {
-            Vec::new()
-        };
-        let result: Response<CreateUploadPayload> =
-            self.get_request("upload_create", &params).await?;
-        result.payload().map(|item| item.upload_id)
-    }
-
-    async fn write_chunk_file(
-        &self,
-        params: &[(&str, String)],
-        chunk: Vec<u8>,
-    ) -> Result<(), Error> {
-        let response: Response<()> = self.put_request_data("upload_write", params, chunk).await?;
-        response.payload()?;
-        Ok(())
-    }
-
-    async fn save_file(
-        &self,
-        upload_id: u64,
-        filename: &str,
-        folder_id: u64,
-    ) -> Result<File, Error> {
-        let params = vec![
-            ("uploadid", upload_id.to_string()),
-            ("name", filename.to_string()),
-            ("folderid", folder_id.to_string()),
-        ];
-        let result: Response<FileResponse> = self.get_request("upload_save", &params).await?;
-        result.payload().map(|item| item.metadata)
-    }
-
-    /// Upload a file in a folder
-    ///
-    /// # Arguments
-    ///
-    /// * `input` - File to read from.
-    /// * `filename` - Name of the file to create.
-    /// * `folder_id` - ID of the folder where to upload the file.
-    ///
-    #[tracing::instrument(skip_all)]
-    pub async fn upload_file<'a, R: Read>(
-        &self,
-        reader: R,
-        params: &'a Params<'a>,
-    ) -> Result<File, Error> {
-        let upload_id = self.create_upload_file(params.no_partial).await?;
-        let mut reader = ChunkReader::new(reader, self.upload_part_size);
-
-        let upload_id_str = upload_id.to_string();
-
-        while let (offset, Some(chunk)) = reader.next_chunk()? {
-            let offset = offset.to_string();
-            let params = vec![
-                ("uploadid", upload_id_str.to_string()),
-                ("uploadoffset", offset.to_string()),
-            ];
-            self.write_chunk_file(&params, chunk).await?;
-        }
-
-        self.save_file(upload_id, params.filename, params.folder_id)
-            .await
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use super::FileUploadCommand;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;
+    use crate::prelude::Command;
     use crate::region::Region;
     use mockito::{mock, Matcher};
 
@@ -205,8 +191,10 @@ mod tests {
         let api = HttpClient::new(creds, dc);
         //
         let cursor = std::io::Cursor::new("hello world!");
-        let params = super::Params::new("testing.txt", 0).no_partial(true);
-        let result = api.upload_file(cursor, &params).await.unwrap();
+        let mut cmd = FileUploadCommand::new("testing.txt", 0, cursor);
+        cmd.set_no_partial(true);
+        let result = cmd.execute(&api).await.unwrap();
+        //
         assert_eq!(result.base.name, "testing.txt");
         m_create.assert();
         m_write.assert();

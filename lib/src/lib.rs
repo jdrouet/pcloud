@@ -11,7 +11,6 @@ pub mod fileops;
 pub mod folder;
 pub mod general;
 pub mod http;
-pub mod prelude;
 pub mod region;
 pub mod request;
 pub mod streaming;

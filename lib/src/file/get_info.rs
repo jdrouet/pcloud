@@ -3,27 +3,38 @@ use crate::binary::BinaryClient;
 use crate::entry::File;
 use crate::error::Error;
 use crate::http::HttpClient;
+use crate::prelude::Command;
 use crate::request::Response;
+
+#[derive(Debug)]
+pub struct FileCheckSumCommand {
+    identifier: FileIdentifier,
+}
+
+impl FileCheckSumCommand {
+    pub fn new(identifier: FileIdentifier) -> Self {
+        Self { identifier }
+    }
+}
+
+#[async_trait::async_trait(?Send)]
+impl Command for FileCheckSumCommand {
+    type Output = CheckSumFile;
+    type Error = Error;
+
+    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Self::Error> {
+        let result: Response<CheckSumFile> = client
+            .get_request("checksumfile", &self.identifier.to_http_params())
+            .await?;
+        result.payload()
+    }
+}
 
 #[derive(Debug, serde::Deserialize)]
 pub struct CheckSumFile {
     pub sha256: String,
     pub sha1: String,
     pub metadata: File,
-}
-
-impl HttpClient {
-    #[tracing::instrument(skip(self))]
-    pub async fn get_info_file<I: Into<FileIdentifier> + std::fmt::Debug>(
-        &self,
-        identifier: I,
-    ) -> Result<CheckSumFile, Error> {
-        let params: FileIdentifier = identifier.into();
-        let result: Response<CheckSumFile> = self
-            .get_request("checksumfile", &params.to_http_params())
-            .await?;
-        result.payload()
-    }
 }
 
 impl BinaryClient {
@@ -41,8 +52,10 @@ impl BinaryClient {
 
 #[cfg(test)]
 mod tests {
+    use super::FileCheckSumCommand;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;
+    use crate::prelude::Command;
     use crate::region::Region;
     use mockito::{mock, Matcher};
 
@@ -84,7 +97,10 @@ mod tests {
         let creds = Credentials::AccessToken("access-token".into());
         let dc = Region::mock();
         let api = HttpClient::new(creds, dc);
-        let result = api.get_info_file(42).await.unwrap();
+        let result = FileCheckSumCommand::new(42.into())
+            .execute(&api)
+            .await
+            .unwrap();
         assert_eq!(
             result.sha256,
             "d535d3354f9d36741e311ac0855c5cde1e8e90eae947f320469f17514d182e19"

@@ -4,17 +4,28 @@ use crate::entry::File;
 use crate::error::Error;
 use crate::file::FileResponse;
 use crate::http::HttpClient;
+use crate::prelude::Command;
 use crate::request::Response;
 
-impl HttpClient {
-    #[tracing::instrument(skip(self))]
-    pub async fn delete_file<I: Into<FileIdentifier> + std::fmt::Debug>(
-        &self,
-        identifier: I,
-    ) -> Result<File, Error> {
-        let params: FileIdentifier = identifier.into();
-        let result: Response<FileResponse> = self
-            .get_request("deletefile", &params.to_http_params())
+#[derive(Debug)]
+pub struct FileDeleteCommand {
+    identifier: FileIdentifier,
+}
+
+impl FileDeleteCommand {
+    pub fn new(identifier: FileIdentifier) -> Self {
+        Self { identifier }
+    }
+}
+
+#[async_trait::async_trait(?Send)]
+impl Command for FileDeleteCommand {
+    type Output = File;
+    type Error = Error;
+
+    async fn execute(mut self, client: &HttpClient) -> Result<Self::Output, Self::Error> {
+        let result: Response<FileResponse> = client
+            .get_request("deletefile", &self.identifier.to_http_params())
             .await?;
         result.payload().map(|res| res.metadata)
     }
@@ -35,8 +46,10 @@ impl BinaryClient {
 
 #[cfg(test)]
 mod tests {
+    use super::FileDeleteCommand;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;
+    use crate::prelude::Command;
     use crate::region::Region;
     use mockito::{mock, Matcher};
 
@@ -78,7 +91,10 @@ mod tests {
         let creds = Credentials::AccessToken("access-token".into());
         let dc = Region::mock();
         let api = HttpClient::new(creds, dc);
-        api.delete_file(42).await.unwrap();
+        FileDeleteCommand::new(42.into())
+            .execute(&api)
+            .await
+            .unwrap();
         m.assert();
     }
 }

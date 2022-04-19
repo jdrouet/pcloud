@@ -4,7 +4,81 @@ use crate::entry::File;
 use crate::error::Error;
 use crate::folder::FolderIdentifier;
 use crate::http::HttpClient;
+use crate::prelude::Command;
 use crate::request::Response;
+
+#[derive(Debug)]
+pub struct FileMoveCommand {
+    from: FileIdentifier,
+    to: FolderIdentifier,
+}
+
+impl FileMoveCommand {
+    pub fn new(from: FileIdentifier, to: FolderIdentifier) -> Self {
+        Self { from, to }
+    }
+
+    fn to_http_params(&self) -> Vec<(&str, String)> {
+        let mut res = vec![];
+        res.push(match &self.from {
+            FileIdentifier::FileId(id) => ("fileid", id.to_string()),
+            FileIdentifier::Path(value) => ("path", value.to_string()),
+        });
+        res.push(match &self.to {
+            FolderIdentifier::FolderId(id) => ("tofolderid", id.to_string()),
+            FolderIdentifier::Path(value) => ("topath", value.to_string()),
+        });
+        res
+    }
+}
+
+#[async_trait::async_trait(?Send)]
+impl Command for FileMoveCommand {
+    type Output = File;
+    type Error = Error;
+
+    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Self::Error> {
+        let result: Response<FileResponse> = client
+            .get_request("renamefile", &self.to_http_params())
+            .await?;
+        result.payload().map(|item| item.metadata)
+    }
+}
+
+#[derive(Debug)]
+pub struct FileRenameCommand {
+    identifier: FileIdentifier,
+    name: String,
+}
+
+impl FileRenameCommand {
+    pub fn new(identifier: FileIdentifier, name: String) -> Self {
+        Self { identifier, name }
+    }
+
+    fn to_http_params(&self) -> Vec<(&str, String)> {
+        let mut res = vec![];
+        res.push(match &self.identifier {
+            FileIdentifier::FileId(id) => ("fileid", id.to_string()),
+            FileIdentifier::Path(value) => ("path", value.to_string()),
+        });
+        res.push(("toname", self.name.to_string()));
+        res
+    }
+}
+
+#[async_trait::async_trait(?Send)]
+impl Command for FileRenameCommand {
+    type Output = File;
+    type Error = Error;
+
+    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Self::Error> {
+        let result: Response<FileResponse> = client
+            .get_request("renamefile", &self.to_http_params())
+            .await?;
+        result.payload().map(|item| item.metadata)
+    }
+}
 
 #[derive(Debug)]
 pub enum Params {
@@ -34,42 +108,6 @@ impl Params {
             from: from.into(),
             to_name: to_name.into(),
         }
-    }
-
-    pub fn to_http_params(&self) -> Vec<(&str, String)> {
-        let mut res = vec![];
-        match self {
-            Self::Move { from, to } => {
-                match from {
-                    FileIdentifier::FileId(id) => {
-                        res.push(("fileid", id.to_string()));
-                    }
-                    FileIdentifier::Path(value) => {
-                        res.push(("path", value.to_string()));
-                    }
-                };
-                match to {
-                    FolderIdentifier::FolderId(id) => {
-                        res.push(("tofolderid", id.to_string()));
-                    }
-                    FolderIdentifier::Path(value) => {
-                        res.push(("topath", value.to_string()));
-                    }
-                };
-            }
-            Self::Rename { from, to_name } => {
-                match from {
-                    FileIdentifier::FileId(id) => {
-                        res.push(("fileid", id.to_string()));
-                    }
-                    FileIdentifier::Path(value) => {
-                        res.push(("path", value.to_string()));
-                    }
-                };
-                res.push(("toname", to_name.to_string()));
-            }
-        }
-        res
     }
 
     pub fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
@@ -106,16 +144,6 @@ impl Params {
             }
         }
         res
-    }
-}
-
-impl HttpClient {
-    #[tracing::instrument(skip(self))]
-    pub async fn rename_file(&self, params: &Params) -> Result<File, Error> {
-        let result: Response<FileResponse> = self
-            .get_request("renamefile", &params.to_http_params())
-            .await?;
-        result.payload().map(|item| item.metadata)
     }
 }
 

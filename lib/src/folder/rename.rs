@@ -3,7 +3,62 @@ use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::entry::Folder;
 use crate::error::Error;
 use crate::http::HttpClient;
+use crate::prelude::Command;
 use crate::request::Response;
+
+#[derive(Debug)]
+pub struct FolderRenameCommand {
+    identifier: u64,
+    name: String,
+}
+
+impl FolderRenameCommand {
+    pub fn new(identifier: u64, name: String) -> Self {
+        Self { identifier, name }
+    }
+}
+
+#[async_trait::async_trait(?Send)]
+impl Command for FolderRenameCommand {
+    type Output = Folder;
+    type Error = Error;
+
+    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Self::Error> {
+        let params = vec![
+            ("folderid", self.identifier.to_string()),
+            ("toname", self.name),
+        ];
+        let result: Response<FolderResponse> = client.get_request("renamefolder", &params).await?;
+        result.payload().map(|item| item.metadata)
+    }
+}
+
+#[derive(Debug)]
+pub struct FolderMoveCommand {
+    folder: u64,
+    to_folder: u64,
+}
+
+impl FolderMoveCommand {
+    pub fn new(folder: u64, to_folder: u64) -> Self {
+        Self { folder, to_folder }
+    }
+}
+
+#[async_trait::async_trait(?Send)]
+impl Command for FolderMoveCommand {
+    type Output = Folder;
+    type Error = Error;
+
+    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Self::Error> {
+        let params = vec![
+            ("folderid", self.folder.to_string()),
+            ("tofolderid", self.to_folder.to_string()),
+        ];
+        let result: Response<FolderResponse> = client.get_request("renamefolder", &params).await?;
+        result.payload().map(|item| item.metadata)
+    }
+}
 
 #[derive(Debug)]
 pub enum Params {
@@ -26,22 +81,6 @@ impl Params {
         }
     }
 
-    pub fn to_http_params(&self) -> Vec<(&str, String)> {
-        match self {
-            Self::Rename { folder_id, name } => vec![
-                ("folderid", folder_id.to_string()),
-                ("toname", name.to_string()),
-            ],
-            Self::Move {
-                folder_id,
-                to_folder_id,
-            } => vec![
-                ("folderid", folder_id.to_string()),
-                ("tofolderid", to_folder_id.to_string()),
-            ],
-        }
-    }
-
     pub fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
         match self {
             Self::Rename { folder_id, name } => vec![
@@ -56,23 +95,6 @@ impl Params {
                 ("tofolderid", BinaryValue::Number(*to_folder_id)),
             ],
         }
-    }
-}
-
-impl HttpClient {
-    /// Rename a folder
-    ///
-    /// # Arguments
-    ///
-    /// * `folder_id` - ID of the folder to rename.
-    /// * `name` - New name for the folder
-    ///
-    #[tracing::instrument(skip(self))]
-    pub async fn rename_folder(&self, params: &Params) -> Result<Folder, Error> {
-        let result: Response<FolderResponse> = self
-            .get_request("renamefolder", &params.to_http_params())
-            .await?;
-        result.payload().map(|item| item.metadata)
     }
 }
 

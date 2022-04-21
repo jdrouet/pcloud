@@ -1,7 +1,34 @@
 use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::error::Error;
+use crate::prelude::BinaryCommand;
 use crate::request::Response;
 use std::io::Read;
+
+struct RangeIterator {
+    count: usize,
+    offset: usize,
+}
+
+impl RangeIterator {
+    fn new(count: usize, offset: usize) -> Self {
+        Self { count, offset }
+    }
+}
+
+impl Iterator for RangeIterator {
+    type Item = (usize, usize); // (count, offset)
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.count > 0 {
+            let count = super::MAX_BLOCK_SIZE.min(self.count);
+            let offset = self.offset;
+            self.count -= count;
+            self.offset += count;
+            Some((count, offset))
+        } else {
+            None
+        }
+    }
+}
 
 #[derive(Debug, serde::Deserialize)]
 pub struct Payload {
@@ -9,32 +36,37 @@ pub struct Payload {
 }
 
 #[derive(Debug)]
-pub struct Params {
+pub struct FilePReadCommand {
     fd: u64,
     count: usize,
     offset: usize,
 }
 
-impl Params {
+impl FilePReadCommand {
     pub fn new(fd: u64, count: usize, offset: usize) -> Self {
         Self { fd, count, offset }
+    }
+
+    pub fn new_chunks(fd: u64, count: usize, offset: usize) -> Vec<Self> {
+        RangeIterator::new(count, offset)
+            .map(|(count, offset)| FilePReadCommand::new(fd, count, offset))
+            .collect()
     }
 
     fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
         vec![
             ("fd", BinaryValue::Number(self.fd)),
-            (
-                "count",
-                BinaryValue::Number(super::MAX_BLOCK_SIZE.min(self.count) as u64),
-            ),
+            ("count", BinaryValue::Number(self.count as u64)),
             ("offset", BinaryValue::Number(self.offset as u64)),
         ]
     }
 }
 
-impl BinaryClient {
-    fn file_pread_part(&mut self, params: &Params) -> Result<Vec<u8>, Error> {
-        let res = self.send_command("file_pread", &params.to_binary_params())?;
+impl BinaryCommand for FilePReadCommand {
+    type Output = Vec<u8>;
+
+    fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
+        let res = client.send_command("file_pread", &self.to_binary_params())?;
         let res: Response<Payload> = serde_json::from_value(res)?;
         let length = res.payload().map(|value| value.data).map_err(|err| {
             tracing::error!("unable to read the length: {:?}", err);
@@ -44,22 +76,10 @@ impl BinaryClient {
             return Ok(Vec::new());
         }
         let mut buffer: Vec<u8> = vec![0; length];
-        self.stream.read_exact(&mut buffer).map_err(|err| {
+        client.stream.read_exact(&mut buffer).map_err(|err| {
             tracing::error!("unable to read the data: {:?}", err);
             Error::ResponseFormat
         })?;
-        Ok(buffer)
-    }
-
-    #[tracing::instrument(skip(self))]
-    pub fn file_pread(&mut self, params: &Params) -> Result<Vec<u8>, Error> {
-        let mut buffer = Vec::new();
-        while buffer.len() < params.count {
-            let count = params.count.min(super::MAX_BLOCK_SIZE);
-            let part_params = Params::new(params.fd, count, params.offset + buffer.len());
-            let part = self.file_pread_part(&part_params)?;
-            buffer.extend(part);
-        }
         Ok(buffer)
     }
 }

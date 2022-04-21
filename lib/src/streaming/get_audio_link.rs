@@ -2,10 +2,11 @@ use super::Payload;
 use crate::error::Error;
 use crate::file::FileIdentifier;
 use crate::http::HttpClient;
+use crate::prelude::Command;
 use crate::request::Response;
 
 #[derive(Debug)]
-pub struct Params {
+pub struct GetAudioLinkCommand {
     identifier: FileIdentifier,
     // int audio bit rate in kilobits, from 16 to 320
     audio_bit_rate: Option<u16>,
@@ -13,13 +14,17 @@ pub struct Params {
     force_download: bool,
 }
 
-impl Params {
-    pub fn new<I: Into<FileIdentifier>>(identifier: I) -> Self {
+impl GetAudioLinkCommand {
+    pub fn new(identifier: FileIdentifier) -> Self {
         Self {
-            identifier: identifier.into(),
+            identifier,
             audio_bit_rate: None,
             force_download: false,
         }
+    }
+
+    pub fn set_audio_bit_rate(&mut self, value: Option<u16>) {
+        self.audio_bit_rate = value;
     }
 
     pub fn audio_bit_rate(mut self, value: u16) -> Self {
@@ -27,12 +32,16 @@ impl Params {
         self
     }
 
+    pub fn set_force_download(&mut self, value: bool) {
+        self.force_download = value;
+    }
+
     pub fn force_download(mut self, value: bool) -> Self {
         self.force_download = value;
         self
     }
 
-    pub fn to_http_params(&self) -> Vec<(&str, String)> {
+    fn to_http_params(&self) -> Vec<(&str, String)> {
         let mut res = self.identifier.to_http_params();
         if let Some(abitrate) = self.audio_bit_rate {
             res.push(("abitrate", abitrate.to_string()));
@@ -44,12 +53,15 @@ impl Params {
     }
 }
 
-impl HttpClient {
-    #[tracing::instrument(skip(self))]
-    pub async fn get_audio_link(&self, params: &Params) -> Result<String, Error> {
-        let result: Response<Payload> = self
-            .get_request("getaudiolink", &params.to_http_params())
+#[async_trait::async_trait(?Send)]
+impl Command for GetAudioLinkCommand {
+    type Output = String;
+    type Error = Error;
+
+    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Self::Error> {
+        let result: Response<Payload> = client
+            .get_request("getaudiolink", &self.to_http_params())
             .await?;
-        result.payload().map(|value| value.to_url())
+        result.payload().map(|item| item.to_url())
     }
 }

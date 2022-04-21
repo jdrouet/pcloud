@@ -4,7 +4,7 @@ use crate::entry::File;
 use crate::error::Error;
 use crate::file::FileResponse;
 use crate::http::HttpClient;
-use crate::prelude::HttpCommand;
+use crate::prelude::{BinaryCommand, HttpCommand};
 use crate::request::Response;
 
 #[derive(Debug)]
@@ -30,14 +30,11 @@ impl HttpCommand for FileDeleteCommand {
     }
 }
 
-impl BinaryClient {
-    #[tracing::instrument(skip(self))]
-    pub fn delete_file<I: Into<FileIdentifier> + std::fmt::Debug>(
-        &mut self,
-        identifier: I,
-    ) -> Result<File, Error> {
-        let identifier = identifier.into();
-        let result = self.send_command("deletefile", &identifier.to_binary_params())?;
+impl BinaryCommand for FileDeleteCommand {
+    type Output = File;
+
+    fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
+        let result = client.send_command("deletefile", &self.identifier.to_binary_params())?;
         let result: Response<FileResponse> = serde_json::from_value(result)?;
         result.payload().map(|res| res.metadata)
     }

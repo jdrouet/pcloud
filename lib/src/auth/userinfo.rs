@@ -1,7 +1,7 @@
 use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::error::Error;
 use crate::http::HttpClient;
-use crate::prelude::HttpCommand;
+use crate::prelude::{BinaryCommand, HttpCommand};
 use crate::request::Response;
 
 #[derive(serde::Deserialize)]
@@ -27,6 +27,14 @@ impl UserInfoCommand {
     pub fn new(get_auth: bool, logout: bool) -> Self {
         Self { get_auth, logout }
     }
+
+    pub fn set_get_auth(&mut self, value: bool) {
+        self.get_auth = value;
+    }
+
+    pub fn set_logout(&mut self, value: bool) {
+        self.logout = value;
+    }
 }
 
 impl UserInfoCommand {
@@ -41,7 +49,7 @@ impl UserInfoCommand {
         res
     }
 
-    pub fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
+    fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
         let mut res = Vec::new();
         if self.get_auth {
             res.push(("getauth", BinaryValue::Bool(true)));
@@ -65,36 +73,45 @@ impl HttpCommand for UserInfoCommand {
     }
 }
 
-impl BinaryClient {
-    #[tracing::instrument(skip(self))]
-    pub fn user_info(&mut self, params: &UserInfoCommand) -> Result<UserInfo, Error> {
-        let result = self.send_command("userinfo", &params.to_binary_params())?;
+impl BinaryCommand for UserInfoCommand {
+    type Output = UserInfo;
+
+    fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
+        let result = client.send_command("userinfo", &self.to_binary_params())?;
         let result: Response<UserInfo> = serde_json::from_value(result)?;
         result.payload()
     }
 }
 
 #[cfg(all(test, feature = "protected"))]
-mod tests {
+mod http_tests {
     use super::UserInfoCommand;
-    use crate::binary::BinaryClient;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::region::Region;
 
     #[tokio::test]
-    async fn http_success() {
+    async fn success() {
         let creds = Credentials::from_env();
         let client = HttpClient::new_eu(creds);
         UserInfoCommand::default().execute(&client).await.unwrap();
     }
+}
+
+#[cfg(all(test, feature = "protected"))]
+mod binary_tests {
+    use super::UserInfoCommand;
+    use crate::binary::BinaryClient;
+    use crate::credentials::Credentials;
+    use crate::prelude::BinaryCommand;
+    use crate::region::Region;
 
     #[test]
-    fn binary_success() {
+    fn success() {
         let creds = Credentials::from_env();
         let mut client = BinaryClient::new(creds, Region::eu()).unwrap();
-        let params = super::Params::default();
+        let params = UserInfoCommand::default();
         client.user_info(&params).unwrap();
     }
 }

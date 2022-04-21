@@ -1,6 +1,6 @@
 pub mod prelude;
 
-mod auth;
+pub mod auth;
 pub mod binary;
 pub mod credentials;
 mod date;

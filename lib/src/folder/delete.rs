@@ -3,24 +3,69 @@ use crate::binary::BinaryClient;
 use crate::entry::Folder;
 use crate::error::Error;
 use crate::http::HttpClient;
+use crate::prelude::Command;
 use crate::request::Response;
 
-impl HttpClient {
-    /// Delete a folder
-    ///
-    /// # Arguments
-    ///
-    /// * `folder_id` - ID of the folder to delete.
-    ///
-    pub async fn delete_folder<I: Into<FolderIdentifier>>(
-        &self,
-        identifier: I,
-    ) -> Result<Folder, Error> {
-        let identifier = identifier.into();
-        let result: Response<FolderResponse> = self
-            .get_request("deletefolder", &identifier.to_http_params())
+#[derive(Debug, serde::Deserialize)]
+pub struct RecursivePayload {
+    #[serde(rename = "deletedfiles")]
+    pub deleted_files: usize,
+    #[serde(rename = "deletedfolders")]
+    pub deleted_folders: usize,
+}
+
+#[derive(Debug)]
+pub struct FolderDeleteCommand {
+    identifier: FolderIdentifier,
+    recursive: bool,
+}
+
+impl FolderDeleteCommand {
+    pub fn new(identifier: FolderIdentifier) -> Self {
+        Self {
+            identifier,
+            recursive: false,
+        }
+    }
+
+    pub fn set_recursive(&mut self, value: bool) {
+        self.recursive = value;
+    }
+
+    pub fn recursive(mut self, value: bool) -> Self {
+        self.recursive = value;
+        self
+    }
+
+    async fn execute_normal(&self, client: &HttpClient) -> Result<RecursivePayload, Error> {
+        let result: Response<FolderResponse> = client
+            .get_request("deletefolder", &self.identifier.to_http_params())
             .await?;
-        result.payload().map(|item| item.metadata)
+        result.payload().map(|_| RecursivePayload {
+            deleted_files: 0,
+            deleted_folders: 1,
+        })
+    }
+
+    async fn execute_recursive(&self, client: &HttpClient) -> Result<RecursivePayload, Error> {
+        let result: Response<RecursivePayload> = client
+            .get_request("deletefolderrecursive", &self.identifier.to_http_params())
+            .await?;
+        result.payload()
+    }
+}
+
+#[async_trait::async_trait(?Send)]
+impl Command for FolderDeleteCommand {
+    type Output = RecursivePayload;
+    type Error = Error;
+
+    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Self::Error> {
+        if self.recursive {
+            self.execute_recursive(client).await
+        } else {
+            self.execute_normal(client).await
+        }
     }
 }
 
@@ -33,34 +78,6 @@ impl BinaryClient {
         let result = self.send_command("deletefolder", &identifier.to_binary_params())?;
         let result: Response<FolderResponse> = serde_json::from_value(result)?;
         result.payload().map(|item| item.metadata)
-    }
-}
-
-#[derive(Debug, serde::Deserialize)]
-pub struct RecursivePayload {
-    #[serde(rename = "deletedfiles")]
-    pub deleted_files: usize,
-    #[serde(rename = "deletedfolders")]
-    pub deleted_folders: usize,
-}
-
-impl HttpClient {
-    /// Delete a folder recursively
-    ///
-    /// # Arguments
-    ///
-    /// * `folder_id` - ID of the folder to delete.
-    ///
-    #[tracing::instrument(skip(self))]
-    pub async fn delete_folder_recursive<I: Into<FolderIdentifier> + std::fmt::Debug>(
-        &self,
-        identifier: I,
-    ) -> Result<RecursivePayload, Error> {
-        let identifier = identifier.into();
-        let result: Response<RecursivePayload> = self
-            .get_request("deletefolderrecursive", &identifier.to_http_params())
-            .await?;
-        result.payload()
     }
 }
 
@@ -79,8 +96,10 @@ impl BinaryClient {
 
 #[cfg(test)]
 mod tests {
+    use super::FolderDeleteCommand;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;
+    use crate::prelude::Command;
     use crate::region::Region;
     use mockito::{mock, Matcher};
 
@@ -117,8 +136,11 @@ mod tests {
         let creds = Credentials::AccessToken("access-token".into());
         let dc = Region::mock();
         let api = HttpClient::new(creds, dc);
-        let result = api.delete_folder(42).await.unwrap();
-        assert_eq!(result.base.name, "testing");
+        let result = FolderDeleteCommand::new(42.into())
+            .execute(&api)
+            .await
+            .unwrap();
+        assert_eq!(result.deleted_folders, 1);
         m.assert();
     }
 }

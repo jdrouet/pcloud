@@ -3,7 +3,7 @@ use crate::binary::BinaryClient;
 use crate::entry::File;
 use crate::error::Error;
 use crate::http::HttpClient;
-use crate::prelude::HttpCommand;
+use crate::prelude::{BinaryCommand, HttpCommand};
 use crate::request::Response;
 
 #[derive(Debug)]
@@ -29,24 +29,21 @@ impl HttpCommand for FileCheckSumCommand {
     }
 }
 
+impl BinaryCommand for FileCheckSumCommand {
+    type Output = CheckSumFile;
+
+    fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
+        let result = client.send_command("checksumfile", &self.identifier.to_binary_params())?;
+        let result: Response<CheckSumFile> = serde_json::from_value(result)?;
+        result.payload()
+    }
+}
+
 #[derive(Debug, serde::Deserialize)]
 pub struct CheckSumFile {
     pub sha256: String,
     pub sha1: String,
     pub metadata: File,
-}
-
-impl BinaryClient {
-    #[tracing::instrument(skip(self))]
-    pub fn get_info_file<I: Into<FileIdentifier> + std::fmt::Debug>(
-        &mut self,
-        identifier: I,
-    ) -> Result<CheckSumFile, Error> {
-        let params: FileIdentifier = identifier.into();
-        let result = self.send_command("checksumfile", &params.to_binary_params())?;
-        let result: Response<CheckSumFile> = serde_json::from_value(result)?;
-        result.payload()
-    }
 }
 
 #[cfg(test)]

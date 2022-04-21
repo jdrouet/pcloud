@@ -1,5 +1,6 @@
 use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::error::Error;
+use crate::prelude::BinaryCommand;
 use crate::request::Response;
 
 #[derive(Debug, serde::Deserialize)]
@@ -8,15 +9,24 @@ pub struct Payload {
 }
 
 #[derive(Debug)]
-pub struct Params<'d> {
+pub struct FilePWriteCommand<'d> {
     fd: u64,
     offset: usize,
     data: &'d [u8],
 }
 
-impl<'d> Params<'d> {
+impl<'d> FilePWriteCommand<'d> {
     pub fn new(fd: u64, offset: usize, data: &'d [u8]) -> Self {
         Self { fd, offset, data }
+    }
+
+    pub fn new_chunks(fd: u64, offset: usize, data: &'d [u8]) -> Vec<Self> {
+        data.chunks(super::MAX_BLOCK_SIZE)
+            .enumerate()
+            .map(|(index, chunk)| {
+                FilePWriteCommand::new(fd, offset + index * super::MAX_BLOCK_SIZE, chunk)
+            })
+            .collect()
     }
 
     fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
@@ -27,25 +37,16 @@ impl<'d> Params<'d> {
     }
 }
 
-impl BinaryClient {
-    fn file_pwrite_part(&mut self, params: &Params) -> Result<usize, Error> {
+impl<'d> BinaryCommand for FilePWriteCommand<'d> {
+    type Output = usize;
+
+    fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
         let res =
-            self.send_command_with_data("file_pwrite", &params.to_binary_params(), params.data)?;
+            client.send_command_with_data("file_pwrite", &self.to_binary_params(), self.data)?;
         let res: Response<Payload> = serde_json::from_value(res)?;
         res.payload().map(|value| value.bytes).map_err(|err| {
             tracing::error!("unable to read the result: {:?}", err);
             Error::ResponseFormat
         })
-    }
-
-    #[tracing::instrument(skip(self))]
-    pub fn file_pwrite(&mut self, params: &Params) -> Result<usize, Error> {
-        let mut offset = 0;
-        for chunk in params.data.chunks(super::MAX_BLOCK_SIZE) {
-            let chunk_params = Params::new(params.fd, offset, chunk);
-            self.file_pwrite_part(&chunk_params)?;
-            offset += chunk.len();
-        }
-        Ok(offset)
     }
 }

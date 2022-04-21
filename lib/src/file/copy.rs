@@ -3,7 +3,7 @@ use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::entry::File;
 use crate::error::Error;
 use crate::http::HttpClient;
-use crate::prelude::HttpCommand;
+use crate::prelude::{BinaryCommand, HttpCommand};
 use crate::request::Response;
 
 #[derive(Debug)]
@@ -47,10 +47,11 @@ impl HttpCommand for FileCopyCommand {
     }
 }
 
-impl BinaryClient {
-    #[tracing::instrument(skip(self))]
-    pub fn copy_file(&mut self, params: &FileCopyCommand) -> Result<File, Error> {
-        let result = self.send_command("copyfile", &params.to_binary_params())?;
+impl BinaryCommand for FileCopyCommand {
+    type Output = File;
+
+    fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
+        let result = client.send_command("copyfile", &self.to_binary_params())?;
         let result: Response<FileResponse> = serde_json::from_value(result)?;
         result.payload().map(|item| item.metadata)
     }

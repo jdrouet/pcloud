@@ -3,7 +3,7 @@ use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::entry::Folder;
 use crate::error::Error;
 use crate::http::HttpClient;
-use crate::prelude::HttpCommand;
+use crate::prelude::{BinaryCommand, HttpCommand};
 use crate::request::Response;
 
 #[derive(Debug)]
@@ -28,6 +28,20 @@ impl HttpCommand for FolderRenameCommand {
             ("toname", self.name),
         ];
         let result: Response<FolderResponse> = client.get_request("renamefolder", &params).await?;
+        result.payload().map(|item| item.metadata)
+    }
+}
+
+impl BinaryCommand for FolderRenameCommand {
+    type Output = Folder;
+
+    fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
+        let params = vec![
+            ("folderid", BinaryValue::Number(self.identifier)),
+            ("toname", BinaryValue::Text(self.name.clone())),
+        ];
+        let result = client.send_command("renamefolder", &params)?;
+        let result: Response<FolderResponse> = serde_json::from_value(result)?;
         result.payload().map(|item| item.metadata)
     }
 }
@@ -58,48 +72,15 @@ impl HttpCommand for FolderMoveCommand {
     }
 }
 
-#[derive(Debug)]
-pub enum Params {
-    Rename { folder_id: u64, name: String },
-    Move { folder_id: u64, to_folder_id: u64 },
-}
+impl BinaryCommand for FolderMoveCommand {
+    type Output = Folder;
 
-impl Params {
-    pub fn new_rename<S: Into<String>>(folder_id: u64, name: S) -> Self {
-        Self::Rename {
-            folder_id,
-            name: name.into(),
-        }
-    }
-
-    pub fn new_move(folder_id: u64, to_folder_id: u64) -> Self {
-        Self::Move {
-            folder_id,
-            to_folder_id,
-        }
-    }
-
-    pub fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
-        match self {
-            Self::Rename { folder_id, name } => vec![
-                ("folderid", BinaryValue::Number(*folder_id)),
-                ("toname", BinaryValue::Text(name.to_string())),
-            ],
-            Self::Move {
-                folder_id,
-                to_folder_id,
-            } => vec![
-                ("folderid", BinaryValue::Number(*folder_id)),
-                ("tofolderid", BinaryValue::Number(*to_folder_id)),
-            ],
-        }
-    }
-}
-
-impl BinaryClient {
-    #[tracing::instrument(skip(self))]
-    pub fn rename_folder(&mut self, params: &Params) -> Result<Folder, Error> {
-        let result = self.send_command("renamefolder", &params.to_binary_params())?;
+    fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
+        let params = vec![
+            ("folderid", BinaryValue::Number(self.folder)),
+            ("tofolderid", BinaryValue::Number(self.to_folder)),
+        ];
+        let result = client.send_command("renamefolder", &params)?;
         let result: Response<FolderResponse> = serde_json::from_value(result)?;
         result.payload().map(|item| item.metadata)
     }

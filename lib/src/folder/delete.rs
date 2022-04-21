@@ -3,7 +3,7 @@ use crate::binary::BinaryClient;
 use crate::entry::Folder;
 use crate::error::Error;
 use crate::http::HttpClient;
-use crate::prelude::Command;
+use crate::prelude::HttpCommand;
 use crate::request::Response;
 
 #[derive(Debug, serde::Deserialize)]
@@ -56,11 +56,10 @@ impl FolderDeleteCommand {
 }
 
 #[async_trait::async_trait(?Send)]
-impl Command for FolderDeleteCommand {
+impl HttpCommand for FolderDeleteCommand {
     type Output = RecursivePayload;
-    type Error = Error;
 
-    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Self::Error> {
+    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
         if self.recursive {
             self.execute_recursive(client).await
         } else {
@@ -99,7 +98,7 @@ mod tests {
     use super::FolderDeleteCommand;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;
-    use crate::prelude::Command;
+    use crate::prelude::HttpCommand;
     use crate::region::Region;
     use mockito::{mock, Matcher};
 

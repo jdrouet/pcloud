@@ -3,7 +3,7 @@ use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::entry::File;
 use crate::error::Error;
 use crate::http::HttpClient;
-use crate::prelude::Command;
+use crate::prelude::HttpCommand;
 use crate::request::Response;
 
 #[derive(Debug)]
@@ -36,11 +36,10 @@ impl FileCopyCommand {
 }
 
 #[async_trait::async_trait(?Send)]
-impl Command for FileCopyCommand {
+impl HttpCommand for FileCopyCommand {
     type Output = File;
-    type Error = Error;
 
-    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Self::Error> {
+    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
         let result: Response<FileResponse> = client
             .get_request("copyfile", &self.to_http_params())
             .await?;

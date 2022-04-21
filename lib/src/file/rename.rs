@@ -4,7 +4,7 @@ use crate::entry::File;
 use crate::error::Error;
 use crate::folder::FolderIdentifier;
 use crate::http::HttpClient;
-use crate::prelude::Command;
+use crate::prelude::HttpCommand;
 use crate::request::Response;
 
 #[derive(Debug)]
@@ -33,11 +33,10 @@ impl FileMoveCommand {
 }
 
 #[async_trait::async_trait(?Send)]
-impl Command for FileMoveCommand {
+impl HttpCommand for FileMoveCommand {
     type Output = File;
-    type Error = Error;
 
-    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Self::Error> {
+    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
         let result: Response<FileResponse> = client
             .get_request("renamefile", &self.to_http_params())
             .await?;
@@ -68,11 +67,10 @@ impl FileRenameCommand {
 }
 
 #[async_trait::async_trait(?Send)]
-impl Command for FileRenameCommand {
+impl HttpCommand for FileRenameCommand {
     type Output = File;
-    type Error = Error;
 
-    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Self::Error> {
+    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
         let result: Response<FileResponse> = client
             .get_request("renamefile", &self.to_http_params())
             .await?;

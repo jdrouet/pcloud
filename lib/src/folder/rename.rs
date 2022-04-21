@@ -3,7 +3,7 @@ use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::entry::Folder;
 use crate::error::Error;
 use crate::http::HttpClient;
-use crate::prelude::Command;
+use crate::prelude::HttpCommand;
 use crate::request::Response;
 
 #[derive(Debug)]
@@ -19,11 +19,10 @@ impl FolderRenameCommand {
 }
 
 #[async_trait::async_trait(?Send)]
-impl Command for FolderRenameCommand {
+impl HttpCommand for FolderRenameCommand {
     type Output = Folder;
-    type Error = Error;
 
-    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Self::Error> {
+    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
         let params = vec![
             ("folderid", self.identifier.to_string()),
             ("toname", self.name),
@@ -46,11 +45,10 @@ impl FolderMoveCommand {
 }
 
 #[async_trait::async_trait(?Send)]
-impl Command for FolderMoveCommand {
+impl HttpCommand for FolderMoveCommand {
     type Output = Folder;
-    type Error = Error;
 
-    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Self::Error> {
+    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
         let params = vec![
             ("folderid", self.folder.to_string()),
             ("tofolderid", self.to_folder.to_string()),

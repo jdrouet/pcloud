@@ -3,7 +3,7 @@ use crate::binary::BinaryClient;
 use crate::entry::File;
 use crate::error::Error;
 use crate::http::HttpClient;
-use crate::prelude::Command;
+use crate::prelude::HttpCommand;
 use crate::request::Response;
 
 #[derive(Debug)]
@@ -18,11 +18,10 @@ impl FileCheckSumCommand {
 }
 
 #[async_trait::async_trait(?Send)]
-impl Command for FileCheckSumCommand {
+impl HttpCommand for FileCheckSumCommand {
     type Output = CheckSumFile;
-    type Error = Error;
 
-    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Self::Error> {
+    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
         let result: Response<CheckSumFile> = client
             .get_request("checksumfile", &self.identifier.to_http_params())
             .await?;
@@ -55,7 +54,7 @@ mod tests {
     use super::FileCheckSumCommand;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;
-    use crate::prelude::Command;
+    use crate::prelude::HttpCommand;
     use crate::region::Region;
     use mockito::{mock, Matcher};
 

@@ -1,7 +1,7 @@
 use super::FileIdentifier;
 use crate::error::Error;
 use crate::http::HttpClient;
-use crate::prelude::Command;
+use crate::prelude::HttpCommand;
 use crate::request::Response;
 
 #[derive(Debug)]
@@ -16,11 +16,10 @@ impl FileLinkCommand {
 }
 
 #[async_trait::async_trait(?Send)]
-impl Command for FileLinkCommand {
+impl HttpCommand for FileLinkCommand {
     type Output = String;
-    type Error = Error;
 
-    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Self::Error> {
+    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
         let result: Response<FileLink> = client
             .get_request("getfilelink", &self.identifier.to_http_params())
             .await?;
@@ -49,7 +48,7 @@ mod tests {
     use super::FileLinkCommand;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;
-    use crate::prelude::Command;
+    use crate::prelude::HttpCommand;
     use crate::region::Region;
     use mockito::{mock, Matcher};
 

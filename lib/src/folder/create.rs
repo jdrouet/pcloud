@@ -3,7 +3,7 @@ use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::entry::Folder;
 use crate::error::Error;
 use crate::http::HttpClient;
-use crate::prelude::Command;
+use crate::prelude::HttpCommand;
 use crate::request::Response;
 
 #[derive(Debug)]
@@ -55,11 +55,10 @@ impl FolderCreateCommand {
 }
 
 #[async_trait::async_trait(?Send)]
-impl Command for FolderCreateCommand {
+impl HttpCommand for FolderCreateCommand {
     type Output = Folder;
-    type Error = Error;
 
-    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Self::Error> {
+    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
         let result: Response<FolderResponse> = client
             .get_request(self.method(), &self.to_http_params())
             .await?;
@@ -82,7 +81,7 @@ mod tests {
     use crate::binary::BinaryClientBuilder;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;
-    use crate::prelude::Command;
+    use crate::prelude::HttpCommand;
     use crate::region::Region;
     use mockito::{mock, Matcher};
 

@@ -1,7 +1,7 @@
 use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::error::Error;
 use crate::http::HttpClient;
-use crate::prelude::Command;
+use crate::prelude::HttpCommand;
 use crate::request::Response;
 
 #[derive(serde::Deserialize)]
@@ -54,11 +54,10 @@ impl UserInfoCommand {
 }
 
 #[async_trait::async_trait(?Send)]
-impl Command for UserInfoCommand {
+impl HttpCommand for UserInfoCommand {
     type Output = UserInfo;
-    type Error = Error;
 
-    async fn execute(mut self, client: &HttpClient) -> Result<Self::Output, Self::Error> {
+    async fn execute(mut self, client: &HttpClient) -> Result<Self::Output, Error> {
         let result: Response<UserInfo> = client
             .get_request("userinfo", &self.to_http_params())
             .await?;
@@ -81,7 +80,7 @@ mod tests {
     use crate::binary::BinaryClient;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;
-    use crate::prelude::Command;
+    use crate::prelude::HttpCommand;
     use crate::region::Region;
 
     #[tokio::test]

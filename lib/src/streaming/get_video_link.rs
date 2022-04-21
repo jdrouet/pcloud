@@ -2,7 +2,7 @@ use super::Payload;
 use crate::error::Error;
 use crate::file::FileIdentifier;
 use crate::http::HttpClient;
-use crate::prelude::Command;
+use crate::prelude::HttpCommand;
 use crate::request::Response;
 
 #[derive(Debug)]
@@ -84,11 +84,10 @@ impl GetVideoLinkCommand {
 }
 
 #[async_trait::async_trait(?Send)]
-impl Command for GetVideoLinkCommand {
+impl HttpCommand for GetVideoLinkCommand {
     type Output = String;
-    type Error = Error;
 
-    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Self::Error> {
+    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
         let result: Response<Payload> = client
             .get_request("getvideolink", &self.to_http_params())
             .await?;

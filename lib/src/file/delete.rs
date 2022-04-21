@@ -4,7 +4,7 @@ use crate::entry::File;
 use crate::error::Error;
 use crate::file::FileResponse;
 use crate::http::HttpClient;
-use crate::prelude::Command;
+use crate::prelude::HttpCommand;
 use crate::request::Response;
 
 #[derive(Debug)]
@@ -19,11 +19,10 @@ impl FileDeleteCommand {
 }
 
 #[async_trait::async_trait(?Send)]
-impl Command for FileDeleteCommand {
+impl HttpCommand for FileDeleteCommand {
     type Output = File;
-    type Error = Error;
 
-    async fn execute(mut self, client: &HttpClient) -> Result<Self::Output, Self::Error> {
+    async fn execute(mut self, client: &HttpClient) -> Result<Self::Output, Error> {
         let result: Response<FileResponse> = client
             .get_request("deletefile", &self.identifier.to_http_params())
             .await?;
@@ -49,7 +48,7 @@ mod tests {
     use super::FileDeleteCommand;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;
-    use crate::prelude::Command;
+    use crate::prelude::HttpCommand;
     use crate::region::Region;
     use mockito::{mock, Matcher};
 

@@ -2,7 +2,7 @@ use super::FileResponse;
 use crate::entry::File;
 use crate::error::Error;
 use crate::http::HttpClient;
-use crate::prelude::Command;
+use crate::prelude::HttpCommand;
 use crate::request::Response;
 use std::io::Read;
 
@@ -49,9 +49,8 @@ impl<'a, R: Read> FileUploadCommand<'a, R> {
 }
 
 #[async_trait::async_trait(?Send)]
-impl<'a, R: Read> Command for FileUploadCommand<'a, R> {
+impl<'a, R: Read> HttpCommand for FileUploadCommand<'a, R> {
     type Output = File;
-    type Error = Error;
 
     async fn execute(self, client: &HttpClient) -> Result<File, Error> {
         let upload_id = self.create_upload_file(client).await?;
@@ -129,7 +128,7 @@ mod tests {
     use super::FileUploadCommand;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;
-    use crate::prelude::Command;
+    use crate::prelude::HttpCommand;
     use crate::region::Region;
     use mockito::{mock, Matcher};
 

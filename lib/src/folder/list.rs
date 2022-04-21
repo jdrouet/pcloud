@@ -3,7 +3,7 @@ use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::entry::Folder;
 use crate::error::Error;
 use crate::http::HttpClient;
-use crate::prelude::HttpCommand;
+use crate::prelude::{BinaryCommand, HttpCommand};
 use crate::request::Response;
 
 #[derive(Debug)]
@@ -113,17 +113,18 @@ impl HttpCommand for FolderListCommand {
     }
 }
 
-impl BinaryClient {
-    #[tracing::instrument(skip(self))]
-    pub fn list_folder(&mut self, params: &FolderListCommand) -> Result<Folder, Error> {
-        let result = self.send_command("listfolder", &params.to_binary_params())?;
+impl BinaryCommand for FolderListCommand {
+    type Output = Folder;
+
+    fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
+        let result = client.send_command("listfolder", &self.to_binary_params())?;
         let result: Response<FolderResponse> = serde_json::from_value(result)?;
         result.payload().map(|res| res.metadata)
     }
 }
 
 #[cfg(test)]
-mod tests {
+mod http_tests {
     use super::FolderListCommand;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;
@@ -192,14 +193,20 @@ mod tests {
         assert!(matches!(error, crate::error::Error::Protocol(_, _)));
         m.assert();
     }
+}
+
+#[cfg(all(test, feature = "protected"))]
+mod binary_tests {
+    use super::FolderListCommand;
+    use crate::binary::BinaryClient;
+    use crate::credentials::Credentials;
+    use crate::prelude::BinaryCommand;
+    use crate::region::Region;
 
     #[test]
-    #[cfg(feature = "protected")]
     fn binary_success() {
-        use crate::binary::BinaryClient;
-
         let mut client = BinaryClient::new(Credentials::from_env(), Region::eu()).unwrap();
-        let res = client.list_folder(&FolderListCommand::new(0)).unwrap();
+        let res = FolderListCommand::new(0).execute(&mut client).unwrap();
         assert_eq!(res.base.name, "/");
     }
 }

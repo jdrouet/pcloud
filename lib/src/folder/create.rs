@@ -3,7 +3,7 @@ use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::entry::Folder;
 use crate::error::Error;
 use crate::http::HttpClient;
-use crate::prelude::HttpCommand;
+use crate::prelude::{BinaryCommand, HttpCommand};
 use crate::request::Response;
 
 #[derive(Debug)]
@@ -66,19 +66,19 @@ impl HttpCommand for FolderCreateCommand {
     }
 }
 
-impl BinaryClient {
-    #[tracing::instrument(skip(self))]
-    pub fn create_folder(&mut self, params: &FolderCreateCommand) -> Result<Folder, Error> {
-        let result = self.send_command(params.method(), &params.to_binary_params())?;
+impl BinaryCommand for FolderCreateCommand {
+    type Output = Folder;
+
+    fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
+        let result = client.send_command(self.method(), &self.to_binary_params())?;
         let result: Response<FolderResponse> = serde_json::from_value(result)?;
         result.payload().map(|item| item.metadata)
     }
 }
 
 #[cfg(test)]
-mod tests {
+mod http_tests {
     use super::FolderCreateCommand;
-    use crate::binary::BinaryClientBuilder;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
@@ -148,14 +148,21 @@ mod tests {
         assert!(matches!(error, crate::error::Error::Protocol(_, _)));
         m.assert();
     }
+}
+
+#[cfg(test)]
+mod binary_tests {
+    use super::FolderCreateCommand;
+    use crate::binary::BinaryClientBuilder;
+    use crate::prelude::BinaryCommand;
 
     #[test]
     #[ignore]
     fn binary_success() {
         let name = crate::tests::random_name();
         let mut client = BinaryClientBuilder::from_env().build().unwrap();
-        let res = client
-            .create_folder(&FolderCreateCommand::new(name.clone(), 0))
+        let res = FolderCreateCommand::new(name.clone(), 0)
+            .execute(&mut client)
             .unwrap();
         assert_eq!(res.base.name, name);
     }

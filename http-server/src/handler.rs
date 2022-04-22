@@ -1,8 +1,10 @@
 use crate::render;
 use actix_web::error::ResponseError;
 use actix_web::{web, HttpRequest, HttpResponse, HttpResponseBuilder};
-use pcloud::folder::list::Params as ListFolderParams;
+use pcloud::file::get_link::FileLinkCommand;
+use pcloud::folder::list::FolderListCommand;
 use pcloud::http::HttpClient;
+use pcloud::prelude::HttpCommand;
 use std::fmt;
 
 #[derive(Debug)]
@@ -98,19 +100,21 @@ pub async fn handle(
     log::debug!("forward to path={}", target_path);
 
     if let Some(path) = target_path.strip_suffix('/') {
-        let params = ListFolderParams::new(if path.is_empty() {
+        let path = if path.is_empty() {
             target_path.to_string()
         } else {
             path.to_string()
-        });
-        client
-            .list_folder(&params)
+        };
+        FolderListCommand::new(path.into())
+            .execute(&client)
             .await
             .map(|folder| HttpResponse::Ok().body(render::format_page(&original_path, &folder)))
             .map_err(Error::UnableListFolder)
     } else {
-        let result = client.get_link_file(target_path).await;
-        let url = result.map_err(Error::UnableGetFile)?;
+        let url = FileLinkCommand::new(target_path.into())
+            .execute(&client)
+            .await
+            .map_err(Error::UnableGetFile)?;
         let redirect = build_stream_request(&req, &url);
         let redirect = redirect.send().await.map_err(Error::OpenStream)?;
         let mut res = build_stream_response(&redirect);

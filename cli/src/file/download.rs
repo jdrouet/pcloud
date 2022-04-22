@@ -1,5 +1,7 @@
 use clap::Parser;
+use pcloud::file::download::FileDownloadCommand;
 use pcloud::http::HttpClient;
+use pcloud::prelude::HttpCommand;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
 
@@ -23,7 +25,10 @@ impl Command {
             .truncate(true)
             .open(&self.path)
             .expect("unable to create file");
-        match pcloud.download_file(self.file_id, file).await {
+        match FileDownloadCommand::new(self.file_id.into(), file)
+            .execute(&pcloud)
+            .await
+        {
             Ok(res) => {
                 tracing::info!("file downloaded: {}", res);
                 std::process::exit(exitcode::OK);

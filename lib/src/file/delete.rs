@@ -22,7 +22,7 @@ impl FileDeleteCommand {
 impl HttpCommand for FileDeleteCommand {
     type Output = File;
 
-    async fn execute(mut self, client: &HttpClient) -> Result<Self::Output, Error> {
+    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
         let result: Response<FileResponse> = client
             .get_request("deletefile", &self.identifier.to_http_params())
             .await?;

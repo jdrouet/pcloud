@@ -17,7 +17,7 @@ pub struct FileUploadCommand<'a, R> {
     part_size: usize,
 }
 
-impl<'a, R: Read> FileUploadCommand<'a, R> {
+impl<'a, R: Read + Send> FileUploadCommand<'a, R> {
     pub fn new(filename: &'a str, folder_id: u64, reader: R) -> Self {
         Self {
             filename,
@@ -30,6 +30,11 @@ impl<'a, R: Read> FileUploadCommand<'a, R> {
 
     pub fn set_no_partial(&mut self, no_partial: bool) {
         self.no_partial = no_partial;
+    }
+
+    pub fn no_partial(mut self, no_partial: bool) -> Self {
+        self.no_partial = no_partial;
+        self
     }
 
     pub fn set_part_size(&mut self, part_size: usize) {
@@ -49,7 +54,7 @@ impl<'a, R: Read> FileUploadCommand<'a, R> {
 }
 
 #[async_trait::async_trait(?Send)]
-impl<'a, R: Read> HttpCommand for FileUploadCommand<'a, R> {
+impl<'a, R: Read + Send> HttpCommand for FileUploadCommand<'a, R> {
     type Output = File;
 
     async fn execute(self, client: &HttpClient) -> Result<File, Error> {

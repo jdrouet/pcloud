@@ -1,7 +1,8 @@
 use clap::Parser;
 use pcloud::entry::Entry;
-use pcloud::folder::list::Params;
+use pcloud::folder::list::FolderListCommand;
 use pcloud::http::HttpClient;
+use pcloud::prelude::HttpCommand;
 
 #[derive(Parser)]
 pub struct Command;
@@ -35,8 +36,10 @@ impl Command {
     #[tracing::instrument(skip_all, level = "info")]
     pub async fn execute(&self, pcloud: HttpClient, folder_id: u64) {
         tracing::info!("listing folder {}", folder_id);
-        let params = Params::new(folder_id);
-        match pcloud.list_folder(&params).await {
+        match FolderListCommand::new(folder_id.into())
+            .execute(&pcloud)
+            .await
+        {
             Ok(res) => {
                 self.print(res.contents.unwrap_or_default());
                 std::process::exit(exitcode::OK);

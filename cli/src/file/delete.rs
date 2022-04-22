@@ -1,5 +1,7 @@
 use clap::Parser;
+use pcloud::file::delete::FileDeleteCommand;
 use pcloud::http::HttpClient;
+use pcloud::prelude::HttpCommand;
 
 #[derive(Parser)]
 pub struct Command {
@@ -9,7 +11,10 @@ pub struct Command {
 impl Command {
     #[tracing::instrument(skip_all)]
     pub async fn execute(&self, pcloud: HttpClient) {
-        match pcloud.delete_file(self.file_id).await {
+        match FileDeleteCommand::new(self.file_id.into())
+            .execute(&pcloud)
+            .await
+        {
             Ok(_) => {
                 tracing::info!("file deleted");
                 std::process::exit(exitcode::OK);

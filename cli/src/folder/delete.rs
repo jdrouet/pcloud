@@ -1,5 +1,7 @@
 use clap::Parser;
+use pcloud::folder::delete::FolderDeleteCommand;
 use pcloud::http::HttpClient;
+use pcloud::prelude::HttpCommand;
 
 #[derive(Parser)]
 pub struct Command {
@@ -10,19 +12,13 @@ pub struct Command {
 impl Command {
     #[tracing::instrument(skip_all)]
     pub async fn execute(&self, pcloud: HttpClient, folder_id: u64) {
-        let result = if self.recursive {
-            pcloud
-                .delete_folder_recursive(folder_id)
-                .await
-                .map(|_| tracing::info!("folder {} deleted", folder_id))
-        } else {
-            pcloud
-                .delete_folder(folder_id)
-                .await
-                .map(|_| tracing::info!("folder {} deleted", folder_id))
-        };
-        match result {
+        match FolderDeleteCommand::new(folder_id.into())
+            .recursive(self.recursive)
+            .execute(&pcloud)
+            .await
+        {
             Ok(_) => {
+                tracing::info!("folder deleted");
                 std::process::exit(exitcode::OK);
             }
             Err(err) => {

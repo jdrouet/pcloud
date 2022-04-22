@@ -1,6 +1,7 @@
 use clap::Parser;
-use pcloud::file::rename::Params;
+use pcloud::file::rename::FileMoveCommand;
 use pcloud::http::HttpClient;
+use pcloud::prelude::HttpCommand;
 
 #[derive(Parser)]
 pub struct Command {
@@ -11,8 +12,10 @@ pub struct Command {
 impl Command {
     #[tracing::instrument(skip_all)]
     pub async fn execute(&self, pcloud: HttpClient) {
-        let params = Params::new_move(self.file_id, self.folder_id);
-        match pcloud.rename_file(&params).await {
+        match FileMoveCommand::new(self.file_id.into(), self.folder_id.into())
+            .execute(&pcloud)
+            .await
+        {
             Ok(_) => {
                 tracing::info!("file moved");
                 std::process::exit(exitcode::OK);

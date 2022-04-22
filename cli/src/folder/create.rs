@@ -1,6 +1,7 @@
 use clap::Parser;
-use pcloud::folder::create::Params;
+use pcloud::folder::create::FolderCreateCommand;
 use pcloud::http::HttpClient;
+use pcloud::prelude::HttpCommand;
 
 #[derive(Parser)]
 pub struct Command {
@@ -10,8 +11,10 @@ pub struct Command {
 impl Command {
     #[tracing::instrument(skip_all)]
     pub async fn execute(&self, pcloud: HttpClient, folder_id: u64) {
-        let params = Params::new(&self.name, folder_id);
-        match pcloud.create_folder(&params).await {
+        match FolderCreateCommand::new(self.name.clone(), folder_id)
+            .execute(&pcloud)
+            .await
+        {
             Ok(res) => {
                 tracing::info!("folder created {}", res.folder_id);
                 std::process::exit(exitcode::OK);

@@ -205,8 +205,10 @@ mod binary_tests {
 
     #[test]
     fn binary_success() {
-        let mut client = BinaryClient::new(Credentials::from_env(), Region::eu()).unwrap();
-        let res = FolderListCommand::new(0).execute(&mut client).unwrap();
+        let mut client = BinaryClient::new(Credentials::from_env().unwrap(), Region::eu()).unwrap();
+        let res = FolderListCommand::new(0.into())
+            .execute(&mut client)
+            .unwrap();
         assert_eq!(res.base.name, "/");
     }
 }

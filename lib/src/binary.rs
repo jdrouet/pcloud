@@ -385,7 +385,7 @@ mod tests {
         use crate::credentials::Credentials;
         use crate::region::Region;
 
-        let creds = Credentials::from_env();
+        let creds = Credentials::from_env().unwrap();
         let mut protocol = BinaryClient::new(creds, Region::eu()).unwrap();
         let params: Vec<(&str, Value)> = vec![("folderid", Value::Number(0))];
         let result = protocol.send_command("listfolder", &params).unwrap();

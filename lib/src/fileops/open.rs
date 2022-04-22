@@ -72,13 +72,16 @@ mod tests {
     use super::FileOpenCommand;
     use crate::binary::BinaryClient;
     use crate::credentials::Credentials;
+    use crate::prelude::BinaryCommand;
     use crate::region::Region;
 
     #[test]
     fn open_existing_file() {
-        let creds = Credentials::from_env();
+        let creds = Credentials::from_env().unwrap();
         let mut client = BinaryClient::new(creds, Region::eu()).unwrap();
-        let params = FileOpenCommand::new(0).identifier(5837100991.into());
-        client.file_open(&params).unwrap();
+        FileOpenCommand::new(0)
+            .identifier(5837100991.into())
+            .execute(&mut client)
+            .unwrap();
     }
 }

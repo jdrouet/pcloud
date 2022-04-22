@@ -1,8 +1,8 @@
 #[cfg(feature = "protected")]
 mod protected {
-    use pcloud::credentials::Credentials;
     use pcloud::folder::ROOT;
-    use pcloud::http::HttpClient;
+    use pcloud::http::HttpClientBuilder;
+    use pcloud::prelude::HttpCommand;
     use rand::distributions::Alphanumeric;
     use rand::Rng;
     use std::io::Cursor;
@@ -38,81 +38,100 @@ mod protected {
         let folder_name = create_folder();
         let renamed_name = create_folder();
         let child_name = create_folder();
-        let client = HttpClient::new_eu(Credentials::from_env());
+        let client = HttpClientBuilder::from_env().build().unwrap();
         // create folder
-        let folder = client
-            .create_folder(&pcloud::folder::create::Params::new(&folder_name, ROOT))
+        let folder = pcloud::folder::create::FolderCreateCommand::new(folder_name.clone(), ROOT)
+            .execute(&client)
             .await
             .unwrap();
         // rename folder
-        let renamed = client
-            .rename_folder(&pcloud::folder::rename::Params::new_rename(
-                folder.folder_id,
-                &renamed_name,
-            ))
-            .await
-            .unwrap();
+        let renamed = pcloud::folder::rename::FolderRenameCommand::new(
+            folder.folder_id,
+            renamed_name.clone(),
+        )
+        .execute(&client)
+        .await
+        .unwrap();
         assert_eq!(folder.folder_id, renamed.folder_id);
         assert_eq!(renamed.base.name, renamed_name);
         // delete folder
-        let deleted = client.delete_folder(folder.folder_id).await.unwrap();
-        assert_eq!(deleted.folder_id, folder.folder_id);
+        let result = pcloud::folder::delete::FolderDeleteCommand::new(folder.folder_id.into())
+            .execute(&client)
+            .await
+            .unwrap();
+        assert_eq!(result.deleted_folders, 1);
+        // let deleted = client.delete_folder(folder.folder_id).await.unwrap();
+        // assert_eq!(deleted.folder_id, folder.folder_id);
         // create folder
-        let folder = client
-            .create_folder(&pcloud::folder::create::Params::new(&folder_name, ROOT))
+        let folder = pcloud::folder::create::FolderCreateCommand::new(folder_name.clone(), ROOT)
+            .execute(&client)
             .await
             .unwrap();
         // create file in folder
         let filename = create_filename("bin");
         let mut filecontent = create_file(1024 * 1024 * 10); // 10Mo
         let cursor = Cursor::new(&mut filecontent);
-        let params = pcloud::file::upload::Params::new(filename.as_str(), folder.folder_id);
-        let file = client.upload_file(cursor, &params).await.unwrap();
+        let file = pcloud::file::upload::FileUploadCommand::new(
+            filename.as_str(),
+            folder.folder_id,
+            cursor,
+        )
+        .execute(&client)
+        .await
+        .unwrap();
         // get file info
-        let file_info = client.get_info_file(file.file_id).await.unwrap();
+        let file_info = pcloud::file::get_info::FileCheckSumCommand::new(file.file_id.into())
+            .execute(&client)
+            .await
+            .unwrap();
         assert_eq!(file_info.metadata.file_id, file.file_id);
         // get file link
-        let _file_link = client.get_link_file(file.file_id).await.unwrap();
+        let _file_link = pcloud::file::get_link::FileLinkCommand::new(file.file_id.into())
+            .execute(&client)
+            .await
+            .unwrap();
         // download file
         let mut buffer: Vec<u8> = Vec::with_capacity(1024 * 1024 * 10);
         let cursor = Cursor::new(&mut buffer);
-        let _size = client.download_file(file.file_id, cursor).await.unwrap();
+        let _size = pcloud::file::download::FileDownloadCommand::new(file.file_id.into(), cursor)
+            .execute(&client)
+            .await
+            .unwrap();
         assert_eq!(buffer, filecontent);
         // rename file
-        let renamed_file = client
-            .rename_file(&pcloud::file::rename::Params::new_rename(
-                file.file_id,
-                "hello.world",
-            ))
-            .await
-            .unwrap();
+        let renamed_file =
+            pcloud::file::rename::FileRenameCommand::new(file.file_id.into(), "hello.world".into())
+                .execute(&client)
+                .await
+                .unwrap();
         assert_eq!(renamed_file.base.name, "hello.world");
         // create other folder
-        let child = client
-            .create_folder(&pcloud::folder::create::Params::new(
-                child_name,
-                folder.folder_id,
-            ))
-            .await
-            .unwrap();
+        let child = pcloud::folder::create::FolderCreateCommand::new(
+            child_name.clone(),
+            folder.folder_id.into(),
+        )
+        .execute(&client)
+        .await
+        .unwrap();
         assert_eq!(Some(folder.folder_id), child.base.parent_folder_id);
         // create in root folder and move
-        let next = client
-            .create_folder(&pcloud::folder::create::Params::new(renamed_name, ROOT))
+        let next = pcloud::folder::create::FolderCreateCommand::new(renamed_name.clone(), ROOT)
+            .execute(&client)
             .await
             .unwrap();
         assert_eq!(next.base.parent_folder_id, Some(ROOT));
-        let moved = client
-            .rename_folder(&pcloud::folder::rename::Params::new_move(
-                next.folder_id,
-                folder.folder_id,
-            ))
-            .await
-            .unwrap();
+        let moved = pcloud::folder::rename::FolderMoveCommand::new(
+            next.folder_id.into(),
+            folder.folder_id.into(),
+        )
+        .execute(&client)
+        .await
+        .unwrap();
         assert_eq!(moved.base.parent_folder_id, Some(folder.folder_id));
         // delete folder
-        let result = client
-            .delete_folder_recursive(folder.folder_id)
+        let result = pcloud::folder::delete::FolderDeleteCommand::new(folder.folder_id.into())
+            .recursive(true)
+            .execute(&client)
             .await
             .unwrap();
         assert_eq!(result.deleted_files, 1);

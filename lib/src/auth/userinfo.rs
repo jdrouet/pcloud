@@ -93,8 +93,8 @@ mod http_tests {
 
     #[tokio::test]
     async fn success() {
-        let creds = Credentials::from_env();
-        let client = HttpClient::new_eu(creds);
+        let creds = Credentials::from_env().unwrap();
+        let client = HttpClient::new(creds, Region::eu());
         UserInfoCommand::default().execute(&client).await.unwrap();
     }
 }
@@ -109,9 +109,8 @@ mod binary_tests {
 
     #[test]
     fn success() {
-        let creds = Credentials::from_env();
+        let creds = Credentials::from_env().unwrap();
         let mut client = BinaryClient::new(creds, Region::eu()).unwrap();
-        let params = UserInfoCommand::default();
-        client.user_info(&params).unwrap();
+        let _params = UserInfoCommand::default().execute(&mut client).unwrap();
     }
 }

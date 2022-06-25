@@ -12,7 +12,7 @@ repository = "https://github.com/jdrouet/pcloud"
 [dependencies]
 pcloud = { path = "../lib", version = "1.0" }
 #
-actix-web = { version = "4.0" }
+actix-web = { version = "4.1" }
 env_logger = { version = "0.9" }
 human_bytes = { version = "0.3", features = ["bibytes"] }
 log = { version = "0.4" }

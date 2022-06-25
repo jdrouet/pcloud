@@ -13,6 +13,7 @@ repository = "https://github.com/jdrouet/pcloud"
 [features]
 # used to remove tests using credentials from environment variables
 protected = []
+test-utils = []
 
 [dependencies]
 async-trait = { version = "0.1" }

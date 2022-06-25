@@ -4,7 +4,7 @@ name: Continuous integration
 
 jobs:
   check:
-    name: Check and test
+    name: Check and clippy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -40,3 +40,24 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
+  
+  testing:
+    name: Run all the tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: install libfuse3-dev
+        run: sudo apt-get install -y libfuse3-dev
+      - uses: actions-rs/cargo@v1
+        env:
+          PCLOUD_USERNAME: "${{secrets.PCLOUD_USERNAME}}"
+          PCLOUD_PASSWORD: "${{secrets.PCLOUD_PASSWORD}}"
+          PCLOUD_REGION: "${{secrets.PCLOUD_REGION}}"
+        with:
+          command: test
+          args: --features protected

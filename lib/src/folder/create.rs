@@ -157,7 +157,6 @@ mod binary_tests {
     use crate::prelude::BinaryCommand;
 
     #[test]
-    #[ignore]
     fn binary_success() {
         let name = crate::tests::random_name();
         let mut client = BinaryClientBuilder::from_env().build().unwrap();

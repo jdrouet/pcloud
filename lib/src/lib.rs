@@ -21,9 +21,8 @@ mod tests {
     use rand::Rng;
 
     pub fn init() {
-        let _ = tracing_subscriber::fmt()
-            .with_env_filter("debug")
-            .try_init();
+        let filter = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".into());
+        let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
     }
 
     pub fn random_name() -> String {

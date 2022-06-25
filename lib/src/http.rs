@@ -12,23 +12,12 @@ pub enum HttpClientBuilderError {
     Reqwest(reqwest::Error),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct HttpClientBuilder {
     client_builder: reqwest::ClientBuilder,
     credentials: Option<Credentials>,
     region: Option<Region>,
     timeout: Option<Duration>,
-}
-
-impl Default for HttpClientBuilder {
-    fn default() -> Self {
-        Self {
-            client_builder: reqwest::ClientBuilder::default(),
-            credentials: None,
-            region: None,
-            timeout: None,
-        }
-    }
 }
 
 impl HttpClientBuilder {

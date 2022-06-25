@@ -38,7 +38,7 @@ impl BinaryCommand for FolderRenameCommand {
     fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
         let params = vec![
             ("folderid", BinaryValue::Number(self.identifier)),
-            ("toname", BinaryValue::Text(self.name.clone())),
+            ("toname", BinaryValue::Text(self.name)),
         ];
         let result = client.send_command("renamefolder", &params)?;
         let result: Response<FolderResponse> = serde_json::from_value(result)?;

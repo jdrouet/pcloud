@@ -19,29 +19,29 @@ impl FileMoveCommand {
     }
 
     fn to_http_params(&self) -> Vec<(&str, String)> {
-        let mut res = vec![];
-        res.push(match &self.from {
-            FileIdentifier::FileId(id) => ("fileid", id.to_string()),
-            FileIdentifier::Path(value) => ("path", value.to_string()),
-        });
-        res.push(match &self.to {
-            FolderIdentifier::FolderId(id) => ("tofolderid", id.to_string()),
-            FolderIdentifier::Path(value) => ("topath", value.to_string()),
-        });
-        res
+        vec![
+            match &self.from {
+                FileIdentifier::FileId(id) => ("fileid", id.to_string()),
+                FileIdentifier::Path(value) => ("path", value.to_string()),
+            },
+            match &self.to {
+                FolderIdentifier::FolderId(id) => ("tofolderid", id.to_string()),
+                FolderIdentifier::Path(value) => ("topath", value.to_string()),
+            },
+        ]
     }
 
     fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
-        let mut res = vec![];
-        res.push(match &self.from {
-            FileIdentifier::FileId(id) => ("fileid", BinaryValue::Number(*id)),
-            FileIdentifier::Path(value) => ("path", BinaryValue::Text(value.to_string())),
-        });
-        res.push(match &self.to {
-            FolderIdentifier::FolderId(id) => ("tofolderid", BinaryValue::Number(*id)),
-            FolderIdentifier::Path(value) => ("topath", BinaryValue::Text(value.to_string())),
-        });
-        res
+        vec![
+            match &self.from {
+                FileIdentifier::FileId(id) => ("fileid", BinaryValue::Number(*id)),
+                FileIdentifier::Path(value) => ("path", BinaryValue::Text(value.to_string())),
+            },
+            match &self.to {
+                FolderIdentifier::FolderId(id) => ("tofolderid", BinaryValue::Number(*id)),
+                FolderIdentifier::Path(value) => ("topath", BinaryValue::Text(value.to_string())),
+            },
+        ]
     }
 }
 
@@ -79,23 +79,23 @@ impl FileRenameCommand {
     }
 
     fn to_http_params(&self) -> Vec<(&str, String)> {
-        let mut res = vec![];
-        res.push(match &self.identifier {
-            FileIdentifier::FileId(id) => ("fileid", id.to_string()),
-            FileIdentifier::Path(value) => ("path", value.to_string()),
-        });
-        res.push(("toname", self.name.to_string()));
-        res
+        vec![
+            match &self.identifier {
+                FileIdentifier::FileId(id) => ("fileid", id.to_string()),
+                FileIdentifier::Path(value) => ("path", value.to_string()),
+            },
+            ("toname", self.name.to_string()),
+        ]
     }
 
     fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
-        let mut res = vec![];
-        res.push(match &self.identifier {
-            FileIdentifier::FileId(id) => ("fileid", BinaryValue::Number(*id)),
-            FileIdentifier::Path(value) => ("path", BinaryValue::Text(value.to_string())),
-        });
-        res.push(("toname", BinaryValue::Text(self.name.to_string())));
-        res
+        vec![
+            match &self.identifier {
+                FileIdentifier::FileId(id) => ("fileid", BinaryValue::Number(*id)),
+                FileIdentifier::Path(value) => ("path", BinaryValue::Text(value.to_string())),
+            },
+            ("toname", BinaryValue::Text(self.name.to_string())),
+        ]
     }
 }
 

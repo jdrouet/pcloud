@@ -149,7 +149,7 @@ impl Command {
         if self.remove_after_download {
             tracing::info!("deleting folder {}", remote_name);
             FolderDeleteCommand::new(remote_folder.folder_id.into())
-                .execute(&pcloud)
+                .execute(pcloud)
                 .await?;
         }
         Ok(())
@@ -188,7 +188,7 @@ impl Command {
         let file = fs::File::open(local_file)?;
         FileUploadCommand::new(local_name, remote_folder.folder_id, file)
             .no_partial(!self.allow_partial_upload)
-            .execute(&pcloud)
+            .execute(pcloud)
             .await?;
         tracing::info!("uploaded {:?}", local_file);
         if self.remove_after_upload {

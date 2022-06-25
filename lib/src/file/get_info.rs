@@ -3,7 +3,41 @@ use crate::binary::BinaryClient;
 use crate::entry::File;
 use crate::error::Error;
 use crate::http::HttpClient;
+use crate::prelude::{BinaryCommand, HttpCommand};
 use crate::request::Response;
+
+#[derive(Debug)]
+pub struct FileCheckSumCommand {
+    identifier: FileIdentifier,
+}
+
+impl FileCheckSumCommand {
+    pub fn new(identifier: FileIdentifier) -> Self {
+        Self { identifier }
+    }
+}
+
+#[async_trait::async_trait(?Send)]
+impl HttpCommand for FileCheckSumCommand {
+    type Output = CheckSumFile;
+
+    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
+        let result: Response<CheckSumFile> = client
+            .get_request("checksumfile", &self.identifier.to_http_params())
+            .await?;
+        result.payload()
+    }
+}
+
+impl BinaryCommand for FileCheckSumCommand {
+    type Output = CheckSumFile;
+
+    fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
+        let result = client.send_command("checksumfile", &self.identifier.to_binary_params())?;
+        let result: Response<CheckSumFile> = serde_json::from_value(result)?;
+        result.payload()
+    }
+}
 
 #[derive(Debug, serde::Deserialize)]
 pub struct CheckSumFile {
@@ -12,37 +46,12 @@ pub struct CheckSumFile {
     pub metadata: File,
 }
 
-impl HttpClient {
-    #[tracing::instrument(skip(self))]
-    pub async fn get_info_file<I: Into<FileIdentifier> + std::fmt::Debug>(
-        &self,
-        identifier: I,
-    ) -> Result<CheckSumFile, Error> {
-        let params: FileIdentifier = identifier.into();
-        let result: Response<CheckSumFile> = self
-            .get_request("checksumfile", &params.to_http_params())
-            .await?;
-        result.payload()
-    }
-}
-
-impl BinaryClient {
-    #[tracing::instrument(skip(self))]
-    pub fn get_info_file<I: Into<FileIdentifier> + std::fmt::Debug>(
-        &mut self,
-        identifier: I,
-    ) -> Result<CheckSumFile, Error> {
-        let params: FileIdentifier = identifier.into();
-        let result = self.send_command("checksumfile", &params.to_binary_params())?;
-        let result: Response<CheckSumFile> = serde_json::from_value(result)?;
-        result.payload()
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use super::FileCheckSumCommand;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;
+    use crate::prelude::HttpCommand;
     use crate::region::Region;
     use mockito::{mock, Matcher};
 
@@ -84,7 +93,10 @@ mod tests {
         let creds = Credentials::AccessToken("access-token".into());
         let dc = Region::mock();
         let api = HttpClient::new(creds, dc);
-        let result = api.get_info_file(42).await.unwrap();
+        let result = FileCheckSumCommand::new(42.into())
+            .execute(&api)
+            .await
+            .unwrap();
         assert_eq!(
             result.sha256,
             "d535d3354f9d36741e311ac0855c5cde1e8e90eae947f320469f17514d182e19"

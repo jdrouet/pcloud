@@ -12,22 +12,31 @@ const MAX_BLOCK_SIZE: usize = 1024 * 64;
 mod tests {
     use crate::binary::BinaryClient;
     use crate::credentials::Credentials;
+    use crate::prelude::BinaryCommand;
     use crate::region::Region;
 
     #[test]
     fn reading() {
-        let creds = Credentials::from_env();
+        let creds = Credentials::from_env().unwrap();
         let mut client = BinaryClient::new(creds, Region::eu()).unwrap();
-        let params = super::open::Params::new(0).identifier(5837100991.into());
-        let fd = client.file_open(&params).unwrap();
-        let params = super::read::Params::new(fd, 8);
-        let data = client.file_read(&params).unwrap();
+        let fd = super::open::FileOpenCommand::new(0)
+            .identifier(5837100991.into())
+            .execute(&mut client)
+            .unwrap();
+        let data = super::read::FileReadCommand::new(fd, 8)
+            .execute(&mut client)
+            .unwrap();
         assert_eq!(data, [255, 216, 255, 224, 0, 16, 74, 70]);
-        let size = client.file_size(fd).unwrap();
+        let size = super::size::FileSizeCommand::new(fd)
+            .execute(&mut client)
+            .unwrap();
         assert_eq!(size.offset, 8);
         assert_eq!(size.size, 467128);
-        let params = super::seek::Params::new(fd, std::io::SeekFrom::Start(0));
-        client.file_seek(&params).unwrap();
-        client.file_close(fd).unwrap();
+        super::seek::FileSeekCommand::new(fd, std::io::SeekFrom::Start(0))
+            .execute(&mut client)
+            .unwrap();
+        super::close::FileCloseCommand::new(fd)
+            .execute(&mut client)
+            .unwrap();
     }
 }

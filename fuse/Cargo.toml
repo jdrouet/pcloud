@@ -12,9 +12,9 @@ repository = "https://github.com/jdrouet/pcloud"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-pcloud = { path = "../lib", version = "0.2" }
+pcloud = { path = "../lib", version = "1.0" }
 #
-clap = { version = "3.0", features = ["derive"] }
+clap = { version = "3.2", features = ["derive"] }
 dirs = { version = "4.0" }
 fuser = { version = "0.11" }
 libc = { version = "0.2" }

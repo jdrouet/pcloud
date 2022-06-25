@@ -3,22 +3,27 @@ use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::entry::Folder;
 use crate::error::Error;
 use crate::http::HttpClient;
+use crate::prelude::{BinaryCommand, HttpCommand};
 use crate::request::Response;
 
 #[derive(Debug)]
-pub struct Params {
+pub struct FolderCreateCommand {
     name: String,
     parent_id: u64,
     ignore_exists: bool,
 }
 
-impl Params {
-    pub fn new<S: Into<String>>(name: S, parent_id: u64) -> Self {
+impl FolderCreateCommand {
+    pub fn new(name: String, parent_id: u64) -> Self {
         Self {
-            name: name.into(),
+            name,
             parent_id,
             ignore_exists: false,
         }
+    }
+
+    pub fn set_ignore_exists(&mut self, value: bool) {
+        self.ignore_exists = value;
     }
 
     pub fn ignore_exists(mut self, value: bool) -> Self {
@@ -49,38 +54,34 @@ impl Params {
     }
 }
 
-impl HttpClient {
-    /// Create a folder
-    ///
-    /// # Arguments
-    ///
-    /// * `name` - Name of the folder.
-    /// * `parent_id` - ID of the parent folder. Use 0 for the root folder.
-    ///
-    #[tracing::instrument(skip(self))]
-    pub async fn create_folder(&self, params: &Params) -> Result<Folder, Error> {
-        let result: Response<FolderResponse> = self
-            .get_request(params.method(), &params.to_http_params())
+#[async_trait::async_trait(?Send)]
+impl HttpCommand for FolderCreateCommand {
+    type Output = Folder;
+
+    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
+        let result: Response<FolderResponse> = client
+            .get_request(self.method(), &self.to_http_params())
             .await?;
         result.payload().map(|item| item.metadata)
     }
 }
 
-impl BinaryClient {
-    #[tracing::instrument(skip(self))]
-    pub fn create_folder(&mut self, params: &Params) -> Result<Folder, Error> {
-        let result = self.send_command(params.method(), &params.to_binary_params())?;
+impl BinaryCommand for FolderCreateCommand {
+    type Output = Folder;
+
+    fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
+        let result = client.send_command(self.method(), &self.to_binary_params())?;
         let result: Response<FolderResponse> = serde_json::from_value(result)?;
         result.payload().map(|item| item.metadata)
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use super::Params;
-    use crate::binary::BinaryClientBuilder;
+mod http_tests {
+    use super::FolderCreateCommand;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;
+    use crate::prelude::HttpCommand;
     use crate::region::Region;
     use mockito::{mock, Matcher};
 
@@ -117,7 +118,10 @@ mod tests {
         let creds = Credentials::AccessToken("access-token".into());
         let dc = Region::mock();
         let api = HttpClient::new(creds, dc);
-        let result = api.create_folder(&Params::new("testing", 0)).await.unwrap();
+        let result = FolderCreateCommand::new("testing".into(), 0)
+            .execute(&api)
+            .await
+            .unwrap();
         assert_eq!(result.base.name, "testing");
         m.assert();
     }
@@ -137,21 +141,28 @@ mod tests {
         let creds = Credentials::AccessToken("access-token".into());
         let dc = Region::mock();
         let api = HttpClient::new(creds, dc);
-        let error = api
-            .create_folder(&Params::new("testing", 0))
+        let error = FolderCreateCommand::new("testing".into(), 0)
+            .execute(&api)
             .await
             .unwrap_err();
         assert!(matches!(error, crate::error::Error::Protocol(_, _)));
         m.assert();
     }
+}
+
+#[cfg(test)]
+mod binary_tests {
+    use super::FolderCreateCommand;
+    use crate::binary::BinaryClientBuilder;
+    use crate::prelude::BinaryCommand;
 
     #[test]
     #[ignore]
     fn binary_success() {
         let name = crate::tests::random_name();
         let mut client = BinaryClientBuilder::from_env().build().unwrap();
-        let res = client
-            .create_folder(&Params::new(name.as_str(), 0))
+        let res = FolderCreateCommand::new(name.clone(), 0)
+            .execute(&mut client)
             .unwrap();
         assert_eq!(res.base.name, name);
     }

@@ -1,5 +1,6 @@
 use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::error::Error;
+use crate::prelude::BinaryCommand;
 use crate::request::Response;
 
 #[derive(Debug, serde::Deserialize)]
@@ -8,11 +9,23 @@ pub struct Payload {
     pub offset: usize,
 }
 
-impl BinaryClient {
-    #[tracing::instrument(skip(self))]
-    pub fn file_size(&mut self, fd: u64) -> Result<Payload, Error> {
-        let params = vec![("fd", BinaryValue::Number(fd))];
-        let res = self.send_command("file_size", &params)?;
+#[derive(Debug)]
+pub struct FileSizeCommand {
+    fd: u64,
+}
+
+impl FileSizeCommand {
+    pub fn new(fd: u64) -> Self {
+        Self { fd }
+    }
+}
+
+impl BinaryCommand for FileSizeCommand {
+    type Output = Payload;
+
+    fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
+        let params = vec![("fd", BinaryValue::Number(self.fd))];
+        let res = client.send_command("file_size", &params)?;
         let res: Response<Payload> = serde_json::from_value(res)?;
         res.payload()
     }

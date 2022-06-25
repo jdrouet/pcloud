@@ -1,6 +1,7 @@
 use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::error::Error;
 use crate::file::FileIdentifier;
+use crate::prelude::BinaryCommand;
 use crate::request::Response;
 
 #[derive(Debug, serde::Deserialize)]
@@ -9,14 +10,14 @@ pub struct Payload {
 }
 
 #[derive(Debug)]
-pub struct Params {
+pub struct FileOpenCommand {
     flags: u16,
     identifier: Option<FileIdentifier>,
     folder_id: Option<u64>,
     name: Option<String>,
 }
 
-impl Params {
+impl FileOpenCommand {
     pub fn new(flags: u16) -> Self {
         Self {
             flags,
@@ -56,10 +57,11 @@ impl Params {
     }
 }
 
-impl BinaryClient {
-    #[tracing::instrument(skip(self))]
-    pub fn file_open(&mut self, params: &Params) -> Result<u64, Error> {
-        let res = self.send_command("file_open", &params.to_binary_params())?;
+impl BinaryCommand for FileOpenCommand {
+    type Output = u64;
+
+    fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
+        let res = client.send_command("file_open", &self.to_binary_params())?;
         let res: Response<Payload> = serde_json::from_value(res)?;
         res.payload().map(|value| value.fd)
     }
@@ -67,16 +69,19 @@ impl BinaryClient {
 
 #[cfg(all(test, feature = "protected"))]
 mod tests {
-    use super::Params;
+    use super::FileOpenCommand;
     use crate::binary::BinaryClient;
     use crate::credentials::Credentials;
+    use crate::prelude::BinaryCommand;
     use crate::region::Region;
 
     #[test]
     fn open_existing_file() {
-        let creds = Credentials::from_env();
+        let creds = Credentials::from_env().unwrap();
         let mut client = BinaryClient::new(creds, Region::eu()).unwrap();
-        let params = Params::new(0).identifier(5837100991.into());
-        client.file_open(&params).unwrap();
+        FileOpenCommand::new(0)
+            .identifier(5837100991.into())
+            .execute(&mut client)
+            .unwrap();
     }
 }

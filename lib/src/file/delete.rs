@@ -4,30 +4,37 @@ use crate::entry::File;
 use crate::error::Error;
 use crate::file::FileResponse;
 use crate::http::HttpClient;
+use crate::prelude::{BinaryCommand, HttpCommand};
 use crate::request::Response;
 
-impl HttpClient {
-    #[tracing::instrument(skip(self))]
-    pub async fn delete_file<I: Into<FileIdentifier> + std::fmt::Debug>(
-        &self,
-        identifier: I,
-    ) -> Result<File, Error> {
-        let params: FileIdentifier = identifier.into();
-        let result: Response<FileResponse> = self
-            .get_request("deletefile", &params.to_http_params())
+#[derive(Debug)]
+pub struct FileDeleteCommand {
+    identifier: FileIdentifier,
+}
+
+impl FileDeleteCommand {
+    pub fn new(identifier: FileIdentifier) -> Self {
+        Self { identifier }
+    }
+}
+
+#[async_trait::async_trait(?Send)]
+impl HttpCommand for FileDeleteCommand {
+    type Output = File;
+
+    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
+        let result: Response<FileResponse> = client
+            .get_request("deletefile", &self.identifier.to_http_params())
             .await?;
         result.payload().map(|res| res.metadata)
     }
 }
 
-impl BinaryClient {
-    #[tracing::instrument(skip(self))]
-    pub fn delete_file<I: Into<FileIdentifier> + std::fmt::Debug>(
-        &mut self,
-        identifier: I,
-    ) -> Result<File, Error> {
-        let identifier = identifier.into();
-        let result = self.send_command("deletefile", &identifier.to_binary_params())?;
+impl BinaryCommand for FileDeleteCommand {
+    type Output = File;
+
+    fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
+        let result = client.send_command("deletefile", &self.identifier.to_binary_params())?;
         let result: Response<FileResponse> = serde_json::from_value(result)?;
         result.payload().map(|res| res.metadata)
     }
@@ -35,8 +42,10 @@ impl BinaryClient {
 
 #[cfg(test)]
 mod tests {
+    use super::FileDeleteCommand;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;
+    use crate::prelude::HttpCommand;
     use crate::region::Region;
     use mockito::{mock, Matcher};
 
@@ -78,7 +87,10 @@ mod tests {
         let creds = Credentials::AccessToken("access-token".into());
         let dc = Region::mock();
         let api = HttpClient::new(creds, dc);
-        api.delete_file(42).await.unwrap();
+        FileDeleteCommand::new(42.into())
+            .execute(&api)
+            .await
+            .unwrap();
         m.assert();
     }
 }

@@ -2,8 +2,14 @@ use async_recursion::async_recursion;
 use clap::Parser;
 use pcloud::entry::{Entry, File, Folder};
 use pcloud::error::Error as PCloudError;
-use pcloud::folder::list::Params;
+use pcloud::file::delete::FileDeleteCommand;
+use pcloud::file::download::FileDownloadCommand;
+use pcloud::file::upload::FileUploadCommand;
+use pcloud::folder::create::FolderCreateCommand;
+use pcloud::folder::delete::FolderDeleteCommand;
+use pcloud::folder::list::FolderListCommand;
 use pcloud::http::HttpClient;
+use pcloud::prelude::HttpCommand;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::Error as IoError;
@@ -104,7 +110,6 @@ pub struct Command {
 }
 
 impl Command {
-    #[tracing::instrument(skip_all, level = "info")]
     async fn download_file(
         &self,
         pcloud: &HttpClient,
@@ -115,16 +120,19 @@ impl Command {
         tracing::info!("downloading {} to {:?}", remote_name, local_path);
         let path = local_path.join(remote_name);
         let file = fs::File::create(&path)?;
-        pcloud.download_file(remote_file.file_id, file).await?;
+        FileDownloadCommand::new(remote_file.file_id.into(), file)
+            .execute(pcloud)
+            .await?;
         tracing::info!("downloaded {} successfully", remote_name);
         if self.remove_after_download {
             tracing::info!("deleting {}", remote_name);
-            pcloud.delete_file(remote_file.file_id).await?;
+            FileDeleteCommand::new(remote_file.file_id.into())
+                .execute(pcloud)
+                .await?;
         }
         Ok(())
     }
 
-    #[tracing::instrument(skip_all, level = "info")]
     async fn download_folder(
         &self,
         pcloud: &HttpClient,
@@ -140,8 +148,8 @@ impl Command {
         tracing::info!("downloaded folder {:?}", local_folder);
         if self.remove_after_download {
             tracing::info!("deleting folder {}", remote_name);
-            pcloud
-                .delete_folder_recursive(remote_folder.folder_id)
+            FolderDeleteCommand::new(remote_folder.folder_id.into())
+                .execute(pcloud)
                 .await?;
         }
         Ok(())
@@ -178,9 +186,10 @@ impl Command {
         remote_folder: &Folder,
     ) -> Result<(), Error> {
         let file = fs::File::open(local_file)?;
-        let params = pcloud::file::upload::Params::new(local_name, remote_folder.folder_id)
-            .no_partial(!self.allow_partial_upload);
-        pcloud.upload_file(&file, &params).await?;
+        FileUploadCommand::new(local_name, remote_folder.folder_id, file)
+            .no_partial(!self.allow_partial_upload)
+            .execute(pcloud)
+            .await?;
         tracing::info!("uploaded {:?}", local_file);
         if self.remove_after_upload {
             tracing::info!("deleting file {:?}", local_file);
@@ -191,8 +200,7 @@ impl Command {
         Ok(())
     }
 
-    #[tracing::instrument(skip_all, level = "info")]
-    #[async_recursion::async_recursion]
+    #[async_recursion(?Send)]
     async fn upload_file_with_retry(
         &self,
         pcloud: &HttpClient,
@@ -228,7 +236,6 @@ impl Command {
         }
     }
 
-    #[tracing::instrument(skip_all, level = "info")]
     async fn upload_folder(
         &self,
         pcloud: &HttpClient,
@@ -241,9 +248,10 @@ impl Command {
             local_folder,
             remote_folder.folder_id
         );
-        let params = pcloud::folder::create::Params::new(local_name, remote_folder.folder_id)
-            .ignore_exists(true);
-        let created = pcloud.create_folder(&params).await?;
+        let created = FolderCreateCommand::new(local_name.to_string(), remote_folder.folder_id)
+            .ignore_exists(true)
+            .execute(pcloud)
+            .await?;
         tracing::info!("uploaded folder {:?}", local_folder);
         self.sync_folder(pcloud, &created, local_folder).await?;
         if self.remove_after_upload {
@@ -297,8 +305,7 @@ impl Command {
         Ok(())
     }
 
-    #[async_recursion]
-    #[tracing::instrument(skip_all, level = "info")]
+    #[async_recursion(?Send)]
     async fn sync_folder(
         &self,
         pcloud: &HttpClient,
@@ -337,10 +344,10 @@ impl Command {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, level = "info")]
     pub async fn execute(&self, pcloud: HttpClient, folder_id: u64) {
-        let params = Params::new(folder_id);
-        let remote_folder = pcloud
-            .list_folder(&params)
+        let remote_folder = FolderListCommand::new(folder_id.into())
+            .execute(&pcloud)
             .await
             .expect("unable to get folder");
         self.sync_folder(&pcloud, &remote_folder, &self.path)

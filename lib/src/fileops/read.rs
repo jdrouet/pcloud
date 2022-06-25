@@ -1,5 +1,6 @@
 use crate::binary::{BinaryClient, Value as BinaryValue};
 use crate::error::Error;
+use crate::prelude::BinaryCommand;
 use crate::request::Response;
 use std::io::Read;
 
@@ -9,12 +10,12 @@ pub struct Payload {
 }
 
 #[derive(Debug)]
-pub struct Params {
+pub struct FileReadCommand {
     fd: u64,
     count: usize,
 }
 
-impl Params {
+impl FileReadCommand {
     pub fn new(fd: u64, count: usize) -> Self {
         Self { fd, count }
     }
@@ -27,17 +28,18 @@ impl Params {
     }
 }
 
-impl BinaryClient {
-    #[tracing::instrument(skip(self))]
-    pub fn file_read(&mut self, params: &Params) -> Result<Vec<u8>, Error> {
-        let res = self.send_command("file_read", &params.to_binary_params())?;
+impl BinaryCommand for FileReadCommand {
+    type Output = Vec<u8>;
+
+    fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
+        let res = client.send_command("file_read", &self.to_binary_params())?;
         let res: Response<Payload> = serde_json::from_value(res)?;
         let length = res.payload().map(|value| value.data).map_err(|err| {
             tracing::error!("unable to read the length: {:?}", err);
             Error::ResponseFormat
         })?;
         let mut buffer: Vec<u8> = vec![0; length];
-        self.stream.read_exact(&mut buffer).map_err(|err| {
+        client.stream.read_exact(&mut buffer).map_err(|err| {
             tracing::error!("unable to read the data: {:?}", err);
             Error::ResponseFormat
         })?;

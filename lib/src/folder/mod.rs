@@ -63,21 +63,22 @@ impl FolderIdentifier {
 mod tests {
     use crate::binary::BinaryClient;
     use crate::credentials::Credentials;
+    use crate::prelude::BinaryCommand;
     use crate::region::Region;
 
     #[test]
     fn binary_success() {
-        let creds = Credentials::from_env();
+        let creds = Credentials::from_env().unwrap();
         let mut client = BinaryClient::new(creds, Region::eu()).unwrap();
-        let folder = client
-            .create_folder(&super::create::Params::new(crate::tests::random_name(), 0))
+        let folder = super::create::FolderCreateCommand::new(crate::tests::random_name(), 0)
+            .execute(&mut client)
             .unwrap();
-        let folder = client
-            .rename_folder(&super::rename::Params::new_rename(
-                folder.folder_id,
-                crate::tests::random_name(),
-            ))
+        let folder =
+            super::rename::FolderRenameCommand::new(folder.folder_id, crate::tests::random_name())
+                .execute(&mut client)
+                .unwrap();
+        super::delete::FolderDeleteCommand::new(folder.folder_id.into())
+            .execute(&mut client)
             .unwrap();
-        client.delete_folder(folder.folder_id).unwrap();
     }
 }

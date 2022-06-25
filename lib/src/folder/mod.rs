@@ -61,15 +61,12 @@ impl FolderIdentifier {
 
 #[cfg(all(test, feature = "protected"))]
 mod tests {
-    use crate::binary::BinaryClient;
-    use crate::credentials::Credentials;
+    use crate::binary::BinaryClientBuilder;
     use crate::prelude::BinaryCommand;
-    use crate::region::Region;
 
     #[test]
     fn binary_success() {
-        let creds = Credentials::from_env().unwrap();
-        let mut client = BinaryClient::new(creds, Region::eu()).unwrap();
+        let mut client = BinaryClientBuilder::from_env().build().unwrap();
         let folder = super::create::FolderCreateCommand::new(crate::tests::random_name(), 0)
             .execute(&mut client)
             .unwrap();

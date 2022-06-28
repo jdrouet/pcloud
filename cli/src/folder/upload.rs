@@ -16,6 +16,7 @@ use std::path::{Path, PathBuf};
 enum Error {
     PCloud(PCloudError),
     Io(IoError),
+    Retry(Vec<Error>),
 }
 
 impl From<PCloudError> for Error {
@@ -102,6 +103,27 @@ impl Command {
         Ok(())
     }
 
+    async fn handle_file_with_retry(
+        &self,
+        pcloud: &HttpClient,
+        fpath: &Path,
+        fname: &str,
+        folder: &Folder,
+    ) -> Result<(), Error> {
+        let mut errors = Vec::with_capacity(self.retries);
+        for count in 0..self.retries {
+            tracing::info!("upload file {:?}, try {}", fpath, count);
+            match self.handle_file(pcloud, fpath, fname, folder).await {
+                Ok(_) => return Ok(()),
+                Err(err) => {
+                    tracing::warn!("unable to upload file {:?}: {:?}", fpath, err);
+                    errors.push(err);
+                }
+            }
+        }
+        Err(Error::Retry(errors))
+    }
+
     #[async_recursion(?Send)]
     async fn handle_folder(
         &self,
@@ -127,7 +149,8 @@ impl Command {
                         .ignore_exists(true)
                         .execute(pcloud)
                         .await?;
-                self.handle_folder(pcloud, &fpath, &folder).await?;
+                self.handle_folder_with_retry(pcloud, &fpath, &folder)
+                    .await?;
                 if self.remove_after_upload {
                     if let Err(error) = std::fs::remove_dir_all(&fpath) {
                         tracing::error!(
@@ -138,11 +161,31 @@ impl Command {
                     }
                 }
             } else if fpath.is_file() {
-                self.handle_file(pcloud, &fpath, fname.as_str(), &remote_folder)
+                self.handle_file_with_retry(pcloud, &fpath, fname.as_str(), &remote_folder)
                     .await?;
             }
         }
         Ok(())
+    }
+
+    async fn handle_folder_with_retry(
+        &self,
+        pcloud: &HttpClient,
+        local_path: &Path,
+        remote_folder: &Folder,
+    ) -> Result<(), Error> {
+        let mut errors = Vec::with_capacity(self.retries);
+        for count in 0..self.retries {
+            tracing::info!("upload folder {:?}, try {}", local_path, count);
+            match self.handle_folder(pcloud, local_path, remote_folder).await {
+                Ok(_) => return Ok(()),
+                Err(err) => {
+                    tracing::warn!("unable to upload folder {:?}: {:?}", local_path, err);
+                    errors.push(err);
+                }
+            }
+        }
+        Err(Error::Retry(errors))
     }
 
     #[tracing::instrument(skip_all, level = "info")]
@@ -151,7 +194,7 @@ impl Command {
             .execute(&pcloud)
             .await
             .expect("couldn't fetch folder");
-        self.handle_folder(&pcloud, &self.path, &remote_folder)
+        self.handle_folder_with_retry(&pcloud, &self.path, &remote_folder)
             .await
             .expect("couldn't upload folder");
     }
@@ -163,16 +206,17 @@ mod tests {
     use crate::tests::*;
     use std::path::{Path, PathBuf};
 
+    fn build_cmd(root: &Path, remove_after_upload: bool) -> Command {
+        Command {
+            remove_after_upload,
+            allow_partial_upload: false,
+            retries: 5,
+            path: PathBuf::from(root),
+        }
+    }
+
     #[tokio::test]
     async fn simple() {
-        fn build_cmd(root: &Path) -> Command {
-            Command {
-                remove_after_upload: false,
-                allow_partial_upload: false,
-                retries: 0,
-                path: PathBuf::from(root),
-            }
-        }
         // prepare basic folder
         let root = create_root();
         let _root_file = create_local_file(root.path(), "foo.txt");
@@ -184,7 +228,7 @@ mod tests {
         let client = create_client();
         let remote_root = create_remote_dir(&client, 0).await.unwrap();
         //
-        build_cmd(root.path())
+        build_cmd(root.path(), false)
             .execute(client.clone(), remote_root.folder_id)
             .await;
         //
@@ -198,7 +242,7 @@ mod tests {
         // add more files locally
         let _third_file = create_local_file(&second, "bar.txt");
         //
-        build_cmd(root.path())
+        build_cmd(root.path(), false)
             .execute(client.clone(), remote_root.folder_id)
             .await;
         //
@@ -218,14 +262,6 @@ mod tests {
 
     #[tokio::test]
     async fn removes_after() {
-        fn build_cmd(root: &Path) -> Command {
-            Command {
-                remove_after_upload: true,
-                allow_partial_upload: false,
-                retries: 0,
-                path: PathBuf::from(root),
-            }
-        }
         // prepare basic folder
         let root = create_root();
         let root_file = create_local_file(root.path(), "foo.txt");
@@ -237,7 +273,7 @@ mod tests {
         let client = create_client();
         let remote_root = create_remote_dir(&client, 0).await.unwrap();
         //
-        build_cmd(root.path())
+        build_cmd(root.path(), true)
             .execute(client.clone(), remote_root.folder_id)
             .await;
         //

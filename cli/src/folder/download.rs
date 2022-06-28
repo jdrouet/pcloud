@@ -18,6 +18,7 @@ use std::path::{Path, PathBuf};
 enum Error {
     PCloud(PCloudError),
     Io(IoError),
+    Retry(Vec<Error>),
 }
 
 impl From<PCloudError> for Error {
@@ -96,6 +97,26 @@ impl Command {
         Ok(())
     }
 
+    async fn handle_file_with_retry(
+        &self,
+        pcloud: &HttpClient,
+        remote_file: &File,
+        local_path: &Path,
+    ) -> Result<(), Error> {
+        let mut errors = Vec::with_capacity(self.retries);
+        for count in 0..self.retries {
+            tracing::info!("download file {:?}, try {}", local_path, count);
+            match self.handle_file(pcloud, remote_file, local_path).await {
+                Ok(_) => return Ok(()),
+                Err(err) => {
+                    tracing::warn!("unable to download file {:?}: {:?}", local_path, err);
+                    errors.push(err);
+                }
+            }
+        }
+        Err(Error::Retry(errors))
+    }
+
     #[async_recursion(?Send)]
     async fn handle_folder(
         &self,
@@ -110,12 +131,13 @@ impl Command {
         if let Some(ref contents) = remote_folder.contents {
             for file in contents.into_iter().filter_map(|entry| entry.as_file()) {
                 let local_file = local_path.join(file.base.name.as_str());
-                self.handle_file(pcloud, &file, &local_file).await?;
+                self.handle_file_with_retry(pcloud, &file, &local_file)
+                    .await?;
             }
             for folder in contents.into_iter().filter_map(|entry| entry.as_folder()) {
                 let local_folder = local_path.join(folder.base.name.as_str());
                 fs::create_dir_all(&local_folder)?;
-                self.handle_folder(pcloud, folder.folder_id, &local_folder)
+                self.handle_folder_with_retry(pcloud, folder.folder_id, &local_folder)
                     .await?;
             }
         }
@@ -128,9 +150,29 @@ impl Command {
         Ok(())
     }
 
+    async fn handle_folder_with_retry(
+        &self,
+        pcloud: &HttpClient,
+        folder_id: u64,
+        local_path: &Path,
+    ) -> Result<(), Error> {
+        let mut errors = Vec::with_capacity(self.retries);
+        for count in 0..self.retries {
+            tracing::info!("download folder {:?}, try {}", folder_id, count);
+            match self.handle_folder(pcloud, folder_id, local_path).await {
+                Ok(_) => return Ok(()),
+                Err(err) => {
+                    tracing::warn!("unable to download folder {:?}: {:?}", folder_id, err);
+                    errors.push(err);
+                }
+            }
+        }
+        Err(Error::Retry(errors))
+    }
+
     #[tracing::instrument(skip_all, level = "info")]
     pub async fn execute(&self, pcloud: HttpClient, folder_id: u64) {
-        self.handle_folder(&pcloud, folder_id, &self.path)
+        self.handle_folder_with_retry(&pcloud, folder_id, &self.path)
             .await
             .expect("couldn't sync folder");
     }
@@ -145,7 +187,7 @@ mod tests {
     fn build_cmd(root: &Path, remove_after_download: bool) -> Command {
         Command {
             remove_after_download,
-            retries: 0,
+            retries: 5,
             path: PathBuf::from(root),
         }
     }

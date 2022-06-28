@@ -58,10 +58,13 @@ impl Command {
                 let remote_checksum = FileCheckSumCommand::new(remote_file.file_id.into())
                     .execute(pcloud)
                     .await?;
+                if remote_checksum.sha256 != checksum {
+                    tracing::debug!("{:?} checksum mismatch, downloading again", local_path);
+                }
                 Ok(remote_checksum.sha256 != checksum)
             }
             Err(error) => {
-                tracing::warn!("forcing download, {}", error);
+                tracing::warn!("unable to compute checksum, forcing download: {}", error);
                 Ok(true)
             }
         }

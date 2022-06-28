@@ -60,12 +60,15 @@ impl Command {
             .as_ref()
             .and_then(|contents| contents.iter().find(|item| item.base().name == fname))
         {
-            tracing::debug!("{:?} already exists remotely", fpath);
+            tracing::info!("{:?} already exists remotely", fpath);
             match get_checksum(fpath) {
                 Ok(checksum) => {
                     let remote_checksum = FileCheckSumCommand::new(existing.file_id.into())
                         .execute(pcloud)
                         .await?;
+                    if remote_checksum.sha256 != checksum {
+                        tracing::debug!("{:?} checksum mismatch, uploading again", fpath);
+                    }
                     Ok(remote_checksum.sha256 != checksum)
                 }
                 Err(error) => {
@@ -74,6 +77,7 @@ impl Command {
                 }
             }
         } else {
+            tracing::info!("{:?} missing remotely, uploading", fpath);
             Ok(true)
         }
     }
@@ -149,6 +153,9 @@ impl Command {
                         .ignore_exists(true)
                         .execute(pcloud)
                         .await?;
+                let folder: Folder = FolderListCommand::new(folder.folder_id.into())
+                    .execute(pcloud)
+                    .await?;
                 self.handle_folder_with_retry(pcloud, &fpath, &folder)
                     .await?;
                 if self.remove_after_upload {

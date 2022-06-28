@@ -1,7 +1,10 @@
+mod common;
+
 mod create;
 mod delete;
+mod download;
 mod list;
-mod sync;
+mod upload;
 
 use clap::Parser;
 use pcloud::http::HttpClient;
@@ -24,8 +27,9 @@ impl Command {
 enum SubCommand {
     Create(create::Command),
     Delete(delete::Command),
+    Download(download::Command),
     List(list::Command),
-    Sync(sync::Command),
+    Upload(upload::Command),
 }
 
 impl SubCommand {
@@ -33,8 +37,9 @@ impl SubCommand {
         match self {
             Self::Create(cmd) => cmd.execute(pcloud, folder_id).await,
             Self::Delete(cmd) => cmd.execute(pcloud, folder_id).await,
+            Self::Download(cmd) => cmd.execute(pcloud, folder_id).await,
             Self::List(cmd) => cmd.execute(pcloud, folder_id).await,
-            Self::Sync(cmd) => cmd.execute(pcloud, folder_id).await,
+            Self::Upload(cmd) => cmd.execute(pcloud, folder_id).await,
         }
     }
 }

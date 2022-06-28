@@ -1,17 +1,10 @@
-mod config;
-mod file;
-mod folder;
-
-#[cfg(all(test, feature = "protected"))]
-mod tests;
-
 use clap::Parser;
 use pcloud::http::HttpClient;
 use std::path::PathBuf;
 
 #[derive(Parser)]
 #[clap(about, author, version)]
-struct Command {
+pub struct Command {
     /// Path to load the configuration file. Default to ~/.config/pcloud.json. If not found, loading from environment.
     #[clap(short, long)]
     config: Option<PathBuf>,
@@ -22,7 +15,7 @@ struct Command {
 }
 
 impl Command {
-    fn config(&self) -> PathBuf {
+    pub fn config(&self) -> PathBuf {
         if let Some(ref cfg) = self.config {
             cfg.clone()
         } else if let Some(cfg_dir) = dirs::config_dir() {
@@ -34,24 +27,24 @@ impl Command {
 }
 
 #[derive(Parser)]
-enum SubCommand {
+pub enum SubCommand {
     /// Folder related sub command
     #[clap()]
-    Folder(folder::Command),
+    Folder(crate::folder::Command),
     /// File related sub command
     #[clap()]
-    File(file::Command),
+    File(crate::file::Command),
 }
 
 impl Command {
-    async fn execute(&self, pcloud: HttpClient) {
+    pub async fn execute(&self, pcloud: HttpClient) {
         match &self.subcmd {
             SubCommand::Folder(sub) => sub.execute(pcloud).await,
             SubCommand::File(sub) => sub.execute(pcloud).await,
         }
     }
 
-    fn set_log_level(&self) {
+    pub fn set_log_level(&self) {
         if self.verbose {
             tracing_subscriber::fmt()
                 .with_env_filter("info")
@@ -59,13 +52,4 @@ impl Command {
                 .expect("couldn't init logger");
         }
     }
-}
-
-#[tokio::main]
-async fn main() {
-    let cmd = Command::parse();
-    cmd.set_log_level();
-    let cfg = config::Config::from_path(&cmd.config()).unwrap_or_default();
-    let pcloud = cfg.build().expect("couldn't build client");
-    cmd.execute(pcloud).await;
 }

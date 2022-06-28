@@ -129,12 +129,12 @@ impl Command {
             .execute(pcloud)
             .await?;
         if let Some(ref contents) = remote_folder.contents {
-            for file in contents.into_iter().filter_map(|entry| entry.as_file()) {
+            for file in contents.iter().filter_map(|entry| entry.as_file()) {
                 let local_file = local_path.join(file.base.name.as_str());
-                self.handle_file_with_retry(pcloud, &file, &local_file)
+                self.handle_file_with_retry(pcloud, file, &local_file)
                     .await?;
             }
-            for folder in contents.into_iter().filter_map(|entry| entry.as_folder()) {
+            for folder in contents.iter().filter_map(|entry| entry.as_folder()) {
                 let local_folder = local_path.join(folder.base.name.as_str());
                 fs::create_dir_all(&local_folder)?;
                 self.handle_folder_with_retry(pcloud, folder.folder_id, &local_folder)

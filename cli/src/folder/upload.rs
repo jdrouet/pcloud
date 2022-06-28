@@ -161,7 +161,7 @@ impl Command {
                     }
                 }
             } else if fpath.is_file() {
-                self.handle_file_with_retry(pcloud, &fpath, fname.as_str(), &remote_folder)
+                self.handle_file_with_retry(pcloud, &fpath, fname.as_str(), remote_folder)
                     .await?;
             }
         }

@@ -208,12 +208,14 @@ impl Command {
 #[cfg(all(test, feature = "protected"))]
 mod tests {
     use super::Command;
+    use crate::folder::common::CompareMethod;
     use crate::tests::*;
     use std::path::{Path, PathBuf};
 
     fn build_cmd(root: &Path, remove_after_download: bool) -> Command {
         Command {
             remove_after_download,
+            compare_method: CompareMethod::Checksum,
             retries: 5,
             path: PathBuf::from(root),
         }

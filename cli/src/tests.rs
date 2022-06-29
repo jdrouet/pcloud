@@ -1,5 +1,5 @@
-use pcloud::http::{HttpClient, HttpClientBuilder};
 use pcloud::error::Error;
+use pcloud::http::{HttpClient, HttpClientBuilder};
 use pcloud::prelude::HttpCommand;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
@@ -63,7 +63,10 @@ fn flatten_remote(res: &mut HashSet<String>, path: &Path, folder: &pcloud::entry
     }
 }
 
-pub(crate) async fn scan_remote_dir(client: &HttpClient, folder_id: u64) -> Result<HashSet<String>, Error> {
+pub(crate) async fn scan_remote_dir(
+    client: &HttpClient,
+    folder_id: u64,
+) -> Result<HashSet<String>, Error> {
     let folder = pcloud::folder::list::FolderListCommand::new(folder_id.into())
         .recursive(true)
         .execute(client)
@@ -83,7 +86,10 @@ pub(crate) async fn create_remote_dir(
         .await
 }
 
-pub(crate) async fn create_remote_file(client: &HttpClient, folder_id: u64) -> Result<pcloud::entry::File, Error> {
+pub(crate) async fn create_remote_file(
+    client: &HttpClient,
+    folder_id: u64,
+) -> Result<pcloud::entry::File, Error> {
     let filename = format!("{}.bin", random_name());
     let binary = random_binary();
     pcloud::file::upload::FileUploadCommand::new(filename.as_str(), folder_id, binary.as_slice())

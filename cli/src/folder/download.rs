@@ -1,4 +1,4 @@
-use super::common::get_checksum;
+use super::common::{get_checksum, CompareMethod};
 use async_recursion::async_recursion;
 use clap::Parser;
 use pcloud::entry::File;
@@ -33,26 +33,12 @@ impl From<IoError> for Error {
     }
 }
 
-#[derive(Parser)]
-pub struct Command {
-    /// Remote remove files when downloaded.
-    #[clap(long)]
-    remove_after_download: bool,
-    /// Number of allowed failure.
-    #[clap(long, default_value_t = 5)]
-    retries: usize,
-    /// Local folder to synchronize.
-    #[clap()]
-    path: PathBuf,
-}
-
-impl Command {
-    async fn should_download_file(
-        &self,
-        pcloud: &HttpClient,
-        remote_file: &File,
-        local_path: &Path,
-    ) -> Result<bool, Error> {
+async fn should_download_file_with_checksum(
+    pcloud: &HttpClient,
+    remote_file: &File,
+    local_path: &Path,
+) -> Result<bool, Error> {
+    if local_path.exists() {
         match get_checksum(local_path) {
             Ok(checksum) => {
                 let remote_checksum = FileCheckSumCommand::new(remote_file.file_id.into())
@@ -68,8 +54,45 @@ impl Command {
                 Ok(true)
             }
         }
+    } else {
+        Ok(true)
     }
+}
 
+impl CompareMethod {
+    async fn should_download_file(
+        &self,
+        pcloud: &HttpClient,
+        remote_file: &File,
+        local_path: &Path,
+    ) -> Result<bool, Error> {
+        match self {
+            Self::Checksum => {
+                should_download_file_with_checksum(pcloud, remote_file, local_path).await
+            }
+            Self::Force => Ok(true),
+            Self::Presence => Ok(!local_path.exists()),
+        }
+    }
+}
+
+#[derive(Parser)]
+pub struct Command {
+    /// Remote remove files when downloaded.
+    #[clap(long)]
+    remove_after_download: bool,
+    /// The used stategy to check if a file should be downloaded
+    #[clap(long, default_value = "checksum")]
+    compare_method: CompareMethod,
+    /// Number of allowed failure.
+    #[clap(long, default_value_t = 5)]
+    retries: usize,
+    /// Local folder to synchronize.
+    #[clap()]
+    path: PathBuf,
+}
+
+impl Command {
     async fn handle_file(
         &self,
         pcloud: &HttpClient,
@@ -78,6 +101,7 @@ impl Command {
     ) -> Result<(), Error> {
         tracing::info!("downloading {} to {:?}", remote_file.base.name, local_path);
         if self
+            .compare_method
             .should_download_file(pcloud, remote_file, local_path)
             .await?
         {

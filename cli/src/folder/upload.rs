@@ -1,7 +1,7 @@
-use super::common::get_checksum;
+use super::common::{contains_file, get_checksum, CompareMethod};
 use async_recursion::async_recursion;
 use clap::Parser;
-use pcloud::entry::{Entry, Folder};
+use pcloud::entry::Folder;
 use pcloud::error::Error as PCloudError;
 use pcloud::file::get_info::FileCheckSumCommand;
 use pcloud::file::upload::FileUploadCommand;
@@ -31,11 +31,59 @@ impl From<IoError> for Error {
     }
 }
 
+async fn should_upload_file_with_checksum(
+    pcloud: &HttpClient,
+    fpath: &Path,
+    fname: &str,
+    folder: &Folder,
+) -> Result<bool, Error> {
+    if let Some(file) = contains_file(folder, fname) {
+        tracing::info!("{:?} already exists remotely", fpath);
+        match get_checksum(fpath) {
+            Ok(checksum) => {
+                let remote_checksum = FileCheckSumCommand::new(file.file_id.into())
+                    .execute(pcloud)
+                    .await?;
+                if remote_checksum.sha256 != checksum {
+                    tracing::debug!("{:?} checksum mismatch, uploading again", fpath);
+                }
+                Ok(remote_checksum.sha256 != checksum)
+            }
+            Err(error) => {
+                tracing::warn!("skipping upload, {}", error);
+                Ok(false)
+            }
+        }
+    } else {
+        tracing::info!("{:?} missing remotely, uploading", fpath);
+        Ok(true)
+    }
+}
+
+impl CompareMethod {
+    async fn should_upload_file(
+        &self,
+        pcloud: &HttpClient,
+        fpath: &Path,
+        fname: &str,
+        folder: &Folder,
+    ) -> Result<bool, Error> {
+        match self {
+            Self::Checksum => should_upload_file_with_checksum(pcloud, fpath, fname, folder).await,
+            Self::Force => Ok(true),
+            Self::Presence => Ok(contains_file(folder, fname).is_some()),
+        }
+    }
+}
+
 #[derive(Parser)]
 pub struct Command {
     /// Remove local files when uploaded.
     #[clap(long)]
     remove_after_upload: bool,
+    /// The used stategy to check if a file should be uploaded
+    #[clap(long, default_value = "checksum")]
+    compare_method: CompareMethod,
     /// Keep partial file if upload fails.
     #[clap(long)]
     allow_partial_upload: bool,
@@ -48,40 +96,6 @@ pub struct Command {
 }
 
 impl Command {
-    async fn should_upload_file(
-        &self,
-        pcloud: &HttpClient,
-        fpath: &Path,
-        fname: &str,
-        folder: &Folder,
-    ) -> Result<bool, Error> {
-        if let Some(Entry::File(existing)) = folder
-            .contents
-            .as_ref()
-            .and_then(|contents| contents.iter().find(|item| item.base().name == fname))
-        {
-            tracing::info!("{:?} already exists remotely", fpath);
-            match get_checksum(fpath) {
-                Ok(checksum) => {
-                    let remote_checksum = FileCheckSumCommand::new(existing.file_id.into())
-                        .execute(pcloud)
-                        .await?;
-                    if remote_checksum.sha256 != checksum {
-                        tracing::debug!("{:?} checksum mismatch, uploading again", fpath);
-                    }
-                    Ok(remote_checksum.sha256 != checksum)
-                }
-                Err(error) => {
-                    tracing::warn!("skipping upload, {}", error);
-                    Ok(false)
-                }
-            }
-        } else {
-            tracing::info!("{:?} missing remotely, uploading", fpath);
-            Ok(true)
-        }
-    }
-
     async fn handle_file(
         &self,
         pcloud: &HttpClient,
@@ -90,6 +104,7 @@ impl Command {
         folder: &Folder,
     ) -> Result<(), Error> {
         if self
+            .compare_method
             .should_upload_file(pcloud, fpath, fname, folder)
             .await?
         {

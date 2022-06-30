@@ -639,6 +639,7 @@ dependencies = [
  "futures-task",
  "pin-project-lite",
  "pin-utils",
+ "slab",
 ]
 
 [[package]]
@@ -1089,6 +1090,7 @@ dependencies = [
  "clap-verbosity-flag",
  "dirs",
  "exitcode",
+ "futures-util",
  "glob",
  "hex",
  "pcloud",

@@ -1,6 +1,7 @@
 use super::common::{contains_file, get_checksum, CompareMethod};
 use async_recursion::async_recursion;
 use clap::Parser;
+use futures_util::future::try_join_all;
 use pcloud::entry::Folder;
 use pcloud::error::Error as PCloudError;
 use pcloud::file::get_info::FileCheckSumCommand;
@@ -137,14 +138,14 @@ impl Command {
     async fn handle_file_with_retry(
         &self,
         pcloud: &HttpClient,
-        fpath: &Path,
-        fname: &str,
+        fpath: PathBuf,
+        fname: String,
         folder: &Folder,
     ) -> Result<(), Error> {
         let mut errors = Vec::with_capacity(self.retries);
         for count in 0..self.retries {
             tracing::info!("upload file {:?}, try {}", fpath, count);
-            match self.handle_file(pcloud, fpath, fname, folder).await {
+            match self.handle_file(pcloud, &fpath, &fname, folder).await {
                 Ok(_) => return Ok(()),
                 Err(err) => {
                     tracing::warn!("unable to upload file {:?}: {:?}", fpath, err);
@@ -162,6 +163,8 @@ impl Command {
         local_path: &Path,
         remote_folder: &Folder,
     ) -> Result<(), Error> {
+        let mut files = Vec::new();
+        let mut folders = Vec::new();
         for (fpath, fname) in std::fs::read_dir(local_path)
             .unwrap()
             .filter_map(|entry| entry.ok())
@@ -175,28 +178,45 @@ impl Command {
             })
         {
             if fpath.is_dir() {
-                let folder: Folder =
-                    FolderCreateCommand::new(fname.to_string(), remote_folder.folder_id)
-                        .ignore_exists(true)
-                        .execute(pcloud)
-                        .await?;
-                let folder: Folder = FolderListCommand::new(folder.folder_id.into())
-                    .execute(pcloud)
-                    .await?;
-                self.handle_folder_with_retry(pcloud, &fpath, &folder)
-                    .await?;
-                if self.remove_after_upload {
-                    if let Err(error) = std::fs::remove_dir_all(&fpath) {
-                        tracing::error!(
-                            "unable to delete local directory {:?}: {:?}",
-                            fpath,
-                            error
-                        );
-                    }
-                }
+                folders.push(self.handle_child_folder(
+                    pcloud,
+                    fname,
+                    remote_folder.folder_id,
+                    fpath,
+                ));
             } else if fpath.is_file() {
-                self.handle_file_with_retry(pcloud, &fpath, fname.as_str(), remote_folder)
-                    .await?;
+                files.push(self.handle_file_with_retry(
+                    pcloud,
+                    fpath,
+                    fname.clone(),
+                    remote_folder,
+                ));
+            }
+        }
+        try_join_all(files).await?;
+        try_join_all(folders).await?;
+        Ok(())
+    }
+
+    async fn handle_child_folder(
+        &self,
+        pcloud: &HttpClient,
+        fname: String,
+        remote_folder_id: u64,
+        fpath: PathBuf,
+    ) -> Result<(), Error> {
+        let folder: Folder = FolderCreateCommand::new(fname.to_string(), remote_folder_id)
+            .ignore_exists(true)
+            .execute(pcloud)
+            .await?;
+        let folder: Folder = FolderListCommand::new(folder.folder_id.into())
+            .execute(pcloud)
+            .await?;
+        self.handle_folder_with_retry(pcloud, &fpath, &folder)
+            .await?;
+        if self.remove_after_upload {
+            if let Err(error) = std::fs::remove_dir_all(&fpath) {
+                tracing::error!("unable to delete local directory {:?}: {:?}", fpath, error);
             }
         }
         Ok(())

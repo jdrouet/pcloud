@@ -1,9 +1,4 @@
-use super::{FolderIdentifier, FolderResponse};
-use crate::binary::BinaryClient;
-use crate::error::Error;
-use crate::http::HttpClient;
-use crate::prelude::{BinaryCommand, HttpCommand};
-use crate::request::Response;
+use super::FolderIdentifier;
 
 #[derive(Debug, serde::Deserialize)]
 pub struct RecursivePayload {
@@ -15,8 +10,8 @@ pub struct RecursivePayload {
 
 #[derive(Debug)]
 pub struct FolderDeleteCommand {
-    identifier: FolderIdentifier,
-    recursive: bool,
+    pub identifier: FolderIdentifier,
+    pub recursive: bool,
 }
 
 impl FolderDeleteCommand {
@@ -35,68 +30,93 @@ impl FolderDeleteCommand {
         self.recursive = value;
         self
     }
-
-    async fn http_normal(&self, client: &HttpClient) -> Result<RecursivePayload, Error> {
-        let result: Response<FolderResponse> = client
-            .get_request("deletefolder", &self.identifier.to_http_params())
-            .await?;
-        result.payload().map(|_| RecursivePayload {
-            deleted_files: 0,
-            deleted_folders: 1,
-        })
-    }
-
-    async fn http_recursive(&self, client: &HttpClient) -> Result<RecursivePayload, Error> {
-        let result: Response<RecursivePayload> = client
-            .get_request("deletefolderrecursive", &self.identifier.to_http_params())
-            .await?;
-        result.payload()
-    }
-
-    fn binary_normal(&self, client: &mut BinaryClient) -> Result<RecursivePayload, Error> {
-        let result = client.send_command("deletefolder", &self.identifier.to_binary_params())?;
-        let result: Response<FolderResponse> = serde_json::from_value(result)?;
-        result.payload().map(|_| RecursivePayload {
-            deleted_files: 0,
-            deleted_folders: 1,
-        })
-    }
-
-    fn binary_recursive(&self, client: &mut BinaryClient) -> Result<RecursivePayload, Error> {
-        let result =
-            client.send_command("deletefolderrecursive", &self.identifier.to_binary_params())?;
-        let result: Response<RecursivePayload> = serde_json::from_value(result)?;
-        result.payload()
-    }
 }
 
-#[async_trait::async_trait(?Send)]
-impl HttpCommand for FolderDeleteCommand {
-    type Output = RecursivePayload;
+#[cfg(feature = "client-http")]
+mod http {
+    use super::{FolderDeleteCommand, RecursivePayload};
+    use crate::error::Error;
+    use crate::folder::FolderResponse;
+    use crate::http::HttpClient;
+    use crate::prelude::HttpCommand;
+    use crate::request::Response;
 
-    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-        if self.recursive {
-            self.http_recursive(client).await
-        } else {
-            self.http_normal(client).await
+    impl FolderDeleteCommand {
+        async fn http_normal(&self, client: &HttpClient) -> Result<RecursivePayload, Error> {
+            let result: Response<FolderResponse> = client
+                .get_request("deletefolder", &self.identifier.to_http_params())
+                .await?;
+            result.payload().map(|_| RecursivePayload {
+                deleted_files: 0,
+                deleted_folders: 1,
+            })
+        }
+
+        async fn http_recursive(&self, client: &HttpClient) -> Result<RecursivePayload, Error> {
+            let result: Response<RecursivePayload> = client
+                .get_request("deletefolderrecursive", &self.identifier.to_http_params())
+                .await?;
+            result.payload()
+        }
+    }
+
+    #[async_trait::async_trait(?Send)]
+    impl HttpCommand for FolderDeleteCommand {
+        type Output = RecursivePayload;
+
+        async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
+            if self.recursive {
+                self.http_recursive(client).await
+            } else {
+                self.http_normal(client).await
+            }
         }
     }
 }
 
-impl BinaryCommand for FolderDeleteCommand {
-    type Output = RecursivePayload;
+#[cfg(feature = "client-binary")]
+mod binary {
+    use super::{FolderDeleteCommand, RecursivePayload};
+    use crate::binary::BinaryClient;
+    use crate::error::Error;
+    use crate::folder::FolderResponse;
+    use crate::prelude::BinaryCommand;
+    use crate::request::Response;
 
-    fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
-        if self.recursive {
-            self.binary_recursive(client)
-        } else {
-            self.binary_normal(client)
+    impl FolderDeleteCommand {
+        fn binary_normal(&self, client: &mut BinaryClient) -> Result<RecursivePayload, Error> {
+            let result =
+                client.send_command("deletefolder", &self.identifier.to_binary_params())?;
+            let result: Response<FolderResponse> = serde_json::from_value(result)?;
+            result.payload().map(|_| RecursivePayload {
+                deleted_files: 0,
+                deleted_folders: 1,
+            })
+        }
+
+        fn binary_recursive(&self, client: &mut BinaryClient) -> Result<RecursivePayload, Error> {
+            let result = client
+                .send_command("deletefolderrecursive", &self.identifier.to_binary_params())?;
+            let result: Response<RecursivePayload> = serde_json::from_value(result)?;
+            result.payload()
+        }
+    }
+
+    impl BinaryCommand for FolderDeleteCommand {
+        type Output = RecursivePayload;
+
+        fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
+            if self.recursive {
+                self.binary_recursive(client)
+            } else {
+                self.binary_normal(client)
+            }
         }
     }
 }
 
-#[cfg(test)]
-mod tests {
+#[cfg(all(test, feature = "client-http"))]
+mod http_tests {
     use super::FolderDeleteCommand;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;

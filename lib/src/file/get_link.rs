@@ -1,12 +1,8 @@
 use super::FileIdentifier;
-use crate::error::Error;
-use crate::http::HttpClient;
-use crate::prelude::HttpCommand;
-use crate::request::Response;
 
 #[derive(Debug)]
 pub struct FileLinkCommand {
-    identifier: FileIdentifier,
+    pub identifier: FileIdentifier,
 }
 
 impl FileLinkCommand {
@@ -15,36 +11,45 @@ impl FileLinkCommand {
     }
 }
 
-#[async_trait::async_trait(?Send)]
-impl HttpCommand for FileLinkCommand {
-    type Output = String;
-
-    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-        let result: Response<FileLink> = client
-            .get_request("getfilelink", &self.identifier.to_http_params())
-            .await?;
-        result.payload().map(|res| res.to_url())
-    }
-}
-
 #[derive(Debug, serde::Deserialize)]
-struct FileLink {
+pub struct FileLink {
     // hash: usize,
     // size: usize,
     // expired: String,
-    hosts: Vec<String>,
-    path: String,
+    pub hosts: Vec<String>,
+    pub path: String,
 }
 
-impl FileLink {
-    fn to_url(&self) -> String {
-        let host = self.hosts.get(0).unwrap();
-        format!("https://{}{}", host, self.path)
+#[cfg(feature = "client-http")]
+mod http {
+    use super::{FileLink, FileLinkCommand};
+    use crate::error::Error;
+    use crate::http::HttpClient;
+    use crate::prelude::HttpCommand;
+    use crate::request::Response;
+
+    impl FileLink {
+        fn to_url(&self) -> String {
+            let host = self.hosts.get(0).unwrap();
+            format!("https://{}{}", host, self.path)
+        }
+    }
+
+    #[async_trait::async_trait(?Send)]
+    impl HttpCommand for FileLinkCommand {
+        type Output = String;
+
+        async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
+            let result: Response<FileLink> = client
+                .get_request("getfilelink", &self.identifier.to_http_params())
+                .await?;
+            result.payload().map(|res| res.to_url())
+        }
     }
 }
 
-#[cfg(test)]
-mod tests {
+#[cfg(all(test, feature = "client-http"))]
+mod http_tests {
     use super::FileLinkCommand;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;

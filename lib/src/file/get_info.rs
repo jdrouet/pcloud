@@ -1,41 +1,14 @@
 use super::FileIdentifier;
-use crate::binary::BinaryClient;
 use crate::entry::File;
-use crate::error::Error;
-use crate::http::HttpClient;
-use crate::prelude::{BinaryCommand, HttpCommand};
-use crate::request::Response;
 
 #[derive(Debug)]
 pub struct FileCheckSumCommand {
-    identifier: FileIdentifier,
+    pub identifier: FileIdentifier,
 }
 
 impl FileCheckSumCommand {
     pub fn new(identifier: FileIdentifier) -> Self {
         Self { identifier }
-    }
-}
-
-#[async_trait::async_trait(?Send)]
-impl HttpCommand for FileCheckSumCommand {
-    type Output = CheckSumFile;
-
-    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-        let result: Response<CheckSumFile> = client
-            .get_request("checksumfile", &self.identifier.to_http_params())
-            .await?;
-        result.payload()
-    }
-}
-
-impl BinaryCommand for FileCheckSumCommand {
-    type Output = CheckSumFile;
-
-    fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
-        let result = client.send_command("checksumfile", &self.identifier.to_binary_params())?;
-        let result: Response<CheckSumFile> = serde_json::from_value(result)?;
-        result.payload()
     }
 }
 
@@ -46,8 +19,49 @@ pub struct CheckSumFile {
     pub metadata: File,
 }
 
-#[cfg(test)]
-mod tests {
+#[cfg(feature = "client-http")]
+mod http {
+    use super::{CheckSumFile, FileCheckSumCommand};
+    use crate::error::Error;
+    use crate::http::HttpClient;
+    use crate::prelude::HttpCommand;
+    use crate::request::Response;
+
+    #[async_trait::async_trait(?Send)]
+    impl HttpCommand for FileCheckSumCommand {
+        type Output = CheckSumFile;
+
+        async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
+            let result: Response<CheckSumFile> = client
+                .get_request("checksumfile", &self.identifier.to_http_params())
+                .await?;
+            result.payload()
+        }
+    }
+}
+
+#[cfg(feature = "client-binary")]
+mod binary {
+    use super::{CheckSumFile, FileCheckSumCommand};
+    use crate::binary::BinaryClient;
+    use crate::error::Error;
+    use crate::prelude::BinaryCommand;
+    use crate::request::Response;
+
+    impl BinaryCommand for FileCheckSumCommand {
+        type Output = CheckSumFile;
+
+        fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
+            let result =
+                client.send_command("checksumfile", &self.identifier.to_binary_params())?;
+            let result: Response<CheckSumFile> = serde_json::from_value(result)?;
+            result.payload()
+        }
+    }
+}
+
+#[cfg(all(test, feature = "client-http"))]
+mod http_tests {
     use super::FileCheckSumCommand;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;

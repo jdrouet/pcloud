@@ -1,4 +1,4 @@
-#![cfg(feature = "protected")]
+#![cfg(all(feature = "protected", feature = "client-http"))]
 
 use pcloud::file::download::FileDownloadCommand;
 use pcloud::file::get_info::FileCheckSumCommand;

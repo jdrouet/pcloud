@@ -1,4 +1,8 @@
-#![cfg(all(feature = "protected", feature = "test-utils"))]
+#![cfg(all(
+    feature = "client-binary",
+    feature = "client-http",
+    feature = "protected",
+))]
 
 use pcloud::binary::BinaryClientBuilder;
 use pcloud::credentials::Credentials;

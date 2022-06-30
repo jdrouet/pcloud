@@ -20,13 +20,24 @@ pub struct HttpClientBuilder {
     timeout: Option<Duration>,
 }
 
+fn duration_from_env() -> Option<Duration> {
+    std::env::var("PCLOUD_TIMEOUT")
+        .ok()
+        .map(|value| {
+            value
+                .parse::<u64>()
+                .expect("invalid value for PCLOUD_TIMEOUT environment variable")
+        })
+        .map(Duration::from_millis)
+}
+
 impl HttpClientBuilder {
     pub fn from_env() -> Self {
         Self {
             client_builder: reqwest::ClientBuilder::default(),
             credentials: Credentials::from_env(),
             region: Region::from_env(),
-            timeout: None,
+            timeout: duration_from_env(),
         }
     }
 

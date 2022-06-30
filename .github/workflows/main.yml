@@ -58,6 +58,7 @@ jobs:
           PCLOUD_USERNAME: "${{secrets.PCLOUD_USERNAME}}"
           PCLOUD_PASSWORD: "${{secrets.PCLOUD_PASSWORD}}"
           PCLOUD_REGION: "${{secrets.PCLOUD_REGION}}"
+          PCLOUD_TIMEOUT: "5000" # timeout to 5s
         with:
           command: test
           args: --features protected

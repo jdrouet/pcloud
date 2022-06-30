@@ -15,15 +15,16 @@ jobs:
           override: true
       - name: install libfuse3-dev
         run: sudo apt-get install -y libfuse3-dev
+      - uses: taiki-e/install-action@cargo-hack
       - uses: actions-rs/cargo@v1
         with:
-          command: check
-          args: --workspace --tests
+          command: hack
+          args: check --feature-powerset --tests
       - run: rustup component add clippy
       - uses: actions-rs/cargo@v1
         with:
-          command: clippy
-          args: -- -D warnings
+          command: hack
+          args: clippy --feature-powerset --tests -- -D warnings
 
   fmt:
     name: Rustfmt

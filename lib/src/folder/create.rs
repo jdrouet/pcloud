@@ -1,16 +1,8 @@
-use super::FolderResponse;
-use crate::binary::{BinaryClient, Value as BinaryValue};
-use crate::entry::Folder;
-use crate::error::Error;
-use crate::http::HttpClient;
-use crate::prelude::{BinaryCommand, HttpCommand};
-use crate::request::Response;
-
 #[derive(Debug)]
 pub struct FolderCreateCommand {
-    name: String,
-    parent_id: u64,
-    ignore_exists: bool,
+    pub name: String,
+    pub parent_id: u64,
+    pub ignore_exists: bool,
 }
 
 impl FolderCreateCommand {
@@ -31,6 +23,7 @@ impl FolderCreateCommand {
         self
     }
 
+    #[cfg(any(feature = "client-binary", feature = "client-http"))]
     fn method(&self) -> &str {
         if self.ignore_exists {
             "createfolderifnotexists"
@@ -38,45 +31,71 @@ impl FolderCreateCommand {
             "createfolder"
         }
     }
+}
 
-    pub fn to_http_params(&self) -> Vec<(&str, String)> {
-        vec![
-            ("name", self.name.clone()),
-            ("folderid", self.parent_id.to_string()),
-        ]
+#[cfg(feature = "client-http")]
+mod http {
+    use super::FolderCreateCommand;
+    use crate::entry::Folder;
+    use crate::error::Error;
+    use crate::folder::FolderResponse;
+    use crate::http::HttpClient;
+    use crate::prelude::HttpCommand;
+    use crate::request::Response;
+
+    impl FolderCreateCommand {
+        pub fn to_http_params(&self) -> Vec<(&str, String)> {
+            vec![
+                ("name", self.name.clone()),
+                ("folderid", self.parent_id.to_string()),
+            ]
+        }
     }
 
-    pub fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
-        vec![
-            ("name", BinaryValue::Text(self.name.clone())),
-            ("folderid", BinaryValue::Number(self.parent_id)),
-        ]
+    #[async_trait::async_trait(?Send)]
+    impl HttpCommand for FolderCreateCommand {
+        type Output = Folder;
+
+        async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
+            let result: Response<FolderResponse> = client
+                .get_request(self.method(), &self.to_http_params())
+                .await?;
+            result.payload().map(|item| item.metadata)
+        }
     }
 }
 
-#[async_trait::async_trait(?Send)]
-impl HttpCommand for FolderCreateCommand {
-    type Output = Folder;
+#[cfg(feature = "client-binary")]
+mod binary {
+    use super::FolderCreateCommand;
+    use crate::binary::{BinaryClient, Value as BinaryValue};
+    use crate::entry::Folder;
+    use crate::error::Error;
+    use crate::folder::FolderResponse;
+    use crate::prelude::BinaryCommand;
+    use crate::request::Response;
 
-    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-        let result: Response<FolderResponse> = client
-            .get_request(self.method(), &self.to_http_params())
-            .await?;
-        result.payload().map(|item| item.metadata)
+    impl FolderCreateCommand {
+        pub fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
+            vec![
+                ("name", BinaryValue::Text(self.name.clone())),
+                ("folderid", BinaryValue::Number(self.parent_id)),
+            ]
+        }
+    }
+
+    impl BinaryCommand for FolderCreateCommand {
+        type Output = Folder;
+
+        fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
+            let result = client.send_command(self.method(), &self.to_binary_params())?;
+            let result: Response<FolderResponse> = serde_json::from_value(result)?;
+            result.payload().map(|item| item.metadata)
+        }
     }
 }
 
-impl BinaryCommand for FolderCreateCommand {
-    type Output = Folder;
-
-    fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
-        let result = client.send_command(self.method(), &self.to_binary_params())?;
-        let result: Response<FolderResponse> = serde_json::from_value(result)?;
-        result.payload().map(|item| item.metadata)
-    }
-}
-
-#[cfg(test)]
+#[cfg(all(test, feature = "client-http"))]
 mod http_tests {
     use super::FolderCreateCommand;
     use crate::credentials::Credentials;
@@ -150,7 +169,7 @@ mod http_tests {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "client-binary"))]
 mod binary_tests {
     use super::FolderCreateCommand;
     use crate::binary::BinaryClientBuilder;

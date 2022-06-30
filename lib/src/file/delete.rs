@@ -1,15 +1,8 @@
 use super::FileIdentifier;
-use crate::binary::BinaryClient;
-use crate::entry::File;
-use crate::error::Error;
-use crate::file::FileResponse;
-use crate::http::HttpClient;
-use crate::prelude::{BinaryCommand, HttpCommand};
-use crate::request::Response;
 
 #[derive(Debug)]
 pub struct FileDeleteCommand {
-    identifier: FileIdentifier,
+    pub identifier: FileIdentifier,
 }
 
 impl FileDeleteCommand {
@@ -18,30 +11,52 @@ impl FileDeleteCommand {
     }
 }
 
-#[async_trait::async_trait(?Send)]
-impl HttpCommand for FileDeleteCommand {
-    type Output = File;
+#[cfg(feature = "client-http")]
+mod http {
+    use super::FileDeleteCommand;
+    use crate::entry::File;
+    use crate::error::Error;
+    use crate::file::FileResponse;
+    use crate::http::HttpClient;
+    use crate::prelude::HttpCommand;
+    use crate::request::Response;
 
-    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-        let result: Response<FileResponse> = client
-            .get_request("deletefile", &self.identifier.to_http_params())
-            .await?;
-        result.payload().map(|res| res.metadata)
+    #[async_trait::async_trait(?Send)]
+    impl HttpCommand for FileDeleteCommand {
+        type Output = File;
+
+        async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
+            let result: Response<FileResponse> = client
+                .get_request("deletefile", &self.identifier.to_http_params())
+                .await?;
+            result.payload().map(|res| res.metadata)
+        }
     }
 }
 
-impl BinaryCommand for FileDeleteCommand {
-    type Output = File;
+#[cfg(feature = "client-binary")]
+mod binary {
+    use super::FileDeleteCommand;
+    use crate::binary::BinaryClient;
+    use crate::entry::File;
+    use crate::error::Error;
+    use crate::file::FileResponse;
+    use crate::prelude::BinaryCommand;
+    use crate::request::Response;
 
-    fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
-        let result = client.send_command("deletefile", &self.identifier.to_binary_params())?;
-        let result: Response<FileResponse> = serde_json::from_value(result)?;
-        result.payload().map(|res| res.metadata)
+    impl BinaryCommand for FileDeleteCommand {
+        type Output = File;
+
+        fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
+            let result = client.send_command("deletefile", &self.identifier.to_binary_params())?;
+            let result: Response<FileResponse> = serde_json::from_value(result)?;
+            result.payload().map(|res| res.metadata)
+        }
     }
 }
 
-#[cfg(test)]
-mod tests {
+#[cfg(all(test, feature = "client-http"))]
+mod http_tests {
     use super::FileDeleteCommand;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;

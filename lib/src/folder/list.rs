@@ -1,18 +1,12 @@
-use super::{FolderIdentifier, FolderResponse};
-use crate::binary::{BinaryClient, Value as BinaryValue};
-use crate::entry::Folder;
-use crate::error::Error;
-use crate::http::HttpClient;
-use crate::prelude::{BinaryCommand, HttpCommand};
-use crate::request::Response;
+use super::FolderIdentifier;
 
 #[derive(Debug)]
 pub struct FolderListCommand {
-    identifier: FolderIdentifier,
-    recursive: bool,
-    show_deleted: bool,
-    no_files: bool,
-    no_shares: bool,
+    pub identifier: FolderIdentifier,
+    pub recursive: bool,
+    pub show_deleted: bool,
+    pub no_files: bool,
+    pub no_shares: bool,
 }
 
 impl FolderListCommand {
@@ -65,65 +59,91 @@ impl FolderListCommand {
         self.no_shares = value;
         self
     }
+}
 
-    fn to_http_params(&self) -> Vec<(&str, String)> {
-        let mut res = self.identifier.to_http_params();
-        if self.recursive {
-            res.push(("recursive", "1".to_string()));
+#[cfg(feature = "client-http")]
+mod http {
+    use super::FolderListCommand;
+    use crate::entry::Folder;
+    use crate::error::Error;
+    use crate::folder::FolderResponse;
+    use crate::http::HttpClient;
+    use crate::prelude::HttpCommand;
+    use crate::request::Response;
+
+    impl FolderListCommand {
+        fn to_http_params(&self) -> Vec<(&str, String)> {
+            let mut res = self.identifier.to_http_params();
+            if self.recursive {
+                res.push(("recursive", "1".to_string()));
+            }
+            if self.show_deleted {
+                res.push(("showdeleted", "1".to_string()));
+            }
+            if self.no_files {
+                res.push(("no_files", "1".to_string()));
+            }
+            if self.no_shares {
+                res.push(("no_shares", "1".to_string()));
+            }
+            res
         }
-        if self.show_deleted {
-            res.push(("showdeleted", "1".to_string()));
-        }
-        if self.no_files {
-            res.push(("no_files", "1".to_string()));
-        }
-        if self.no_shares {
-            res.push(("no_shares", "1".to_string()));
-        }
-        res
     }
 
-    fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
-        let mut res = self.identifier.to_binary_params();
-        if self.recursive {
-            res.push(("recursive", BinaryValue::Bool(true)));
+    #[async_trait::async_trait(?Send)]
+    impl HttpCommand for FolderListCommand {
+        type Output = Folder;
+
+        async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
+            let result: Response<FolderResponse> = client
+                .get_request("listfolder", &self.to_http_params())
+                .await?;
+            result.payload().map(|item| item.metadata)
         }
-        if self.show_deleted {
-            res.push(("showdeleted", BinaryValue::Bool(true)));
-        }
-        if self.no_files {
-            res.push(("no_files", BinaryValue::Bool(true)));
-        }
-        if self.no_shares {
-            res.push(("no_shares", BinaryValue::Bool(true)));
-        }
-        res
     }
 }
 
-#[async_trait::async_trait(?Send)]
-impl HttpCommand for FolderListCommand {
-    type Output = Folder;
+#[cfg(feature = "client-binary")]
+mod binary {
+    use super::FolderListCommand;
+    use crate::binary::{BinaryClient, Value as BinaryValue};
+    use crate::entry::Folder;
+    use crate::error::Error;
+    use crate::folder::FolderResponse;
+    use crate::prelude::BinaryCommand;
+    use crate::request::Response;
 
-    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-        let result: Response<FolderResponse> = client
-            .get_request("listfolder", &self.to_http_params())
-            .await?;
-        result.payload().map(|item| item.metadata)
+    impl FolderListCommand {
+        fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
+            let mut res = self.identifier.to_binary_params();
+            if self.recursive {
+                res.push(("recursive", BinaryValue::Bool(true)));
+            }
+            if self.show_deleted {
+                res.push(("showdeleted", BinaryValue::Bool(true)));
+            }
+            if self.no_files {
+                res.push(("no_files", BinaryValue::Bool(true)));
+            }
+            if self.no_shares {
+                res.push(("no_shares", BinaryValue::Bool(true)));
+            }
+            res
+        }
+    }
+
+    impl BinaryCommand for FolderListCommand {
+        type Output = Folder;
+
+        fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
+            let result = client.send_command("listfolder", &self.to_binary_params())?;
+            let result: Response<FolderResponse> = serde_json::from_value(result)?;
+            result.payload().map(|res| res.metadata)
+        }
     }
 }
 
-impl BinaryCommand for FolderListCommand {
-    type Output = Folder;
-
-    fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
-        let result = client.send_command("listfolder", &self.to_binary_params())?;
-        let result: Response<FolderResponse> = serde_json::from_value(result)?;
-        result.payload().map(|res| res.metadata)
-    }
-}
-
-#[cfg(test)]
+#[cfg(all(test, feature = "client-http"))]
 mod http_tests {
     use super::FolderListCommand;
     use crate::credentials::Credentials;
@@ -195,17 +215,15 @@ mod http_tests {
     }
 }
 
-#[cfg(all(test, feature = "protected"))]
+#[cfg(all(test, feature = "client-binary", feature = "protected"))]
 mod binary_tests {
     use super::FolderListCommand;
-    use crate::binary::BinaryClient;
-    use crate::credentials::Credentials;
+    use crate::binary::BinaryClientBuilder;
     use crate::prelude::BinaryCommand;
-    use crate::region::Region;
 
     #[test]
     fn binary_success() {
-        let mut client = BinaryClient::new(Credentials::from_env().unwrap(), Region::eu()).unwrap();
+        let mut client = BinaryClientBuilder::from_env().build().unwrap();
         let res = FolderListCommand::new(0.into())
             .execute(&mut client)
             .unwrap();

@@ -1,20 +1,14 @@
-use super::FileResponse;
-use crate::entry::File;
-use crate::error::Error;
-use crate::http::HttpClient;
-use crate::prelude::HttpCommand;
-use crate::request::Response;
 use std::io::Read;
 
 pub const DEFAULT_PART_SIZE: usize = 10485760;
 
 #[derive(Debug)]
 pub struct FileUploadCommand<'a, R> {
-    filename: &'a str,
-    folder_id: u64,
-    reader: R,
-    no_partial: bool,
-    part_size: usize,
+    pub filename: &'a str,
+    pub folder_id: u64,
+    pub reader: R,
+    pub no_partial: bool,
+    pub part_size: usize,
 }
 
 impl<'a, R: Read + Send> FileUploadCommand<'a, R> {
@@ -40,96 +34,110 @@ impl<'a, R: Read + Send> FileUploadCommand<'a, R> {
     pub fn set_part_size(&mut self, part_size: usize) {
         self.part_size = part_size;
     }
-
-    async fn create_upload_file(&self, client: &HttpClient) -> Result<u64, Error> {
-        let params = if self.no_partial {
-            vec![("nopartial", 1.to_string())]
-        } else {
-            Vec::new()
-        };
-        let result: Response<CreateUploadPayload> =
-            client.get_request("upload_create", &params).await?;
-        result.payload().map(|item| item.upload_id)
-    }
 }
 
-#[async_trait::async_trait(?Send)]
-impl<'a, R: Read + Send> HttpCommand for FileUploadCommand<'a, R> {
-    type Output = File;
+#[cfg(feature = "client-http")]
+mod http {
+    use super::FileUploadCommand;
+    use crate::entry::File;
+    use crate::error::Error;
+    use crate::file::FileResponse;
+    use crate::http::HttpClient;
+    use crate::prelude::HttpCommand;
+    use crate::request::Response;
+    use std::io::Read;
 
-    async fn execute(self, client: &HttpClient) -> Result<File, Error> {
-        let upload_id = self.create_upload_file(client).await?;
-        let mut reader = ChunkReader::new(self.reader, self.part_size);
-
-        let upload_id_str = upload_id.to_string();
-
-        while let (offset, Some(chunk)) = reader.next_chunk()? {
-            let offset = offset.to_string();
-            let params = vec![
-                ("uploadid", upload_id_str.to_string()),
-                ("uploadoffset", offset.to_string()),
-            ];
-            let response: Response<()> = client
-                .put_request_data("upload_write", &params, chunk)
-                .await?;
-            response.payload()?;
-        }
-
-        let params = vec![
-            ("uploadid", upload_id.to_string()),
-            ("name", self.filename.to_string()),
-            ("folderid", self.folder_id.to_string()),
-        ];
-        let result: Response<FileResponse> = client.get_request("upload_save", &params).await?;
-        result.payload().map(|item| item.metadata)
-    }
-}
-
-#[derive(Debug, serde::Deserialize)]
-struct CreateUploadPayload {
-    #[serde(rename = "uploadid")]
-    upload_id: u64,
-}
-
-struct ChunkReader<R> {
-    read: R,
-    offset: usize,
-    size: usize,
-}
-
-impl<R: Read> ChunkReader<R> {
-    pub fn new(read: R, size: usize) -> Self {
-        Self {
-            read,
-            offset: 0,
-            size,
+    impl<'a, R: Read + Send> FileUploadCommand<'a, R> {
+        async fn create_upload_file(&self, client: &HttpClient) -> Result<u64, Error> {
+            let params = if self.no_partial {
+                vec![("nopartial", 1.to_string())]
+            } else {
+                Vec::new()
+            };
+            let result: Response<CreateUploadPayload> =
+                client.get_request("upload_create", &params).await?;
+            result.payload().map(|item| item.upload_id)
         }
     }
 
-    pub fn next_chunk(&mut self) -> Result<(usize, Option<Vec<u8>>), Error> {
-        let mut chunk = Vec::with_capacity(self.size);
-        match self
-            .read
-            .by_ref()
-            .take(chunk.capacity() as u64)
-            .read_to_end(&mut chunk)
-        {
-            Ok(n) => {
-                let offset = self.offset;
-                self.offset += n;
-                if n != 0 {
-                    Ok((offset, Some(chunk)))
-                } else {
-                    Ok((offset, None))
-                }
+    #[async_trait::async_trait(?Send)]
+    impl<'a, R: Read + Send> HttpCommand for FileUploadCommand<'a, R> {
+        type Output = File;
+
+        async fn execute(self, client: &HttpClient) -> Result<File, Error> {
+            let upload_id = self.create_upload_file(client).await?;
+            let mut reader = ChunkReader::new(self.reader, self.part_size);
+
+            let upload_id_str = upload_id.to_string();
+
+            while let (offset, Some(chunk)) = reader.next_chunk()? {
+                let offset = offset.to_string();
+                let params = vec![
+                    ("uploadid", upload_id_str.to_string()),
+                    ("uploadoffset", offset.to_string()),
+                ];
+                let response: Response<()> = client
+                    .put_request_data("upload_write", &params, chunk)
+                    .await?;
+                response.payload()?;
             }
-            Err(e) => Err(Error::Upload(e)),
+
+            let params = vec![
+                ("uploadid", upload_id.to_string()),
+                ("name", self.filename.to_string()),
+                ("folderid", self.folder_id.to_string()),
+            ];
+            let result: Response<FileResponse> = client.get_request("upload_save", &params).await?;
+            result.payload().map(|item| item.metadata)
+        }
+    }
+
+    #[derive(Debug, serde::Deserialize)]
+    struct CreateUploadPayload {
+        #[serde(rename = "uploadid")]
+        upload_id: u64,
+    }
+
+    struct ChunkReader<R> {
+        read: R,
+        offset: usize,
+        size: usize,
+    }
+
+    impl<R: Read> ChunkReader<R> {
+        pub fn new(read: R, size: usize) -> Self {
+            Self {
+                read,
+                offset: 0,
+                size,
+            }
+        }
+
+        pub fn next_chunk(&mut self) -> Result<(usize, Option<Vec<u8>>), Error> {
+            let mut chunk = Vec::with_capacity(self.size);
+            match self
+                .read
+                .by_ref()
+                .take(chunk.capacity() as u64)
+                .read_to_end(&mut chunk)
+            {
+                Ok(n) => {
+                    let offset = self.offset;
+                    self.offset += n;
+                    if n != 0 {
+                        Ok((offset, Some(chunk)))
+                    } else {
+                        Ok((offset, None))
+                    }
+                }
+                Err(e) => Err(Error::Upload(e)),
+            }
         }
     }
 }
 
-#[cfg(test)]
-mod tests {
+#[cfg(all(test, feature = "client-http"))]
+mod http_tests {
     use super::FileUploadCommand;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;

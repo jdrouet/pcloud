@@ -1,4 +1,4 @@
-#![cfg(feature = "protected")]
+#![cfg(all(feature = "protected", feature = "client-http"))]
 
 use pcloud::file::download::FileDownloadCommand;
 use pcloud::file::get_info::FileCheckSumCommand;
@@ -100,7 +100,7 @@ async fn complete() {
         .unwrap();
     assert_eq!(renamed_file.base.name, "hello.world");
     // create other folder
-    let child = FolderCreateCommand::new(child_name.clone(), folder.folder_id.into())
+    let child = FolderCreateCommand::new(child_name.clone(), folder.folder_id)
         .execute(&client)
         .await
         .unwrap();
@@ -111,7 +111,7 @@ async fn complete() {
         .await
         .unwrap();
     assert_eq!(next.base.parent_folder_id, Some(ROOT));
-    let moved = FolderMoveCommand::new(next.folder_id.into(), folder.folder_id.into())
+    let moved = FolderMoveCommand::new(next.folder_id, folder.folder_id)
         .execute(&client)
         .await
         .unwrap();

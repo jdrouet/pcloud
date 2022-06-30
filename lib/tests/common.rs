@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 

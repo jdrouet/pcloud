@@ -6,12 +6,13 @@ pub mod get_link;
 pub mod rename;
 pub mod upload;
 
+#[cfg(feature = "client-binary")]
 use crate::binary::Value as BValue;
 use crate::entry::File;
 
 #[derive(Debug, serde::Deserialize)]
 pub struct FileResponse {
-    metadata: File,
+    pub metadata: File,
 }
 
 #[derive(Debug)]
@@ -45,6 +46,7 @@ impl From<u64> for FileIdentifier {
 }
 
 impl FileIdentifier {
+    #[cfg(feature = "client-http")]
     pub fn to_http_params(&self) -> Vec<(&str, String)> {
         match self {
             Self::Path(value) => vec![("path", value.clone())],
@@ -52,6 +54,7 @@ impl FileIdentifier {
         }
     }
 
+    #[cfg(feature = "client-binary")]
     pub fn to_binary_params(&self) -> Vec<(&str, BValue)> {
         match self {
             Self::Path(value) => vec![("path", BValue::Text(value.clone()))],

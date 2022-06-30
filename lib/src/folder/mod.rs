@@ -3,14 +3,15 @@ pub mod delete;
 pub mod list;
 pub mod rename;
 
+#[cfg(feature = "client-binary")]
 use crate::binary::Value as BinaryValue;
-use crate::entry::Folder;
 
 pub const ROOT: u64 = 0;
 
+#[cfg(any(feature = "client-binary", feature = "client-http"))]
 #[derive(Debug, serde::Deserialize)]
 pub(crate) struct FolderResponse {
-    metadata: Folder,
+    pub metadata: crate::entry::Folder,
 }
 
 #[derive(Debug)]
@@ -44,6 +45,7 @@ impl From<u64> for FolderIdentifier {
 }
 
 impl FolderIdentifier {
+    #[cfg(feature = "client-http")]
     pub fn to_http_params(&self) -> Vec<(&str, String)> {
         match self {
             Self::Path(value) => vec![("path", value.clone())],
@@ -51,6 +53,7 @@ impl FolderIdentifier {
         }
     }
 
+    #[cfg(feature = "client-binary")]
     pub fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
         match self {
             Self::Path(value) => vec![("path", BinaryValue::Text(value.clone()))],
@@ -59,7 +62,7 @@ impl FolderIdentifier {
     }
 }
 
-#[cfg(all(test, feature = "protected"))]
+#[cfg(all(test, feature = "protected", feature = "client-binary"))]
 mod tests {
     use crate::binary::BinaryClientBuilder;
     use crate::prelude::BinaryCommand;

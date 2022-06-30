@@ -1,17 +1,14 @@
-use super::Payload;
-use crate::error::Error;
 use crate::file::FileIdentifier;
-use crate::http::HttpClient;
-use crate::prelude::HttpCommand;
-use crate::request::Response;
 
 #[derive(Debug)]
+/// Command to get the audio link for streaming
 pub struct GetAudioLinkCommand {
-    identifier: FileIdentifier,
-    // int audio bit rate in kilobits, from 16 to 320
-    audio_bit_rate: Option<u16>,
-    // Download with Content-Type = application/octet-stream
-    force_download: bool,
+    /// File identifier
+    pub identifier: FileIdentifier,
+    /// int audio bit rate in kilobits, from 16 to 320
+    pub audio_bit_rate: Option<u16>,
+    /// Download with Content-Type = application/octet-stream
+    pub force_download: bool,
 }
 
 impl GetAudioLinkCommand {
@@ -40,27 +37,39 @@ impl GetAudioLinkCommand {
         self.force_download = value;
         self
     }
-
-    fn to_http_params(&self) -> Vec<(&str, String)> {
-        let mut res = self.identifier.to_http_params();
-        if let Some(abitrate) = self.audio_bit_rate {
-            res.push(("abitrate", abitrate.to_string()));
-        }
-        if self.force_download {
-            res.push(("forcedownload", 1.to_string()));
-        }
-        res
-    }
 }
 
-#[async_trait::async_trait(?Send)]
-impl HttpCommand for GetAudioLinkCommand {
-    type Output = String;
+#[cfg(feature = "client-http")]
+mod http {
+    use super::GetAudioLinkCommand;
+    use crate::error::Error;
+    use crate::http::HttpClient;
+    use crate::prelude::HttpCommand;
+    use crate::request::Response;
+    use crate::streaming::Payload;
 
-    async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-        let result: Response<Payload> = client
-            .get_request("getaudiolink", &self.to_http_params())
-            .await?;
-        result.payload().map(|item| item.to_url())
+    impl GetAudioLinkCommand {
+        fn to_http_params(&self) -> Vec<(&str, String)> {
+            let mut res = self.identifier.to_http_params();
+            if let Some(abitrate) = self.audio_bit_rate {
+                res.push(("abitrate", abitrate.to_string()));
+            }
+            if self.force_download {
+                res.push(("forcedownload", 1.to_string()));
+            }
+            res
+        }
+    }
+
+    #[async_trait::async_trait(?Send)]
+    impl HttpCommand for GetAudioLinkCommand {
+        type Output = String;
+
+        async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
+            let result: Response<Payload> = client
+                .get_request("getaudiolink", &self.to_http_params())
+                .await?;
+            result.payload().map(|item| item.to_url())
+        }
     }
 }

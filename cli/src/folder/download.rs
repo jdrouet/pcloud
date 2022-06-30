@@ -84,6 +84,9 @@ pub struct Command {
     /// The used stategy to check if a file should be downloaded
     #[clap(long, default_value = "checksum")]
     compare_method: CompareMethod,
+    /// Files to exclude from downloading
+    #[clap(long)]
+    exclude: Vec<glob::Pattern>,
     /// Number of allowed failure.
     #[clap(long, default_value_t = 5)]
     retries: usize,
@@ -93,18 +96,30 @@ pub struct Command {
 }
 
 impl Command {
+    fn should_exclude_file(&self, fpath: &Path) -> bool {
+        self.exclude.iter().any(|p| p.matches_path(fpath))
+    }
+
     async fn handle_file(
         &self,
         pcloud: &HttpClient,
+        remote_path: &Path,
         remote_file: &File,
         local_path: &Path,
     ) -> Result<(), Error> {
-        tracing::info!("downloading {} to {:?}", remote_file.base.name, local_path);
+        if self.should_exclude_file(remote_path) {
+            tracing::info!(
+                "{:?} matches one of the excluding rules, skipping",
+                remote_path
+            );
+            return Ok(());
+        }
         if self
             .compare_method
             .should_download_file(pcloud, remote_file, local_path)
             .await?
         {
+            tracing::info!("{:?} downloading to {:?}", remote_path, local_path);
             let file = fs::OpenOptions::new()
                 .create(true)
                 .write(true)
@@ -113,10 +128,10 @@ impl Command {
             FileDownloadCommand::new(remote_file.file_id.into(), file)
                 .execute(pcloud)
                 .await?;
-            tracing::info!("downloaded {} successfully", remote_file.base.name);
+            tracing::info!("{:?} downloaded successfully", remote_path);
         }
         if self.remove_after_download {
-            tracing::info!("deleting file {}", remote_file.base.name);
+            tracing::info!("{:?} deleting file", remote_path);
             FileDeleteCommand::new(remote_file.file_id.into())
                 .execute(pcloud)
                 .await?;
@@ -127,16 +142,20 @@ impl Command {
     async fn handle_file_with_retry(
         &self,
         pcloud: &HttpClient,
+        remote_path: &Path,
         remote_file: &File,
         local_path: &Path,
     ) -> Result<(), Error> {
         let mut errors = Vec::with_capacity(self.retries);
         for count in 0..self.retries {
-            tracing::info!("download file {:?}, try {}", local_path, count);
-            match self.handle_file(pcloud, remote_file, local_path).await {
+            tracing::info!("{:?} download file, try {}", remote_path, count);
+            match self
+                .handle_file(pcloud, remote_path, remote_file, local_path)
+                .await
+            {
                 Ok(_) => return Ok(()),
                 Err(err) => {
-                    tracing::warn!("unable to download file {:?}: {:?}", local_path, err);
+                    tracing::warn!("{:?} unable to download file: {:?}", remote_path, err);
                     errors.push(err);
                 }
             }
@@ -148,28 +167,31 @@ impl Command {
     async fn handle_folder(
         &self,
         pcloud: &HttpClient,
+        remote_path: &Path,
         folder_id: u64,
         local_path: &Path,
     ) -> Result<(), Error> {
-        tracing::info!("downloading folder {} to {:?}", folder_id, local_path);
+        tracing::info!("{:?} downloading folder to {:?}", remote_path, local_path);
         let remote_folder = FolderListCommand::new(folder_id.into())
             .execute(pcloud)
             .await?;
         if let Some(ref contents) = remote_folder.contents {
             for file in contents.iter().filter_map(|entry| entry.as_file()) {
+                let path = remote_path.join(file.base.name.as_str());
                 let local_file = local_path.join(file.base.name.as_str());
-                self.handle_file_with_retry(pcloud, file, &local_file)
+                self.handle_file_with_retry(pcloud, &path, file, &local_file)
                     .await?;
             }
             for folder in contents.iter().filter_map(|entry| entry.as_folder()) {
+                let path = remote_path.join(folder.base.name.as_str());
                 let local_folder = local_path.join(folder.base.name.as_str());
                 fs::create_dir_all(&local_folder)?;
-                self.handle_folder_with_retry(pcloud, folder.folder_id, &local_folder)
+                self.handle_folder_with_retry(pcloud, &path, folder.folder_id, &local_folder)
                     .await?;
             }
         }
         if folder_id != 0 && self.remove_after_download {
-            tracing::info!("deleting folder {}", folder_id);
+            tracing::info!("{:?} deleting folder", remote_path);
             FolderDeleteCommand::new(folder_id.into())
                 .execute(pcloud)
                 .await?;
@@ -180,16 +202,20 @@ impl Command {
     async fn handle_folder_with_retry(
         &self,
         pcloud: &HttpClient,
+        remote_path: &Path,
         folder_id: u64,
         local_path: &Path,
     ) -> Result<(), Error> {
         let mut errors = Vec::with_capacity(self.retries);
         for count in 0..self.retries {
-            tracing::info!("download folder {:?}, try {}", folder_id, count);
-            match self.handle_folder(pcloud, folder_id, local_path).await {
+            tracing::info!("{:?} download folder, try {}", remote_path, count);
+            match self
+                .handle_folder(pcloud, remote_path, folder_id, local_path)
+                .await
+            {
                 Ok(_) => return Ok(()),
                 Err(err) => {
-                    tracing::warn!("unable to download folder {:?}: {:?}", folder_id, err);
+                    tracing::warn!("{:?} unable to download folder: {:?}", remote_path, err);
                     errors.push(err);
                 }
             }
@@ -199,7 +225,8 @@ impl Command {
 
     #[tracing::instrument(skip_all, level = "info")]
     pub async fn execute(&self, pcloud: HttpClient, folder_id: u64) {
-        self.handle_folder_with_retry(&pcloud, folder_id, &self.path)
+        let remote_path = PathBuf::from("/");
+        self.handle_folder_with_retry(&pcloud, &remote_path, folder_id, &self.path)
             .await
             .expect("couldn't sync folder");
     }
@@ -212,9 +239,13 @@ mod tests {
     use crate::tests::*;
     use std::path::{Path, PathBuf};
 
-    fn build_cmd(root: &Path, remove_after_download: bool) -> Command {
+    fn build_cmd(root: &Path, remove_after_download: bool, exclude: Vec<String>) -> Command {
         Command {
             remove_after_download,
+            exclude: exclude
+                .iter()
+                .map(|item| glob::Pattern::new(item).unwrap())
+                .collect(),
             compare_method: CompareMethod::Checksum,
             retries: 5,
             path: PathBuf::from(root),
@@ -237,7 +268,7 @@ mod tests {
             .unwrap();
         //
         let root = create_root();
-        build_cmd(root.path(), false)
+        build_cmd(root.path(), false, vec![])
             .execute(client.clone(), remote_root.folder_id)
             .await;
         assert!(root
@@ -257,10 +288,63 @@ mod tests {
         let remote_file_third = create_remote_file(&client, remote_folder_first.folder_id)
             .await
             .unwrap();
-        build_cmd(root.path(), false)
+        build_cmd(root.path(), false, vec![])
             .execute(client.clone(), remote_root.folder_id)
             .await;
         assert!(root
+            .path()
+            .join(remote_folder_first.base.name.as_str())
+            .join(remote_file_third.base.name.as_str())
+            .exists());
+        //
+        delete_remote_dir(&client, remote_root.folder_id)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn with_exclude() {
+        // prepare basic folder
+        let client = create_client();
+        let remote_root = create_remote_dir(&client, 0).await.unwrap();
+        let remote_file_first = create_remote_file(&client, remote_root.folder_id)
+            .await
+            .unwrap();
+        let remote_folder_first = create_remote_dir(&client, remote_root.folder_id)
+            .await
+            .unwrap();
+        let remote_file_second = create_remote_file(&client, remote_folder_first.folder_id)
+            .await
+            .unwrap();
+        let remote_file_third = create_remote_file(&client, remote_folder_first.folder_id)
+            .await
+            .unwrap();
+        //
+        let root = create_root();
+        build_cmd(
+            root.path(),
+            false,
+            vec![format!(
+                "/{}/{}",
+                remote_folder_first.base.name, remote_file_third.base.name
+            )],
+        )
+        .execute(client.clone(), remote_root.folder_id)
+        .await;
+        assert!(root
+            .path()
+            .join(remote_file_first.base.name.as_str())
+            .exists());
+        assert!(root
+            .path()
+            .join(remote_folder_first.base.name.as_str())
+            .exists());
+        assert!(root
+            .path()
+            .join(remote_folder_first.base.name.as_str())
+            .join(remote_file_second.base.name.as_str())
+            .exists());
+        assert!(!root
             .path()
             .join(remote_folder_first.base.name.as_str())
             .join(remote_file_third.base.name.as_str())
@@ -287,7 +371,7 @@ mod tests {
             .unwrap();
         //
         let root = create_root();
-        build_cmd(root.path(), true)
+        build_cmd(root.path(), true, vec![])
             .execute(client.clone(), remote_root.folder_id)
             .await;
         assert!(root

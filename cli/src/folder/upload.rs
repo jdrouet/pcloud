@@ -84,6 +84,9 @@ pub struct Command {
     /// The used stategy to check if a file should be uploaded
     #[clap(long, default_value = "checksum")]
     compare_method: CompareMethod,
+    /// Files to exclude from uploading
+    #[clap(long)]
+    exclude: Vec<glob::Pattern>,
     /// Keep partial file if upload fails.
     #[clap(long)]
     allow_partial_upload: bool,
@@ -96,6 +99,10 @@ pub struct Command {
 }
 
 impl Command {
+    fn should_exclude_file(&self, fpath: &Path) -> bool {
+        self.exclude.iter().any(|p| p.matches_path(fpath))
+    }
+
     async fn handle_file(
         &self,
         pcloud: &HttpClient,
@@ -103,6 +110,11 @@ impl Command {
         fname: &str,
         folder: &Folder,
     ) -> Result<(), Error> {
+        if self.should_exclude_file(fpath) {
+            tracing::info!("{:?} matches one of the excluding rules, skipping", fpath);
+            // avoids removing the excluded file
+            return Ok(());
+        }
         if self
             .compare_method
             .should_upload_file(pcloud, fpath, fname, folder)
@@ -229,10 +241,14 @@ mod tests {
     use crate::tests::*;
     use std::path::{Path, PathBuf};
 
-    fn build_cmd(root: &Path, remove_after_upload: bool) -> Command {
+    fn build_cmd(root: &Path, remove_after_upload: bool, exclude: Vec<&'static str>) -> Command {
         Command {
             remove_after_upload,
             compare_method: CompareMethod::Checksum,
+            exclude: exclude
+                .iter()
+                .map(|value| glob::Pattern::new(value).unwrap())
+                .collect(),
             allow_partial_upload: false,
             retries: 5,
             path: PathBuf::from(root),
@@ -252,7 +268,7 @@ mod tests {
         let client = create_client();
         let remote_root = create_remote_dir(&client, 0).await.unwrap();
         //
-        build_cmd(root.path(), false)
+        build_cmd(root.path(), false, Vec::new())
             .execute(client.clone(), remote_root.folder_id)
             .await;
         //
@@ -266,7 +282,7 @@ mod tests {
         // add more files locally
         let _third_file = create_local_file(&second, "bar.txt");
         //
-        build_cmd(root.path(), false)
+        build_cmd(root.path(), false, Vec::new())
             .execute(client.clone(), remote_root.folder_id)
             .await;
         //
@@ -285,6 +301,36 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn exclude_bin_files() {
+        // prepare basic folder
+        let root = create_root();
+        let _root_file = create_local_file(root.path(), "foo.txt");
+        let first = create_local_dir(root.path(), "first");
+        let _first_file = create_local_file(&first, "foo.bin");
+        let second = create_local_dir(&first, "second");
+        let _second_file = create_local_file(&second, "foo.txt");
+        //
+        let client = create_client();
+        let remote_root = create_remote_dir(&client, 0).await.unwrap();
+        //
+        build_cmd(root.path(), false, vec!["*.bin"])
+            .execute(client.clone(), remote_root.folder_id)
+            .await;
+        //
+        let remote_content = scan_remote_dir(&client, remote_root.folder_id)
+            .await
+            .unwrap();
+        assert_eq!(remote_content.len(), 2);
+        assert!(remote_content.contains("/foo.txt"));
+        assert!(!remote_content.contains("/first/foo.bin"));
+        assert!(remote_content.contains("/first/second/foo.txt"));
+        // cleanup
+        delete_remote_dir(&client, remote_root.folder_id)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
     async fn removes_after() {
         // prepare basic folder
         let root = create_root();
@@ -297,7 +343,7 @@ mod tests {
         let client = create_client();
         let remote_root = create_remote_dir(&client, 0).await.unwrap();
         //
-        build_cmd(root.path(), true)
+        build_cmd(root.path(), true, Vec::new())
             .execute(client.clone(), remote_root.folder_id)
             .await;
         //

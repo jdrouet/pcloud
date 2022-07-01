@@ -1,6 +1,9 @@
+//! The different structures to manipulate the files and folders
+
 use chrono::prelude::{DateTime, Utc};
 use std::cmp::Ordering;
 
+/// A set of shared fields between [`File`](File) and [`Folder`](Folder).
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct EntryBase {
     #[serde(with = "crate::date")]
@@ -20,6 +23,7 @@ pub struct EntryBase {
     pub is_mine: bool,
 }
 
+/// A structure representing a file on PCloud
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct File {
     #[serde(flatten)]
@@ -52,6 +56,7 @@ impl PartialOrd for File {
     }
 }
 
+/// A structure reprensenting a folder on PCloud
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct Folder {
     #[serde(flatten)]
@@ -105,6 +110,7 @@ impl Folder {
     }
 }
 
+/// The representation of what can be returned by the PCloud API, a file or a folder.
 #[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(untagged)]
 pub enum Entry {
@@ -120,15 +126,13 @@ impl PartialOrd for Entry {
 
 impl Ord for Entry {
     fn cmp(&self, other: &Self) -> Ordering {
-        match self {
-            Self::File(self_file) => match other {
-                Self::File(other_file) => self_file.cmp(other_file),
-                Self::Folder(_) => Ordering::Greater,
-            },
-            Self::Folder(self_folder) => match other {
-                Self::File(_) => Ordering::Less,
-                Self::Folder(other_folder) => self_folder.cmp(other_folder),
-            },
+        match (self, other) {
+            (Self::File(self_file), Self::File(other_file)) => self_file.cmp(other_file),
+            (Self::File(_), Self::Folder(_)) => Ordering::Greater,
+            (Self::Folder(self_folder), Self::Folder(other_folder)) => {
+                self_folder.cmp(other_folder)
+            }
+            (Self::Folder(_), Self::File(_)) => Ordering::Less,
         }
     }
 }

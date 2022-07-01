@@ -44,17 +44,13 @@ impl Config {
     }
 
     pub fn build(self) -> Result<BinaryClient, BinaryClientBuilderError> {
-        let builder = BinaryClientBuilder::from_env();
-        let builder = if let Some(creds) = self.credentials.map(|c| c.build()) {
-            builder.set_credentials(creds)
-        } else {
-            builder
-        };
-        let builder = if let Some(region) = self.region.map(|c| c.build()) {
-            builder.set_region(region)
-        } else {
-            builder
-        };
+        let mut builder = BinaryClientBuilder::from_env();
+        if let Some(creds) = self.credentials.map(|c| c.build()) {
+            builder.credentials = Some(creds);
+        }
+        if let Some(region) = self.region.map(|c| c.build()) {
+            builder.region = Some(region);
+        }
         builder.build()
     }
 }

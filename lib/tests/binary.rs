@@ -5,14 +5,12 @@
 ))]
 
 use pcloud::binary::BinaryClientBuilder;
-use pcloud::credentials::Credentials;
 use pcloud::file::download::FileDownloadCommand;
 use pcloud::fileops::close::FileCloseCommand;
 use pcloud::fileops::open::FileOpenCommand;
 use pcloud::fileops::pread::FilePReadCommand;
 use pcloud::folder::list::FolderListCommand;
 use pcloud::http::HttpClientBuilder;
-use pcloud::region::Region;
 
 mod common;
 
@@ -41,12 +39,7 @@ async fn downloading_with_read() {
 
     let (file_id, expected) = http_download_file().await;
     //
-    let creds = Credentials::from_env().unwrap();
-    let mut client = BinaryClientBuilder::default()
-        .set_credentials(creds)
-        .set_region(Region::eu())
-        .build()
-        .unwrap();
+    let mut client = BinaryClientBuilder::from_env().build().unwrap();
     //
     let fd = FileOpenCommand::new(0)
         .identifier(file_id.into())

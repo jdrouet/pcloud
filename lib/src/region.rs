@@ -1,3 +1,6 @@
+//! The region related module needed for the authentication
+
+/// A representation of a region
 #[derive(Clone, Debug)]
 pub struct Region {
     http_url: String,
@@ -5,6 +8,9 @@ pub struct Region {
 }
 
 impl Region {
+    /// Creates a new region with the given parameters.
+    ///
+    /// This method should be used for testing when mocking the calls to the PCloud servers.
     pub fn new(http_url: String, binary_url: String) -> Self {
         Self {
             http_url,
@@ -12,6 +18,7 @@ impl Region {
         }
     }
 
+    /// Creates a region object representing the EU region
     pub fn eu() -> Self {
         Self::new(
             "https://eapi.pcloud.com".into(),
@@ -19,6 +26,7 @@ impl Region {
         )
     }
 
+    /// Creates a region object representing the US region
     pub fn us() -> Self {
         Self::new(
             "https://api.pcloud.com".into(),
@@ -59,6 +67,7 @@ impl Region {
         Some(Self::new(http_url, binary_url))
     }
 
+    /// Creates a region based on the region provided as a `&str`.
     pub fn from_name(name: &str) -> Option<Self> {
         match name {
             "eu" | "EU" => Some(Self::eu()),
@@ -72,6 +81,7 @@ impl Region {
         Self::from_name(name.as_str())
     }
 
+    /// Creates a region based on the `PCLOUD_REGION` environment variable value.
     pub fn from_env() -> Option<Self> {
         Self::from_split_env().or_else(Self::from_name_env)
     }

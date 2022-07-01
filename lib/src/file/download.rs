@@ -1,6 +1,34 @@
+//! Resources needed to download a file
+
 use super::FileIdentifier;
 use std::io::Write;
 
+/// Command to download a file
+///
+/// Executing this command with return the size of the downloaded file as a `usize`.
+///
+/// [More about it on the documentation](https://docs.pcloud.com/methods/file/downloadfile.html)
+///
+/// # Example using the [`HttpClient`](crate::http::HttpClient)
+///
+/// To use this, the `client-http` feature should be enabled.
+///
+/// ```
+/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::prelude::HttpCommand;
+/// use pcloud::file::download::FileDownloadCommand;
+/// use std::fs::File;
+///
+/// # tokio_test::block_on(async {
+/// let file = File::create("./output.txt").unwrap();
+/// let client = HttpClientBuilder::from_env().build().unwrap();
+/// let cmd = FileDownloadCommand::new("/foo/bar.txt".into(), file);
+/// match cmd.execute(&client).await {
+///   Ok(res) => println!("success"),
+///   Err(err) => eprintln!("error: {:?}", err),
+/// }
+/// # })
+/// ```
 #[derive(Debug)]
 pub struct FileDownloadCommand<W> {
     pub identifier: FileIdentifier,

@@ -14,7 +14,6 @@ pub mod credentials;
 pub mod region;
 
 pub mod entry;
-/// The errors thrown by the commands
 pub mod error;
 
 /// The [file commands](https://docs.pcloud.com/methods/file/) from the PCloud documentation

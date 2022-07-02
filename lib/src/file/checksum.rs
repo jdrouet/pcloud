@@ -1,6 +1,49 @@
+//! Resources needed to get the information about a file
+
 use super::FileIdentifier;
 use crate::entry::File;
 
+/// Command to calculate checksums of a given file
+///
+/// On success the command will return a [`CheckSumFile`](CheckSumFile).
+///
+/// [More about it on the documentation](https://docs.pcloud.com/methods/file/checksumfile.html)
+///
+/// # Example using the [`HttpClient`](crate::http::HttpClient)
+///
+/// To use this, the `client-http` feature should be enabled.
+///
+/// ```
+/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::prelude::HttpCommand;
+/// use pcloud::file::checksum::FileCheckSumCommand;
+///
+/// # tokio_test::block_on(async {
+/// let client = HttpClientBuilder::from_env().build().unwrap();
+/// let cmd = FileCheckSumCommand::new("/foo/bar.txt".into());
+/// match cmd.execute(&client).await {
+///   Ok(res) => println!("success"),
+///   Err(err) => eprintln!("error: {:?}", err),
+/// }
+/// # })
+/// ```
+///
+/// # Example using the [`BinaryClient`](crate::binary::BinaryClient)
+///
+/// To use this, the `client-binary` feature should be enabled.
+///
+/// ```
+/// use pcloud::binary::BinaryClientBuilder;
+/// use pcloud::prelude::BinaryCommand;
+/// use pcloud::file::checksum::FileCheckSumCommand;
+///
+/// let mut client = BinaryClientBuilder::from_env().build().unwrap();
+/// let cmd = FileCheckSumCommand::new("/foo/bar.txt".into());
+/// match cmd.execute(&mut client) {
+///   Ok(res) => println!("success"),
+///   Err(err) => eprintln!("error: {:?}", err),
+/// }
+/// ```
 #[derive(Debug)]
 pub struct FileCheckSumCommand {
     pub identifier: FileIdentifier,

@@ -1,6 +1,7 @@
 use pcloud::binary::BinaryClient;
 use pcloud::entry::{Entry, File, Folder};
 use pcloud::error::Error as PCloudError;
+use pcloud::file::checksum::FileCheckSumCommand;
 use pcloud::folder::list::FolderListCommand;
 use pcloud::prelude::BinaryCommand;
 use std::cell::RefCell;
@@ -119,7 +120,7 @@ impl PCloudService {
     }
 
     pub fn fetch_file(&mut self, inode: u64) -> Result<File, Error> {
-        pcloud::file::get_info::FileCheckSumCommand::new((inode - 1).into())
+        FileCheckSumCommand::new((inode - 1).into())
             .execute(&mut self.inner)
             .map(|res| self.add_file(inode, res.metadata))
             .map_err(|err| {

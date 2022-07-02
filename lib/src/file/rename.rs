@@ -1,6 +1,49 @@
+//! Resources needed to rename a file
+
 use super::FileIdentifier;
 use crate::folder::FolderIdentifier;
 
+/// Command to rename a file
+///
+/// Executing this command will return a [`File`](crate::entry::File) on success.
+///
+/// [More about it on the documentation](https://docs.pcloud.com/methods/file/renamefile.html).
+///
+/// # Example using the [`HttpClient`](crate::http::HttpClient)
+///
+/// To use this, the `client-http` feature should be enabled.
+///
+/// ```
+/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::prelude::HttpCommand;
+/// use pcloud::file::rename::FileRenameCommand;
+///
+/// # tokio_test::block_on(async {
+/// let client = HttpClientBuilder::from_env().build().unwrap();
+/// let cmd = FileRenameCommand::new("/foo/bar.txt".into(), "/foo/baz.txt".into());
+/// match cmd.execute(&client).await {
+///   Ok(res) => println!("success"),
+///   Err(err) => eprintln!("error: {:?}", err),
+/// }
+/// # })
+/// ```
+///
+/// # Example using the [`BinaryClient`](crate::binary::BinaryClient)
+///
+/// To use this, the `client-binary` feature should be enabled.
+///
+/// ```
+/// use pcloud::binary::BinaryClientBuilder;
+/// use pcloud::prelude::BinaryCommand;
+/// use pcloud::file::rename::FileRenameCommand;
+///
+/// let mut client = BinaryClientBuilder::from_env().build().unwrap();
+/// let cmd = FileRenameCommand::new(12.into(), "/foo/baz.txt".into());
+/// match cmd.execute(&mut client) {
+///   Ok(res) => println!("success"),
+///   Err(err) => eprintln!("error: {:?}", err),
+/// }
+/// ```
 #[derive(Debug)]
 pub struct FileMoveCommand {
     pub from: FileIdentifier,

@@ -1,3 +1,46 @@
+//! Resources needed to copy a folder
+
+/// Command to create a folder in a defined folder
+///
+/// Executing this command will return a [`Folder`](crate::entry::Folder) on success.
+///
+/// [More about it on the documentation](https://docs.pcloud.com/methods/folder/create.html).
+///
+/// # Example using the [`HttpClient`](crate::http::HttpClient)
+///
+/// To use this, the `client-http` feature should be enabled.
+///
+/// ```
+/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::prelude::HttpCommand;
+/// use pcloud::folder::create::FolderCreateCommand;
+///
+/// # tokio_test::block_on(async {
+/// let client = HttpClientBuilder::from_env().build().unwrap();
+/// let cmd = FolderCreateCommand::new("foo".to_string(), 42);
+/// match cmd.execute(&client).await {
+///   Ok(res) => println!("success"),
+///   Err(err) => eprintln!("error: {:?}", err),
+/// }
+/// # })
+/// ```
+///
+/// # Example using the [`BinaryClient`](crate::binary::BinaryClient)
+///
+/// To use this, the `client-binary` feature should be enabled.
+///
+/// ```
+/// use pcloud::binary::BinaryClientBuilder;
+/// use pcloud::prelude::BinaryCommand;
+/// use pcloud::folder::create::FolderCreateCommand;
+///
+/// let mut client = BinaryClientBuilder::from_env().build().unwrap();
+/// let cmd = FolderCreateCommand::new("foo".to_string(), 42);
+/// match cmd.execute(&mut client) {
+///   Ok(res) => println!("success"),
+///   Err(err) => eprintln!("error: {:?}", err),
+/// }
+/// ```
 #[derive(Debug)]
 pub struct FolderCreateCommand {
     pub name: String,
@@ -12,10 +55,6 @@ impl FolderCreateCommand {
             parent_id,
             ignore_exists: false,
         }
-    }
-
-    pub fn set_ignore_exists(&mut self, value: bool) {
-        self.ignore_exists = value;
     }
 
     pub fn ignore_exists(mut self, value: bool) -> Self {

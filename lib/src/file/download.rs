@@ -45,9 +45,9 @@ impl<W: Write> FileDownloadCommand<W> {
 mod http {
     use super::FileDownloadCommand;
     use crate::error::Error;
-    use crate::file::get_link::FileLinkCommand;
     use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
+    use crate::streaming::get_file_link::GetFileLinkCommand;
     use std::io::Write;
 
     #[async_trait::async_trait(?Send)]
@@ -55,7 +55,7 @@ mod http {
         type Output = usize;
 
         async fn execute(mut self, client: &HttpClient) -> Result<Self::Output, Error> {
-            let link = FileLinkCommand::new(self.identifier)
+            let link = GetFileLinkCommand::new(self.identifier)
                 .execute(client)
                 .await?;
             let mut req = client.client.get(&link).send().await?;

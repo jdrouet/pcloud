@@ -1,4 +1,5 @@
 pub mod get_audio_link;
+pub mod get_file_link;
 pub mod get_video_link;
 
 #[derive(Debug, serde::Deserialize)]

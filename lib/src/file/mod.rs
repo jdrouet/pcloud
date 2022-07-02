@@ -2,12 +2,8 @@ pub mod checksum;
 pub mod copy;
 pub mod delete;
 pub mod download;
-pub mod get_link;
 pub mod rename;
 pub mod upload;
-
-#[deprecated]
-pub use checksum as get_info;
 
 #[cfg(feature = "client-binary")]
 use crate::binary::Value as BValue;

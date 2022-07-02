@@ -49,8 +49,8 @@ impl ResponseError for Error {
 pub struct RootFolder(String);
 
 impl RootFolder {
-    pub fn from_env() -> Self {
-        Self(std::env::var("ROOT_FOLDER").unwrap_or_else(|_| "/".into()))
+    pub fn new(value: String) -> Self {
+        Self(value)
     }
 
     pub fn format(&self, path: &str) -> String {

@@ -1,5 +1,3 @@
-ARG VERSION=local
-
 FROM --platform=$BUILDPLATFORM rust:slim-bullseye AS fetcher
 
 WORKDIR /code/cli
@@ -34,41 +32,28 @@ COPY --from=fetcher /code /code
 
 WORKDIR /code
 
-RUN cargo fetch
-
 COPY cli/src /code/cli/src
 COPY fuse/src /code/fuse/src
 COPY http-server/src /code/http-server/src
 COPY lib/src /code/lib/src
 
-FROM builder as builder-all
-ARG VERSION
-
 RUN cargo build --offline --release
 
-RUN mv /code/target/release/pcloud-cli /code/target/release/pcloud-cli-${VERSION}-gnu \
-  && mv /code/target/release/pcloud-fuse /code/target/release/pcloud-fuse-${VERSION}-gnu \
-  && mv /code/target/release/pcloud-http-server /code/target/release/pcloud-http-server-${VERSION}-gnu
-
-FROM builder as builder-cli
-
-RUN cargo build --offline --release --package pcloud-cli
+RUN cp /code/target/release/pcloud-cli /code/target/release/pcloud-cli-$(/code/target/release/pcloud-cli --version | cut -d ' ' -f 2)-$(uname -m)-gnu
+RUN cp /code/target/release/pcloud-fuse /code/target/release/pcloud-fuse-$(/code/target/release/pcloud-fuse --version | cut -d ' ' -f 2)-$(uname -m)-gnu
+RUN cp /code/target/release/pcloud-http-server /code/target/release/pcloud-http-server-$(/code/target/release/pcloud-http-server --version | cut -d ' ' -f 2)-$(uname -m)-gnu
 
 FROM --platform=$BUILDPLATFORM scratch AS artifact
 
-COPY --from=builder-all /code/target/release/pcloud-cli-* /
-COPY --from=builder-all /code/target/release/pcloud-fuse-* /
-COPY --from=builder-all /code/target/release/pcloud-http-server-* /
+COPY --from=builder /code/target/release/pcloud-cli-* /
+COPY --from=builder /code/target/release/pcloud-fuse-* /
+COPY --from=builder /code/target/release/pcloud-http-server-* /
 
 FROM debian:bullseye-slim AS cli
 
-COPY --from=builder-cli /code/target/release/pcloud-cli /usr/bin/pcloud-cli
+COPY --from=builder /code/target/release/pcloud-cli /usr/bin/pcloud-cli
 
 ENTRYPOINT ["/usr/bin/pcloud-cli"]
-
-FROM builder as builder-fuse
-
-RUN cargo build --offline --release --package pcloud-fuse
 
 FROM debian:bullseye-slim AS fuse
 
@@ -78,17 +63,13 @@ RUN apt-get update \
 
 RUN mkdir /data
 
-COPY --from=builder-fuse /code/target/release/pcloud-fuse /usr/bin/pcloud-fuse
+COPY --from=builder /code/target/release/pcloud-fuse /usr/bin/pcloud-fuse
 
 ENTRYPOINT ["/usr/bin/pcloud-fuse"]
 CMD ["/data"]
 
-FROM builder as builder-http-server
-
-RUN cargo build --offline --release --package pcloud-http-server
-
 FROM debian:bullseye-slim AS http-server
 
-COPY --from=builder-http-server /code/target/release/pcloud-http-server /usr/bin/pcloud-http-server
+COPY --from=builder /code/target/release/pcloud-http-server /usr/bin/pcloud-http-server
 
 ENTRYPOINT ["/usr/bin/pcloud-http-server"]

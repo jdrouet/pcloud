@@ -1,5 +1,5 @@
 EXTRA_ARGS?=
-RUST_VERSION?=1.58.1
+RUST_VERSION?=1.62.0
 VERSION?=local
 
 publish:
@@ -8,7 +8,19 @@ publish:
 	cd fuse && cargo publish ${EXTRA_ARGS}
 	cd http-server && cargo publish ${EXTRA_ARGS}
 
-build: build-cli build-http
+build-artifacts:
+	docker buildx build \
+		-f scripts/debian.Dockerfile \
+		--platform linux/amd64,linux/arm64,linux/arm/v7 \
+		--target artifact \
+		--output type=local,dest=$(shell pwd)/target \
+		.
+	docker buildx build \
+		-f scripts/alpine.Dockerfile \
+		--platform linux/amd64,linux/arm64 \
+		--target artifact \
+		--output type=local,dest=$(shell pwd)/target \
+		.
 
 build-cli: build-cli-bin build-cli-deb build-cli-image
 

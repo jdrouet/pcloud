@@ -1,4 +1,48 @@
+//! Resources needed to delete a file
+
 use super::FileIdentifier;
+
+/// Command to delete a file
+///
+/// Executing this command will return the deleted [`File`](crate::entry::File).
+///
+/// [More about it on the documentation](https://docs.pcloud.com/methods/file/deletefile.html)
+///
+/// # Example using the [`HttpClient`](crate::http::HttpClient)
+///
+/// To use this, the `client-http` feature should be enabled.
+///
+/// ```
+/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::prelude::HttpCommand;
+/// use pcloud::file::delete::FileDeleteCommand;
+///
+/// # tokio_test::block_on(async {
+/// let client = HttpClientBuilder::from_env().build().unwrap();
+/// let cmd = FileDeleteCommand::new("/foo/bar.txt".into());
+/// match cmd.execute(&client).await {
+///   Ok(res) => println!("success"),
+///   Err(err) => eprintln!("error: {:?}", err),
+/// }
+/// # })
+/// ```
+///
+/// # Example using the [`BinaryClient`](crate::binary::BinaryClient)
+///
+/// To use this, the `client-binary` feature should be enabled.
+///
+/// ```
+/// use pcloud::binary::BinaryClientBuilder;
+/// use pcloud::prelude::BinaryCommand;
+/// use pcloud::file::delete::FileDeleteCommand;
+///
+/// let mut client = BinaryClientBuilder::from_env().build().unwrap();
+/// let cmd = FileDeleteCommand::new("/foo/bar.txt".into());
+/// match cmd.execute(&mut client) {
+///   Ok(res) => println!("success"),
+///   Err(err) => eprintln!("error: {:?}", err),
+/// }
+/// ```
 
 #[derive(Debug)]
 pub struct FileDeleteCommand {

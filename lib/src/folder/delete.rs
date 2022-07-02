@@ -1,3 +1,5 @@
+//! Resources needed to delete a folder
+
 use super::FolderIdentifier;
 
 #[derive(Debug, serde::Deserialize)]
@@ -8,6 +10,47 @@ pub struct RecursivePayload {
     pub deleted_folders: usize,
 }
 
+/// Command to delete a folder
+///
+/// Executing this command will return a [`RecursivePayload`](RecursivePayload) on success.
+///
+/// [More about it on the documentation](https://docs.pcloud.com/methods/folder/delete.html).
+///
+/// # Example using the [`HttpClient`](crate::http::HttpClient)
+///
+/// To use this, the `client-http` feature should be enabled.
+///
+/// ```
+/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::prelude::HttpCommand;
+/// use pcloud::folder::delete::FolderDeleteCommand;
+///
+/// # tokio_test::block_on(async {
+/// let client = HttpClientBuilder::from_env().build().unwrap();
+/// let cmd = FolderDeleteCommand::new(12.into());
+/// match cmd.execute(&client).await {
+///   Ok(res) => println!("success"),
+///   Err(err) => eprintln!("error: {:?}", err),
+/// }
+/// # })
+/// ```
+///
+/// # Example using the [`BinaryClient`](crate::binary::BinaryClient)
+///
+/// To use this, the `client-binary` feature should be enabled.
+///
+/// ```
+/// use pcloud::binary::BinaryClientBuilder;
+/// use pcloud::prelude::BinaryCommand;
+/// use pcloud::folder::delete::FolderDeleteCommand;
+///
+/// let mut client = BinaryClientBuilder::from_env().build().unwrap();
+/// let cmd = FolderDeleteCommand::new("/foo/bar".into()).recursive(true);
+/// match cmd.execute(&mut client) {
+///   Ok(res) => println!("success"),
+///   Err(err) => eprintln!("error: {:?}", err),
+/// }
+/// ```
 #[derive(Debug)]
 pub struct FolderDeleteCommand {
     pub identifier: FolderIdentifier,
@@ -20,10 +63,6 @@ impl FolderDeleteCommand {
             identifier,
             recursive: false,
         }
-    }
-
-    pub fn set_recursive(&mut self, value: bool) {
-        self.recursive = value;
     }
 
     pub fn recursive(mut self, value: bool) -> Self {

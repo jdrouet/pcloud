@@ -1,7 +1,36 @@
+//! Resources needed to upload a file
+
 use std::io::Read;
 
+/// Default size for splitting into chunks
 pub const DEFAULT_PART_SIZE: usize = 10485760;
 
+/// Command to upload a file to a defined folder and name
+///
+/// Executing this command will return a [`File`](crate::entry::File) on success.
+///
+/// [More about it on the documentation](https://docs.pcloud.com/methods/file/uploadfile.html).
+///
+/// # Example using the [`HttpClient`](crate::http::HttpClient)
+///
+/// To use this, the `client-http` feature should be enabled.
+///
+/// ```
+/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::prelude::HttpCommand;
+/// use pcloud::file::upload::FileUploadCommand;
+/// use std::fs::File;
+///
+/// # tokio_test::block_on(async {
+/// let file = File::open("Cargo.toml").unwrap();
+/// let client = HttpClientBuilder::from_env().build().unwrap();
+/// let cmd = FileUploadCommand::new("Cargo.toml", 12, file);
+/// match cmd.execute(&client).await {
+///   Ok(res) => println!("success"),
+///   Err(err) => eprintln!("error: {:?}", err),
+/// }
+/// # })
+/// ```
 #[derive(Debug)]
 pub struct FileUploadCommand<'a, R> {
     pub filename: &'a str,
@@ -22,17 +51,14 @@ impl<'a, R: Read + Send> FileUploadCommand<'a, R> {
         }
     }
 
-    pub fn set_no_partial(&mut self, no_partial: bool) {
-        self.no_partial = no_partial;
-    }
-
     pub fn no_partial(mut self, no_partial: bool) -> Self {
         self.no_partial = no_partial;
         self
     }
 
-    pub fn set_part_size(&mut self, part_size: usize) {
+    pub fn part_size(mut self, part_size: usize) -> Self {
         self.part_size = part_size;
+        self
     }
 }
 
@@ -203,8 +229,7 @@ mod http_tests {
         let api = HttpClient::new(creds, dc);
         //
         let cursor = std::io::Cursor::new("hello world!");
-        let mut cmd = FileUploadCommand::new("testing.txt", 0, cursor);
-        cmd.set_no_partial(true);
+        let cmd = FileUploadCommand::new("testing.txt", 0, cursor).no_partial(true);
         let result = cmd.execute(&api).await.unwrap();
         //
         assert_eq!(result.base.name, "testing.txt");

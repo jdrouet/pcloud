@@ -1,25 +1,44 @@
+//! The client implementing the [HTTP Json protocol](https://docs.pcloud.com/protocols/http_json_protocol/)
+
 use crate::credentials::Credentials;
 use crate::error::Error;
 use crate::region::Region;
 use std::time::Duration;
 
+/// The default user agent for the http client
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
+/// The default part size when uploading files
 pub const DEFAULT_PART_SIZE: usize = 10485760;
 
+/// The errors when generating a [`HttpClient`](HttpClient) from a [`HttpClientBuilder`](HttpClientBuilder)
 #[derive(Debug)]
 pub enum HttpClientBuilderError {
     CredentialsMissing,
     Reqwest(reqwest::Error),
 }
 
+/// A builder for the [`HttpClient`](HttpClient) structure
+///
+/// ```
+/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::credentials::Credentials;
+/// use pcloud::region::Region;
+///
+/// let _client = HttpClientBuilder::default()
+///    .credentials(Credentials::AccessToken("my-token".to_string()))
+///    .region(Region::eu())
+///    .build()
+///    .expect("unable to builder http client");
+/// ```
 #[derive(Debug, Default)]
 pub struct HttpClientBuilder {
-    client_builder: reqwest::ClientBuilder,
-    credentials: Option<Credentials>,
-    region: Option<Region>,
-    timeout: Option<Duration>,
+    pub client_builder: reqwest::ClientBuilder,
+    pub credentials: Option<Credentials>,
+    pub region: Option<Region>,
+    pub timeout: Option<Duration>,
 }
 
+// TODO handle the parsing error gracefully
 fn duration_from_env() -> Option<Duration> {
     std::env::var("PCLOUD_TIMEOUT")
         .ok()
@@ -32,6 +51,10 @@ fn duration_from_env() -> Option<Duration> {
 }
 
 impl HttpClientBuilder {
+    /// Builds a http client builder from the environment variables. See [`Credentials`](crate::credentials::Credentials) and [`Region`](crate::region::Region).
+    ///
+    /// The timeout value will be the value from the `PCLOUD_TIMEOUT` environment variable, in milliseconds.
+    /// If the value is not a valid number, the function will panic.
     pub fn from_env() -> Self {
         Self {
             client_builder: reqwest::ClientBuilder::default(),
@@ -41,26 +64,47 @@ impl HttpClientBuilder {
         }
     }
 
-    pub fn set_client_builder(mut self, value: reqwest::ClientBuilder) -> Self {
+    pub fn client_builder(mut self, value: reqwest::ClientBuilder) -> Self {
         self.client_builder = value;
         self
     }
 
-    pub fn set_credentials(mut self, value: Credentials) -> Self {
+    pub fn credentials(mut self, value: Credentials) -> Self {
         self.credentials = Some(value);
         self
     }
 
-    pub fn set_region(mut self, value: Region) -> Self {
+    pub fn region(mut self, value: Region) -> Self {
         self.region = Some(value);
         self
     }
 
-    pub fn set_timeout(mut self, value: Duration) -> Self {
+    pub fn timeout(mut self, value: Duration) -> Self {
         self.timeout = Some(value);
         self
     }
 
+    /// Builds a client for the http protocol
+    ///
+    /// Returns `Ok(client)` on success, otherwise returns an error.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(HttpClientBuilderError::CredentialsMissing)` when the credentials are not provided.
+    /// Returns `Err(HttpClientBuilderError::Reqwest)` when the reqwest client cannot be built.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use pcloud::http::HttpClientBuilder;
+    /// use pcloud::http::HttpClientBuilderError;
+    ///
+    /// match HttpClientBuilder::default().build() {
+    ///     Ok(_client) => println!("success!"),
+    ///     Err(HttpClientBuilderError::CredentialsMissing) => eprintln!("no credentials provided"),
+    ///     Err(HttpClientBuilderError::Reqwest(err)) => eprintln!("unable to build reqwest client: {:?}", err),
+    /// }
+    /// ```
     pub fn build(self) -> Result<HttpClient, HttpClientBuilderError> {
         let client_builder = if let Some(timeout) = self.timeout {
             self.client_builder.timeout(timeout)
@@ -80,6 +124,24 @@ impl HttpClientBuilder {
 }
 
 /// Client for the pCloud REST API
+///
+/// ```rust
+/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::credentials::Credentials;
+/// use pcloud::region::Region;
+/// use pcloud::general::userinfo::UserInfoCommand;
+/// use pcloud::prelude::HttpCommand;
+///
+/// # tokio_test::block_on(async {
+/// let client = HttpClientBuilder::from_env()
+///    .build()
+///    .expect("unable to builder binary client");
+/// let result = UserInfoCommand::new(false, false)
+///    .execute(&client)
+///    .await
+///    .expect("unable to execute command");
+/// # })
+/// ```
 #[derive(Clone)]
 pub struct HttpClient {
     pub(crate) client: reqwest::Client,

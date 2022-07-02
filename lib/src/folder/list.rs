@@ -1,5 +1,48 @@
+//! Resources needed to list the content of a folder
+
 use super::FolderIdentifier;
 
+/// Command to list the content of a folder
+///
+/// Executing this command will return a [`Folder`](crate::entry::Folder) on success.
+///
+/// [More about it on the documentation](https://docs.pcloud.com/methods/folder/listfolder.html).
+///
+/// # Example using the [`HttpClient`](crate::http::HttpClient)
+///
+/// To use this, the `client-http` feature should be enabled.
+///
+/// ```
+/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::prelude::HttpCommand;
+/// use pcloud::folder::list::FolderListCommand;
+///
+/// # tokio_test::block_on(async {
+/// let client = HttpClientBuilder::from_env().build().unwrap();
+/// let cmd = FolderListCommand::new(0.into());
+/// match cmd.execute(&client).await {
+///   Ok(res) => println!("success"),
+///   Err(err) => eprintln!("error: {:?}", err),
+/// }
+/// # })
+/// ```
+///
+/// # Example using the [`BinaryClient`](crate::binary::BinaryClient)
+///
+/// To use this, the `client-binary` feature should be enabled.
+///
+/// ```
+/// use pcloud::binary::BinaryClientBuilder;
+/// use pcloud::prelude::BinaryCommand;
+/// use pcloud::folder::list::FolderListCommand;
+///
+/// let mut client = BinaryClientBuilder::from_env().build().unwrap();
+/// let cmd = FolderListCommand::new("/".into());
+/// match cmd.execute(&mut client) {
+///   Ok(res) => println!("success"),
+///   Err(err) => eprintln!("error: {:?}", err),
+/// }
+/// ```
 #[derive(Debug)]
 pub struct FolderListCommand {
     pub identifier: FolderIdentifier,
@@ -20,18 +63,10 @@ impl FolderListCommand {
         }
     }
 
-    pub fn set_recursive(&mut self, value: bool) {
-        self.recursive = value;
-    }
-
     /// If is set full directory tree will be returned, which means that all directories will have contents filed.
     pub fn recursive(mut self, value: bool) -> Self {
         self.recursive = value;
         self
-    }
-
-    pub fn set_show_deleted(&mut self, value: bool) {
-        self.show_deleted = value;
     }
 
     /// If is set, deleted files and folders that can be undeleted will be displayed.
@@ -40,18 +75,10 @@ impl FolderListCommand {
         self
     }
 
-    pub fn set_no_files(&mut self, value: bool) {
-        self.no_files = value;
-    }
-
     /// If is set, only the folder (sub)structure will be returned.
     pub fn no_files(mut self, value: bool) -> Self {
         self.no_files = value;
         self
-    }
-
-    pub fn set_no_shares(&mut self, value: bool) {
-        self.no_shares = value;
     }
 
     /// If is set, only user's own folders and files will be displayed.

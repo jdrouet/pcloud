@@ -1,8 +1,7 @@
 #![cfg(all(feature = "protected", feature = "client-http"))]
 
+use pcloud::file::checksum::FileCheckSumCommand;
 use pcloud::file::download::FileDownloadCommand;
-use pcloud::file::get_info::FileCheckSumCommand;
-use pcloud::file::get_link::FileLinkCommand;
 use pcloud::file::rename::FileRenameCommand;
 use pcloud::file::upload::FileUploadCommand;
 use pcloud::folder::create::FolderCreateCommand;
@@ -12,6 +11,7 @@ use pcloud::folder::rename::FolderRenameCommand;
 use pcloud::folder::ROOT;
 use pcloud::http::HttpClientBuilder;
 use pcloud::prelude::HttpCommand;
+use pcloud::streaming::get_file_link::GetFileLinkCommand;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use std::io::Cursor;
@@ -81,7 +81,7 @@ async fn complete() {
         .unwrap();
     assert_eq!(file_info.metadata.file_id, file.file_id);
     // get file link
-    let _file_link = FileLinkCommand::new(file.file_id.into())
+    let _file_link = GetFileLinkCommand::new(file.file_id.into())
         .execute(&client)
         .await
         .unwrap();

@@ -1,21 +1,31 @@
+/// Utilities for parsing dates
+mod date;
+/// The traits for implementing the commands
 pub mod prelude;
+/// The module to handle the responses from the server
+pub mod request;
 
-pub mod auth;
 #[cfg(feature = "client-binary")]
 pub mod binary;
-pub mod credentials;
-mod date;
-pub mod entry;
-pub mod error;
-pub mod file;
-#[cfg(feature = "client-binary")]
-pub mod fileops;
-pub mod folder;
-pub mod general;
 #[cfg(feature = "client-http")]
 pub mod http;
+
+pub mod credentials;
 pub mod region;
-pub mod request;
+
+pub mod entry;
+pub mod error;
+
+/// The [file commands](https://docs.pcloud.com/methods/file/) from the PCloud documentation
+pub mod file;
+/// The [fileops commands](https://docs.pcloud.com/methods/fileops/) from the PCloud documentation
+#[cfg(feature = "client-binary")]
+pub mod fileops;
+/// The [folder commands](https://docs.pcloud.com/methods/folder/) from the PCloud documentation
+pub mod folder;
+/// The [general commands](https://docs.pcloud.com/methods/general/) from the PCloud documentation
+pub mod general;
+/// The [streaming commands](https://docs.pcloud.com/methods/streaming/) from the PCloud documentation
 pub mod streaming;
 
 #[cfg(test)]

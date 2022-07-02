@@ -1,3 +1,5 @@
+//! The client implementing the [Binary protocol](https://docs.pcloud.com/protocols/binary_protocol/)
+
 use crate::credentials::Credentials;
 use crate::region::Region;
 use serde_json::Value as JsonValue;
@@ -5,6 +7,7 @@ use std::io::prelude::*;
 use std::io::{Error as IoError, Read};
 use std::net::TcpStream;
 
+/// converts an array of bytes into a u64
 fn bytes_to_u64(bytes: &[u8]) -> u64 {
     let mut buffer: [u8; 8] = [0; 8];
     buffer[..bytes.len()].clone_from_slice(bytes);
@@ -134,6 +137,7 @@ impl BinaryReader {
     }
 }
 
+/// A representation of all the possible type of values returned by the binary protocol
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Bool(bool),
@@ -142,6 +146,7 @@ pub enum Value {
 }
 
 impl Value {
+    /// converts the value as a `bool` if possible
     pub fn as_bool(self) -> Option<bool> {
         if let Self::Bool(value) = self {
             Some(value)
@@ -149,6 +154,8 @@ impl Value {
             None
         }
     }
+
+    /// converts the value as a `String` if possible
     pub fn as_text(self) -> Option<String> {
         if let Self::Text(value) = self {
             Some(value)
@@ -156,6 +163,8 @@ impl Value {
             None
         }
     }
+
+    /// converts the value as a `u64` if possible
     pub fn as_number(self) -> Option<u64> {
         if let Self::Number(value) = self {
             Some(value)
@@ -228,6 +237,7 @@ impl CommandBuilder {
     }
 }
 
+/// All the errors returned by the binary protocol
 #[derive(Debug)]
 pub enum Error {
     Io(IoError),
@@ -247,19 +257,36 @@ impl From<IoError> for Error {
     }
 }
 
+/// The errors when generating a [`BinaryClient`](BinaryClient) from a [`BinaryClientBuilder`](BinaryClientBuilder)
 #[derive(Debug)]
 pub enum BinaryClientBuilderError {
     CredentialsMissing,
     Io(IoError),
 }
 
+/// A builder for the `BinaryClient` structure
+///
+/// ```
+/// use pcloud::binary::BinaryClientBuilder;
+/// use pcloud::credentials::Credentials;
+/// use pcloud::region::Region;
+///
+/// let _client = BinaryClientBuilder::default()
+///    .credentials(Credentials::AccessToken("my-token".to_string()))
+///    .region(Region::eu())
+///    .build()
+///    .expect("unable to builder binary client");
+/// ```
 #[derive(Debug, Default)]
 pub struct BinaryClientBuilder {
-    credentials: Option<Credentials>,
-    region: Option<Region>,
+    /// The credentials to connect to the API
+    pub credentials: Option<Credentials>,
+    /// The region of the API to connect to
+    pub region: Option<Region>,
 }
 
 impl BinaryClientBuilder {
+    /// Builds a binary client builder from the environment variables. See [`Credentials`](crate::credentials::Credentials) and [`Region`](crate::region::Region).
     pub fn from_env() -> Self {
         Self {
             credentials: Credentials::from_env(),
@@ -267,16 +294,39 @@ impl BinaryClientBuilder {
         }
     }
 
-    pub fn set_credentials(mut self, value: Credentials) -> Self {
+    /// Sets the credentials and returns the ownership of the builder
+    pub fn credentials(mut self, value: Credentials) -> Self {
         self.credentials = Some(value);
         self
     }
 
-    pub fn set_region(mut self, value: Region) -> Self {
+    /// Sets the region and returns the ownership of the builder
+    pub fn region(mut self, value: Region) -> Self {
         self.region = Some(value);
         self
     }
 
+    /// Builds a client for the binary protocol
+    ///
+    /// Returns `Ok(client)` on success, otherwise returns an error.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(BinaryClientBuilderError::CredentialsMissing)` when the credentials are not provided.
+    /// Returns `Err(BinaryClientBuilderError::Io)` when the tcp stream cannot be established.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use pcloud::binary::BinaryClientBuilder;
+    /// use pcloud::binary::BinaryClientBuilderError;
+    ///
+    /// match BinaryClientBuilder::default().build() {
+    ///     Ok(_client) => println!("success!"),
+    ///     Err(BinaryClientBuilderError::CredentialsMissing) => eprintln!("no credentials provided"),
+    ///     Err(BinaryClientBuilderError::Io(err)) => eprintln!("unable to reach api: {:?}", err),
+    /// }
+    /// ```
     pub fn build(self) -> Result<BinaryClient, BinaryClientBuilderError> {
         let credentials = self
             .credentials
@@ -292,6 +342,22 @@ impl BinaryClientBuilder {
     }
 }
 
+/// The client for the binary protocol
+///
+/// ```rust
+/// use pcloud::binary::BinaryClientBuilder;
+/// use pcloud::credentials::Credentials;
+/// use pcloud::region::Region;
+/// use pcloud::general::userinfo::UserInfoCommand;
+/// use pcloud::prelude::BinaryCommand;
+///
+/// let mut client = BinaryClientBuilder::from_env()
+///    .build()
+///    .expect("unable to builder binary client");
+/// let result = UserInfoCommand::new(false, false)
+///    .execute(&mut client)
+///    .expect("unable to execute command");
+/// ```
 pub struct BinaryClient {
     pub(crate) stream: TcpStream,
     credentials: Credentials,
@@ -308,12 +374,14 @@ impl BinaryClient {
         })
     }
 
+    /// Replaces the existing connection with a new one when the existing one has been closed
     #[tracing::instrument(skip(self))]
     pub fn reconnect(&mut self) -> Result<(), Error> {
         self.stream = TcpStream::connect(self.region.binary_url())?;
         Ok(())
     }
 
+    /// Clone the existing client
     pub fn try_clone(&self) -> Result<Self, Error> {
         Ok(Self {
             stream: self.stream.try_clone()?,
@@ -351,6 +419,12 @@ impl BinaryClient {
         result
     }
 
+    /// Sends a synchronous command containing a payload with the binary protocol.
+    ///
+    /// Returns `Ok(JsonValue)` when the command has been well processed
+    /// Returns `Err(Error)` when something has gone wrong while sending or receiving or parsing the answer.
+    ///
+    /// This method is ment to be used by structs implementing [`BinaryCommand`](crate::prelude::BinaryCommand).
     pub fn send_command_with_data(
         &mut self,
         method: &str,
@@ -365,6 +439,26 @@ impl BinaryClient {
         self.read_result()
     }
 
+    /// Sends a synchronous command with the binary protocol.
+    ///
+    /// Returns `Ok(JsonValue)` when the command has been well processed
+    /// Returns `Err(Error)` when something has gone wrong while sending or receiving or parsing the answer.
+    ///
+    /// This method is ment to be used by structs implementing [`BinaryCommand`](crate::prelude::BinaryCommand).
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use pcloud::binary::{BinaryClient, BinaryClientBuilder};
+    ///
+    /// let mut client = BinaryClientBuilder::from_env()
+    ///     .build()
+    ///     .expect("unable to build client");
+    /// let params = Vec::new();
+    /// let _result = client
+    ///     .send_command("getip", &params)
+    ///     .expect("unable to execute command");
+    /// ```
     pub fn send_command(
         &mut self,
         method: &str,

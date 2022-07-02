@@ -1,8 +1,7 @@
+pub mod checksum;
 pub mod copy;
 pub mod delete;
 pub mod download;
-pub mod get_info;
-pub mod get_link;
 pub mod rename;
 pub mod upload;
 
@@ -10,11 +9,16 @@ pub mod upload;
 use crate::binary::Value as BValue;
 use crate::entry::File;
 
+/// Structure returned when moving or copying a file
 #[derive(Debug, serde::Deserialize)]
 pub struct FileResponse {
     pub metadata: File,
 }
 
+/// Representation of a file identifier.
+///
+/// In most commands, a file can be identifier by it's path,
+/// although it's not recommended, or by it id
 #[derive(Debug)]
 pub enum FileIdentifier {
     Path(String),

@@ -1,10 +1,10 @@
 use crate::render;
 use actix_web::error::ResponseError;
 use actix_web::{web, HttpRequest, HttpResponse, HttpResponseBuilder};
-use pcloud::file::get_link::FileLinkCommand;
 use pcloud::folder::list::FolderListCommand;
 use pcloud::http::HttpClient;
 use pcloud::prelude::HttpCommand;
+use pcloud::streaming::get_file_link::GetFileLinkCommand;
 use std::fmt;
 
 #[derive(Debug)]
@@ -111,7 +111,7 @@ pub async fn handle(
             .map(|folder| HttpResponse::Ok().body(render::format_page(&original_path, &folder)))
             .map_err(Error::UnableListFolder)
     } else {
-        let url = FileLinkCommand::new(target_path.into())
+        let url = GetFileLinkCommand::new(target_path.into())
             .execute(&client)
             .await
             .map_err(Error::UnableGetFile)?;

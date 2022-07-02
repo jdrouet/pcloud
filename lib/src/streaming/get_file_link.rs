@@ -1,46 +1,57 @@
-use super::FileIdentifier;
+//! Resources needed to get a link to a file in order to stream it
 
+use crate::file::FileIdentifier;
+
+/// Command to a file streaming link
+///
+/// Executing this command with return the url to the file.
+///
+/// [More about it on the documentation](https://docs.pcloud.com/methods/streaming/getfilelink.html)
+///
+/// # Example using the [`HttpClient`](crate::http::HttpClient)
+///
+/// To use this, the `client-http` feature should be enabled.
+///
+/// ```
+/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::prelude::HttpCommand;
+/// use pcloud::streaming::get_file_link::GetFileLinkCommand;
+///
+/// # tokio_test::block_on(async {
+/// let client = HttpClientBuilder::from_env().build().unwrap();
+/// let cmd = GetFileLinkCommand::new("/foo/bar.txt".into());
+/// match cmd.execute(&client).await {
+///   Ok(res) => println!("success"),
+///   Err(err) => eprintln!("error: {:?}", err),
+/// }
+/// # })
+/// ```
 #[derive(Debug)]
-pub struct FileLinkCommand {
+pub struct GetFileLinkCommand {
     pub identifier: FileIdentifier,
 }
 
-impl FileLinkCommand {
+impl GetFileLinkCommand {
     pub fn new(identifier: FileIdentifier) -> Self {
         Self { identifier }
     }
 }
 
-#[derive(Debug, serde::Deserialize)]
-pub struct FileLink {
-    // hash: usize,
-    // size: usize,
-    // expired: String,
-    pub hosts: Vec<String>,
-    pub path: String,
-}
-
 #[cfg(feature = "client-http")]
 mod http {
-    use super::{FileLink, FileLinkCommand};
+    use super::GetFileLinkCommand;
     use crate::error::Error;
     use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::request::Response;
-
-    impl FileLink {
-        fn to_url(&self) -> String {
-            let host = self.hosts.get(0).unwrap();
-            format!("https://{}{}", host, self.path)
-        }
-    }
+    use crate::streaming::Payload;
 
     #[async_trait::async_trait(?Send)]
-    impl HttpCommand for FileLinkCommand {
+    impl HttpCommand for GetFileLinkCommand {
         type Output = String;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-            let result: Response<FileLink> = client
+            let result: Response<Payload> = client
                 .get_request("getfilelink", &self.identifier.to_http_params())
                 .await?;
             result.payload().map(|res| res.to_url())
@@ -50,7 +61,7 @@ mod http {
 
 #[cfg(all(test, feature = "client-http"))]
 mod http_tests {
-    use super::FileLinkCommand;
+    use super::GetFileLinkCommand;
     use crate::credentials::Credentials;
     use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
@@ -82,7 +93,10 @@ mod http_tests {
         let creds = Credentials::AccessToken("access-token".into());
         let dc = Region::mock();
         let api = HttpClient::new(creds, dc);
-        let result = FileLinkCommand::new(42.into()).execute(&api).await.unwrap();
+        let result = GetFileLinkCommand::new(42.into())
+            .execute(&api)
+            .await
+            .unwrap();
         assert_eq!(result, "https://edef2.pcloud.com/DLZCAt2vXZejNfL5ZruLVZZTk2ev7Z2ZZNR5ZZdoz6ZXZQZZErw4bH0PfzBQt3LlgXMliXVtietX/SAkdyBjkA7mQABbT.bin");
         m.assert();
     }

@@ -72,8 +72,7 @@ mod http {
     use super::{FileMoveCommand, FileRenameCommand};
     use crate::entry::File;
     use crate::error::Error;
-    use crate::file::{FileIdentifier, FileResponse};
-    use crate::folder::FolderIdentifier;
+    use crate::file::FileResponse;
     use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::request::Response;
@@ -81,14 +80,8 @@ mod http {
     impl FileMoveCommand {
         fn to_http_params(&self) -> Vec<(&str, String)> {
             vec![
-                match &self.from {
-                    FileIdentifier::FileId(id) => ("fileid", id.to_string()),
-                    FileIdentifier::Path(value) => ("path", value.to_string()),
-                },
-                match &self.to {
-                    FolderIdentifier::FolderId(id) => ("tofolderid", id.to_string()),
-                    FolderIdentifier::Path(value) => ("topath", value.to_string()),
-                },
+                self.from.to_http_param(),
+                self.to.to_named_http_param("topath", "tofolderid"),
             ]
         }
     }
@@ -108,10 +101,7 @@ mod http {
     impl FileRenameCommand {
         fn to_http_params(&self) -> Vec<(&str, String)> {
             vec![
-                match &self.identifier {
-                    FileIdentifier::FileId(id) => ("fileid", id.to_string()),
-                    FileIdentifier::Path(value) => ("path", value.to_string()),
-                },
+                self.identifier.to_http_param(),
                 ("toname", self.name.to_string()),
             ]
         }
@@ -136,24 +126,15 @@ mod binary {
     use crate::binary::{BinaryClient, Value as BinaryValue};
     use crate::entry::File;
     use crate::error::Error;
-    use crate::file::{FileIdentifier, FileResponse};
-    use crate::folder::FolderIdentifier;
+    use crate::file::FileResponse;
     use crate::prelude::BinaryCommand;
     use crate::request::Response;
 
     impl FileMoveCommand {
         fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
             vec![
-                match &self.from {
-                    FileIdentifier::FileId(id) => ("fileid", BinaryValue::Number(*id)),
-                    FileIdentifier::Path(value) => ("path", BinaryValue::Text(value.to_string())),
-                },
-                match &self.to {
-                    FolderIdentifier::FolderId(id) => ("tofolderid", BinaryValue::Number(*id)),
-                    FolderIdentifier::Path(value) => {
-                        ("topath", BinaryValue::Text(value.to_string()))
-                    }
-                },
+                self.from.to_binary_param(),
+                self.to.to_named_binary_param("topath", "tofolderid"),
             ]
         }
     }
@@ -170,10 +151,7 @@ mod binary {
     impl FileRenameCommand {
         fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
             vec![
-                match &self.identifier {
-                    FileIdentifier::FileId(id) => ("fileid", BinaryValue::Number(*id)),
-                    FileIdentifier::Path(value) => ("path", BinaryValue::Text(value.to_string())),
-                },
+                self.identifier.to_binary_param(),
                 ("toname", BinaryValue::Text(self.name.to_string())),
             ]
         }

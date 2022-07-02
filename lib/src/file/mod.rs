@@ -49,20 +49,46 @@ impl From<u64> for FileIdentifier {
     }
 }
 
+#[cfg(feature = "client-http")]
 impl FileIdentifier {
-    #[cfg(feature = "client-http")]
-    pub fn to_http_params(&self) -> Vec<(&str, String)> {
+    pub fn to_named_http_param(
+        &self,
+        path: &'static str,
+        file_id: &'static str,
+    ) -> (&'static str, String) {
         match self {
-            Self::Path(value) => vec![("path", value.clone())],
-            Self::FileId(value) => vec![("fileid", value.to_string())],
+            Self::Path(value) => (path, value.clone()),
+            Self::FileId(value) => (file_id, value.to_string()),
         }
     }
 
-    #[cfg(feature = "client-binary")]
-    pub fn to_binary_params(&self) -> Vec<(&str, BValue)> {
+    pub fn to_http_param(&self) -> (&str, String) {
+        self.to_named_http_param("path", "fileid")
+    }
+
+    pub fn to_http_params(&self) -> Vec<(&str, String)> {
+        vec![self.to_http_param()]
+    }
+}
+
+#[cfg(feature = "client-binary")]
+impl FileIdentifier {
+    pub fn to_named_binary_param(
+        &self,
+        path: &'static str,
+        fileid: &'static str,
+    ) -> (&'static str, BValue) {
         match self {
-            Self::Path(value) => vec![("path", BValue::Text(value.clone()))],
-            Self::FileId(value) => vec![("fileid", BValue::Number(*value))],
+            Self::Path(value) => (path, BValue::Text(value.clone())),
+            Self::FileId(value) => (fileid, BValue::Number(*value)),
         }
+    }
+
+    pub fn to_binary_param(&self) -> (&str, BValue) {
+        self.to_named_binary_param("path", "fileid")
+    }
+
+    pub fn to_binary_params(&self) -> Vec<(&str, BValue)> {
+        vec![self.to_binary_param()]
     }
 }

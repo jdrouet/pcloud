@@ -4,7 +4,7 @@ use clap::Parser;
 use futures_util::future::try_join_all;
 use pcloud::entry::Folder;
 use pcloud::error::Error as PCloudError;
-use pcloud::file::get_info::FileCheckSumCommand;
+use pcloud::file::checksum::FileCheckSumCommand;
 use pcloud::file::upload::FileUploadCommand;
 use pcloud::folder::create::FolderCreateCommand;
 use pcloud::folder::list::FolderListCommand;

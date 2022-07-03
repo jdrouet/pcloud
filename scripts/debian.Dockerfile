@@ -49,13 +49,13 @@ COPY --from=builder /code/target/release/pcloud-cli-* /
 COPY --from=builder /code/target/release/pcloud-fuse-* /
 COPY --from=builder /code/target/release/pcloud-http-server-* /
 
-FROM debian:bullseye-slim AS cli
+FROM debian:bullseye-slim AS cli-image
 
 COPY --from=builder /code/target/release/pcloud-cli /usr/bin/pcloud-cli
 
 ENTRYPOINT ["/usr/bin/pcloud-cli"]
 
-FROM debian:bullseye-slim AS fuse
+FROM debian:bullseye-slim AS fuse-image
 
 RUN apt-get update \
   && apt-get install -y fuse \
@@ -68,7 +68,7 @@ COPY --from=builder /code/target/release/pcloud-fuse /usr/bin/pcloud-fuse
 ENTRYPOINT ["/usr/bin/pcloud-fuse"]
 CMD ["/data"]
 
-FROM debian:bullseye-slim AS http-server
+FROM debian:bullseye-slim AS http-server-image
 
 COPY --from=builder /code/target/release/pcloud-http-server /usr/bin/pcloud-http-server
 

@@ -49,13 +49,13 @@ COPY --from=builder /code/target/release/pcloud-cli-* /
 COPY --from=builder /code/target/release/pcloud-fuse-* /
 COPY --from=builder /code/target/release/pcloud-http-server-* /
 
-FROM alpine AS cli
+FROM alpine AS cli-image
 
 COPY --from=builder /code/target/release/pcloud-cli /usr/bin/pcloud-cli
 
 ENTRYPOINT ["/usr/bin/pcloud-cli"]
 
-FROM alpine AS fuse
+FROM alpine AS fuse-image
 
 RUN apk add --no-cache fuse
 
@@ -66,7 +66,7 @@ COPY --from=builder /code/target/release/pcloud-fuse /usr/bin/pcloud-fuse
 ENTRYPOINT ["/usr/bin/pcloud-fuse"]
 CMD ["/data"]
 
-FROM alpine AS http-server
+FROM alpine AS http-server-image
 
 COPY --from=builder /code/target/release/pcloud-http-server /usr/bin/pcloud-http-server
 

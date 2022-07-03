@@ -23,7 +23,7 @@ assets = [
 protected = []
 
 [dependencies]
-pcloud = { default-features = false, features = ["client-http"], path = "../lib", version = "1.0" }
+pcloud = { default-features = false, features = ["client-http"], path = "../lib", version = "1.1" }
 #
 async-recursion = { version = "1.0" }
 clap = { version = "3.2", features = ["derive"] }

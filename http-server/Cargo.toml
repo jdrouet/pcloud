@@ -10,7 +10,7 @@ repository = "https://github.com/jdrouet/pcloud"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-pcloud = { path = "../lib", version = "1.0" }
+pcloud = { path = "../lib", version = "1.1" }
 #
 actix-web = { version = "4.1" }
 clap = { version = "3.2", features = ["derive", "env"] }

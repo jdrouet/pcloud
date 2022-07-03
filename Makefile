@@ -85,7 +85,7 @@ build-image-http-server-gnu:
 		--tag jdrouet/pcloud-http-server:latest \
 		--tag jdrouet/pcloud-http-server:gnu \
 		--tag jdrouet/pcloud-http-server:${HTTP_SERVER_VERSION} \
-		--tag jdrouet/pcloudhttp-servere:${HTTP_SERVER_VERSION}-gnu \
+		--tag jdrouet/pcloud-http-server:${HTTP_SERVER_VERSION}-gnu \
 		.
 
 build-image-http-server-musl:

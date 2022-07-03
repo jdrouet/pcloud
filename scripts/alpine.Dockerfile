@@ -1,5 +1,3 @@
-ARG VERSION=local
-
 FROM --platform=$BUILDPLATFORM rust:alpine AS fetcher
 
 WORKDIR /code/cli
@@ -34,19 +32,16 @@ COPY --from=fetcher /code /code
 
 WORKDIR /code
 
-RUN cargo fetch
-
 COPY cli/src /code/cli/src
 COPY fuse/src /code/fuse/src
 COPY http-server/src /code/http-server/src
 COPY lib/src /code/lib/src
 
 RUN cargo build --offline --release
-ARG VERSION
 
-RUN cp /code/target/release/pcloud-cli /code/target/release/pcloud-cli-${VERSION}-musl \
-  && cp /code/target/release/pcloud-fuse /code/target/release/pcloud-fuse-${VERSION}-musl \
-  && cp /code/target/release/pcloud-http-server /code/target/release/pcloud-http-server-${VERSION}-musl
+RUN cp /code/target/release/pcloud-cli /code/target/release/pcloud-cli-$(/code/target/release/pcloud-cli --version | cut -d ' ' -f 2)-$(uname -m)-musl
+RUN cp /code/target/release/pcloud-fuse /code/target/release/pcloud-fuse-$(/code/target/release/pcloud-fuse --version | cut -d ' ' -f 2)-$(uname -m)-musl
+RUN cp /code/target/release/pcloud-http-server /code/target/release/pcloud-http-server-$(/code/target/release/pcloud-http-server --version | cut -d ' ' -f 2)-$(uname -m)-musl
 
 FROM --platform=$BUILDPLATFORM scratch AS artifact
 
@@ -54,13 +49,13 @@ COPY --from=builder /code/target/release/pcloud-cli-* /
 COPY --from=builder /code/target/release/pcloud-fuse-* /
 COPY --from=builder /code/target/release/pcloud-http-server-* /
 
-FROM alpine AS cli
+FROM alpine AS cli-image
 
 COPY --from=builder /code/target/release/pcloud-cli /usr/bin/pcloud-cli
 
 ENTRYPOINT ["/usr/bin/pcloud-cli"]
 
-FROM alpine AS fuse
+FROM alpine AS fuse-image
 
 RUN apk add --no-cache fuse
 
@@ -71,7 +66,7 @@ COPY --from=builder /code/target/release/pcloud-fuse /usr/bin/pcloud-fuse
 ENTRYPOINT ["/usr/bin/pcloud-fuse"]
 CMD ["/data"]
 
-FROM alpine AS http-server
+FROM alpine AS http-server-image
 
 COPY --from=builder /code/target/release/pcloud-http-server /usr/bin/pcloud-http-server
 

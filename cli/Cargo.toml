@@ -2,7 +2,7 @@
 name = "pcloud-cli"
 description = "CLI for pcloud"
 authors = ["Jeremie Drouet <jeremie.drouet@gmail.com>"]
-version = "0.3.0"
+version = "1.0.0"
 edition = "2018"
 license = "MIT"
 readme = "readme.md"

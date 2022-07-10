@@ -1,5 +1,5 @@
-use pcloud::binary::{BinaryClient, BinaryClientBuilder, BinaryClientBuilderError};
 use pcloud::credentials::Credentials;
+use pcloud::http::{HttpClient, HttpClientBuilder, HttpClientBuilderError};
 use pcloud::region::Region;
 use serde::Deserialize;
 use std::path::Path;
@@ -43,8 +43,8 @@ impl Config {
         Ok(result)
     }
 
-    pub fn build(self) -> Result<BinaryClient, BinaryClientBuilderError> {
-        let mut builder = BinaryClientBuilder::from_env();
+    pub fn build(self) -> Result<HttpClient, HttpClientBuilderError> {
+        let mut builder = HttpClientBuilder::from_env();
         if let Some(creds) = self.credentials.map(|c| c.build()) {
             builder.credentials = Some(creds);
         }

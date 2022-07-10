@@ -14,8 +14,8 @@ struct Opts {
     config: Option<PathBuf>,
     #[clap(long, default_value = "info")]
     log_level: String,
-    #[clap(long, short)]
-    read_only: bool,
+    // #[clap(long, short)]
+    // read_only: bool,
     mount_point: PathBuf,
 }
 
@@ -31,24 +31,23 @@ impl Opts {
     }
 
     fn set_log_level(&self) {
+        let level = match self.log_level.as_str() {
+            "debug" => "info,pcloud_fuse=debug,fuser=debug",
+            _ => "info",
+        };
         tracing_subscriber::fmt()
-            .with_env_filter(self.log_level.clone())
+            .with_env_filter(level)
             .try_init()
             .expect("couldn't init logger");
     }
 
     fn options(&self) -> Vec<MountOption> {
-        let mut options = vec![
+        vec![
             MountOption::AutoUnmount,
             MountOption::NoExec,
             MountOption::NoAtime,
-        ];
-        if self.read_only {
-            options.push(MountOption::RO);
-        } else {
-            options.push(MountOption::RW);
-        }
-        options
+            MountOption::RO,
+        ]
     }
 }
 
@@ -59,7 +58,10 @@ fn main() {
     let cfg = config::Config::from_path(&opts.config()).unwrap_or_default();
     let client = cfg.build().expect("couldn't build client");
 
-    let service = service::PCloudService::new(client);
+    // TODO allow to specify the temporary directory
+    let root = tempfile::TempDir::new().expect("couldn't create temporary folder");
+
+    let service = service::Service::new(client, root.path().to_path_buf());
 
     let options = opts.options();
 

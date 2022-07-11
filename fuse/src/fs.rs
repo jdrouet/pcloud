@@ -155,4 +155,36 @@ impl Filesystem for PCloudFs {
             Err(err) => reply.error(err.into_code()),
         };
     }
+
+    fn mkdir(
+        &mut self,
+        _req: &fuser::Request<'_>,
+        parent: u64,
+        name: &OsStr,
+        _mode: u32,
+        _umask: u32,
+        reply: fuser::ReplyEntry,
+    ) {
+        tracing::debug!("mkdir parent={parent} name={:?}", name);
+        let name = parse_str!(name, reply);
+        match self.service.create_directory(parent, name) {
+            Ok(res) => reply.entry(&self.fuse_duration, &res, 0),
+            Err(err) => reply.error(err.into_code()),
+        };
+    }
+
+    fn rmdir(
+        &mut self,
+        _req: &fuser::Request<'_>,
+        parent: u64,
+        name: &OsStr,
+        reply: fuser::ReplyEmpty,
+    ) {
+        tracing::debug!("rmdir parent={parent} name={:?}", name);
+        let name = parse_str!(name, reply);
+        match self.service.remove_directory(parent, name) {
+            Ok(_) => reply.ok(),
+            Err(err) => reply.error(err.into_code()),
+        };
+    }
 }

@@ -2,6 +2,8 @@ use pcloud::entry::{Entry, File, Folder};
 use pcloud::error::Error as PCloudError;
 use pcloud::file::checksum::FileCheckSumCommand;
 use pcloud::file::download::FileDownloadCommand;
+use pcloud::folder::create::FolderCreateCommand;
+use pcloud::folder::delete::FolderDeleteCommand;
 use pcloud::folder::list::FolderListCommand;
 use pcloud::http::HttpClient;
 use pcloud::prelude::HttpCommand;
@@ -326,18 +328,22 @@ impl Service {
             .collect())
     }
 
+    fn get_entry_in_directory(&mut self, inode: u64, name: &str) -> Result<Entry, Error> {
+        let folder = self.get_folder(inode, true)?;
+        let children = folder.contents.unwrap_or_default();
+        children
+            .into_iter()
+            .find(|item| item.base().name == name)
+            .ok_or(Error::NotFound)
+    }
+
     pub fn read_file_in_directory(
         &mut self,
         inode: u64,
         name: &str,
     ) -> Result<fuser::FileAttr, Error> {
-        let folder = self.get_folder(inode, true)?;
-        let children = folder.contents.unwrap_or_default();
-        children
-            .iter()
-            .find(|item| item.base().name == name)
-            .map(create_entry_attrs)
-            .ok_or(Error::NotFound)
+        self.get_entry_in_directory(inode, name)
+            .map(|item| create_entry_attrs(&item))
     }
 
     fn download_file(&mut self, inode: u64) -> Result<PathBuf, Error> {
@@ -426,5 +432,30 @@ impl Service {
         } else {
             Err(Error::NotFound)
         }
+    }
+
+    pub fn create_directory(&mut self, parent: u64, name: &str) -> Result<fuser::FileAttr, Error> {
+        let result = self.runtime.block_on(async {
+            FolderCreateCommand::new(name.to_string(), inode_to_pcloud_id(parent))
+                .execute(&self.client)
+                .await
+                .map(|entry| create_folder_attrs(&entry))
+        })?;
+        self.dir_cache.remove(&parent);
+        Ok(result)
+    }
+
+    pub fn remove_directory(&mut self, parent: u64, name: &str) -> Result<(), Error> {
+        let found = self
+            .get_entry_in_directory(parent, name)
+            .and_then(|item| item.into_folder().ok_or(Error::NotFound))?;
+        self.runtime.block_on(async {
+            FolderDeleteCommand::new(found.folder_id.into())
+                .execute(&self.client)
+                .await
+        })?;
+        self.dir_cache.remove(&pcloud_id_to_inode(found.folder_id));
+        self.dir_cache.remove(&parent);
+        Ok(())
     }
 }

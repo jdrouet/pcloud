@@ -14,8 +14,8 @@ struct Opts {
     config: Option<PathBuf>,
     #[clap(long, default_value = "info")]
     log_level: String,
-    // #[clap(long, short)]
-    // read_only: bool,
+    #[clap(long, short)]
+    read_only: bool,
     mount_point: PathBuf,
 }
 
@@ -42,12 +42,17 @@ impl Opts {
     }
 
     fn options(&self) -> Vec<MountOption> {
-        vec![
+        let mut res = vec![
             MountOption::AutoUnmount,
             MountOption::NoExec,
             MountOption::NoAtime,
-            MountOption::RO,
-        ]
+        ];
+        if self.read_only {
+            res.push(MountOption::RO);
+        } else {
+            res.push(MountOption::RW);
+        }
+        res
     }
 }
 

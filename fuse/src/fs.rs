@@ -2,6 +2,7 @@ use crate::service::{Error, Service};
 use fuser::Filesystem;
 use std::ffi::OsStr;
 use std::time::Duration;
+use tracing::instrument;
 
 macro_rules! parse_str {
     ($value:ident, $reply:ident) => {
@@ -38,6 +39,7 @@ impl PCloudFs {
 }
 
 impl Filesystem for PCloudFs {
+    #[instrument(skip(self, _req, reply))]
     fn lookup(
         &mut self,
         _req: &fuser::Request<'_>,
@@ -45,7 +47,6 @@ impl Filesystem for PCloudFs {
         name: &OsStr,
         reply: fuser::ReplyEntry,
     ) {
-        tracing::debug!("lookup parent={parent} name={:?}", name);
         let name = parse_str!(name, reply);
         match self.service.read_file_in_directory(parent, name) {
             Ok(attrs) => reply.entry(&self.fuse_duration, &attrs, 0),
@@ -53,14 +54,15 @@ impl Filesystem for PCloudFs {
         }
     }
 
-    fn opendir(&mut self, _req: &fuser::Request, inode: u64, flags: i32, reply: fuser::ReplyOpen) {
-        tracing::debug!("opendir inode={inode}");
-        match self.service.open_directory(inode, flags) {
+    #[instrument(skip(self, _req, reply))]
+    fn opendir(&mut self, _req: &fuser::Request, inode: u64, _flags: i32, reply: fuser::ReplyOpen) {
+        match self.service.open_directory(inode) {
             Ok(fh) => reply.opened(fh, 0),
             Err(err) => reply.error(err.into_code()),
         };
     }
 
+    #[instrument(skip(self, _req, _flags, reply))]
     fn releasedir(
         &mut self,
         _req: &fuser::Request,
@@ -69,21 +71,21 @@ impl Filesystem for PCloudFs {
         _flags: i32,
         reply: fuser::ReplyEmpty,
     ) {
-        tracing::debug!("releasedir inode={inode} handler={fh}");
         match self.service.close_directory(inode, fh) {
             Ok(_) => reply.ok(),
             Err(err) => reply.error(err.into_code()),
         };
     }
 
+    #[instrument(skip(self, _req, reply))]
     fn getattr(&mut self, _req: &fuser::Request<'_>, ino: u64, reply: fuser::ReplyAttr) {
-        tracing::debug!("getattr inode={ino}");
         match self.service.get_attributes(ino) {
             Ok(res) => reply.attr(&self.fuse_duration, &res),
             Err(err) => reply.error(err.into_code()),
         }
     }
 
+    #[instrument(skip(self, _req, reply))]
     fn readdir(
         &mut self,
         _req: &fuser::Request<'_>,
@@ -92,7 +94,6 @@ impl Filesystem for PCloudFs {
         offset: i64,
         mut reply: fuser::ReplyDirectory,
     ) {
-        tracing::debug!("readdir inode={inode} fh={fh}");
         assert!(offset >= 0);
         let children = resolve!(self.service.read_directory(inode), reply);
 
@@ -112,15 +113,16 @@ impl Filesystem for PCloudFs {
         reply.ok();
     }
 
-    fn open(&mut self, _req: &fuser::Request<'_>, ino: u64, _flags: i32, reply: fuser::ReplyOpen) {
-        tracing::debug!("open inode={ino}");
-        match self.service.open_file(ino) {
+    #[instrument(skip(self, _req, flags, reply))]
+    fn open(&mut self, _req: &fuser::Request<'_>, ino: u64, flags: i32, reply: fuser::ReplyOpen) {
+        match self.service.open_file(ino, flags) {
             // check https://man7.org/linux/man-pages/man4/fuse.4.html for the return flags
             Ok(res) => reply.opened(res as u64, 0),
             Err(err) => reply.error(err.into_code()),
         };
     }
 
+    #[instrument(skip(self, _req, _flags, _lock_owner, reply))]
     fn release(
         &mut self,
         _req: &fuser::Request,
@@ -131,13 +133,13 @@ impl Filesystem for PCloudFs {
         flush: bool,
         reply: fuser::ReplyEmpty,
     ) {
-        tracing::debug!("release inode={inode} fh={fh} flush={flush}");
         match self.service.close_file(inode, fh, flush) {
             Ok(_) => reply.ok(),
             Err(err) => reply.error(err.into_code()),
         };
     }
 
+    #[instrument(skip(self, _req, _flags, _lock_owner, reply))]
     fn read(
         &mut self,
         _req: &fuser::Request<'_>,
@@ -149,13 +151,13 @@ impl Filesystem for PCloudFs {
         _lock_owner: Option<u64>,
         reply: fuser::ReplyData,
     ) {
-        tracing::debug!("read inode={ino} fh={fh} offset={offset} size={size}");
         match self.service.read_file(ino, fh, offset, size) {
             Ok(res) => reply.data(&res),
             Err(err) => reply.error(err.into_code()),
         };
     }
 
+    #[instrument(skip(self, _req, _mode, _umask, reply))]
     fn mkdir(
         &mut self,
         _req: &fuser::Request<'_>,
@@ -165,7 +167,6 @@ impl Filesystem for PCloudFs {
         _umask: u32,
         reply: fuser::ReplyEntry,
     ) {
-        tracing::debug!("mkdir parent={parent} name={:?}", name);
         let name = parse_str!(name, reply);
         match self.service.create_directory(parent, name) {
             Ok(res) => reply.entry(&self.fuse_duration, &res, 0),
@@ -173,6 +174,7 @@ impl Filesystem for PCloudFs {
         };
     }
 
+    #[instrument(skip(self, _req, reply))]
     fn rmdir(
         &mut self,
         _req: &fuser::Request<'_>,
@@ -180,11 +182,81 @@ impl Filesystem for PCloudFs {
         name: &OsStr,
         reply: fuser::ReplyEmpty,
     ) {
-        tracing::debug!("rmdir parent={parent} name={:?}", name);
         let name = parse_str!(name, reply);
         match self.service.remove_directory(parent, name) {
             Ok(_) => reply.ok(),
             Err(err) => reply.error(err.into_code()),
         };
+    }
+
+    #[instrument(skip(self, _req, _mode, _umask, _flags, reply))]
+    fn create(
+        &mut self,
+        _req: &fuser::Request<'_>,
+        parent: u64,
+        name: &OsStr,
+        _mode: u32,
+        _umask: u32,
+        _flags: i32,
+        reply: fuser::ReplyCreate,
+    ) {
+        let name = parse_str!(name, reply);
+        match self.service.create_file(parent, name) {
+            Ok((file, fh)) => reply.created(&self.fuse_duration, &file, 0, fh, 0),
+            Err(err) => reply.error(err.into_code()),
+        };
+    }
+
+    #[instrument(skip(self, _req, data, _write_flags, _flags, _lock_owner, reply))]
+    fn write(
+        &mut self,
+        _req: &fuser::Request<'_>,
+        ino: u64,
+        fh: u64,
+        offset: i64,
+        data: &[u8],
+        _write_flags: u32,
+        _flags: i32,
+        _lock_owner: Option<u64>,
+        reply: fuser::ReplyWrite,
+    ) {
+        match self.service.write_file(ino, fh, offset, data) {
+            Ok(count) => reply.written(count),
+            Err(err) => reply.error(err.into_code()),
+        };
+    }
+
+    #[instrument(skip(self, _req, reply))]
+    fn unlink(
+        &mut self,
+        _req: &fuser::Request<'_>,
+        parent: u64,
+        name: &OsStr,
+        reply: fuser::ReplyEmpty,
+    ) {
+        let name = parse_str!(name, reply);
+        match self.service.remove_file(parent, name) {
+            Ok(_) => reply.ok(),
+            Err(err) => reply.error(err.into_code()),
+        };
+    }
+
+    #[instrument(skip(self, _req, _flags, reply))]
+    fn rename(
+        &mut self,
+        _req: &fuser::Request<'_>,
+        parent: u64,
+        name: &OsStr,
+        newparent: u64,
+        newname: &OsStr,
+        _flags: u32,
+        reply: fuser::ReplyEmpty,
+    ) {
+        let name = parse_str!(name, reply);
+        let newname = parse_str!(newname, reply);
+        match self.service.move_file(parent, name, newparent, newname) {
+            Ok(_) => reply.ok(),
+            Err(err) => reply.error(err.into_code()),
+        }
     }
 }

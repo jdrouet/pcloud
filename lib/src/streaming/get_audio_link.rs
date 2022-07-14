@@ -61,7 +61,7 @@ mod http {
         }
     }
 
-    #[async_trait::async_trait(?Send)]
+    #[async_trait::async_trait]
     impl HttpCommand for GetAudioLinkCommand {
         type Output = String;
 

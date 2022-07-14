@@ -65,7 +65,7 @@ mod http {
     use crate::prelude::HttpCommand;
     use crate::request::Response;
 
-    #[async_trait::async_trait(?Send)]
+    #[async_trait::async_trait]
     impl HttpCommand for FileDeleteCommand {
         type Output = File;
 

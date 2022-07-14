@@ -6,7 +6,7 @@ use crate::error::Error;
 use crate::http::HttpClient;
 
 #[cfg(feature = "client-http")]
-#[async_trait::async_trait(?Send)]
+#[async_trait::async_trait]
 pub trait HttpCommand {
     type Output;
 

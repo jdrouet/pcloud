@@ -37,6 +37,7 @@ mod http {
     use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::request::Response;
+
     impl UserInfoCommand {
         fn to_http_params(&self) -> Vec<(&str, String)> {
             let mut res = Vec::new();
@@ -50,7 +51,7 @@ mod http {
         }
     }
 
-    #[async_trait::async_trait(?Send)]
+    #[async_trait::async_trait]
     impl HttpCommand for UserInfoCommand {
         type Output = UserInfo;
 

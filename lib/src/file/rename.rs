@@ -93,7 +93,7 @@ mod http {
         }
     }
 
-    #[async_trait::async_trait(?Send)]
+    #[async_trait::async_trait]
     impl HttpCommand for FileMoveCommand {
         type Output = File;
 
@@ -117,7 +117,7 @@ mod http {
         }
     }
 
-    #[async_trait::async_trait(?Send)]
+    #[async_trait::async_trait]
     impl HttpCommand for FileRenameCommand {
         type Output = File;
 

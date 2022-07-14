@@ -50,8 +50,8 @@ mod http {
     use crate::streaming::get_file_link::GetFileLinkCommand;
     use std::io::Write;
 
-    #[async_trait::async_trait(?Send)]
-    impl<W: Write> HttpCommand for FileDownloadCommand<W> {
+    #[async_trait::async_trait]
+    impl<W: Write + Send> HttpCommand for FileDownloadCommand<W> {
         type Output = usize;
 
         async fn execute(mut self, client: &HttpClient) -> Result<Self::Output, Error> {

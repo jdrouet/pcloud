@@ -73,8 +73,11 @@ mod http {
     use crate::request::Response;
     use std::io::Read;
 
-    impl<'a, R: Read + Send> FileUploadCommand<'a, R> {
-        async fn create_upload_file(&self, client: &HttpClient) -> Result<u64, Error> {
+    #[async_trait::async_trait]
+    impl<'a, R: Read + Send> HttpCommand for FileUploadCommand<'a, R> {
+        type Output = File;
+
+        async fn execute(self, client: &HttpClient) -> Result<File, Error> {
             let params = if self.no_partial {
                 vec![("nopartial", 1.to_string())]
             } else {
@@ -82,16 +85,8 @@ mod http {
             };
             let result: Response<CreateUploadPayload> =
                 client.get_request("upload_create", &params).await?;
-            result.payload().map(|item| item.upload_id)
-        }
-    }
+            let upload_id = result.payload().map(|item| item.upload_id)?;
 
-    #[async_trait::async_trait(?Send)]
-    impl<'a, R: Read + Send> HttpCommand for FileUploadCommand<'a, R> {
-        type Output = File;
-
-        async fn execute(self, client: &HttpClient) -> Result<File, Error> {
-            let upload_id = self.create_upload_file(client).await?;
             let mut reader = ChunkReader::new(self.reader, self.part_size);
 
             let upload_id_str = upload_id.to_string();

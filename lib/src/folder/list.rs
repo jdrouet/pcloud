@@ -117,7 +117,7 @@ mod http {
         }
     }
 
-    #[async_trait::async_trait(?Send)]
+    #[async_trait::async_trait]
     impl HttpCommand for FolderListCommand {
         type Output = Folder;
 

@@ -91,7 +91,7 @@ mod http {
         }
     }
 
-    #[async_trait::async_trait(?Send)]
+    #[async_trait::async_trait]
     impl HttpCommand for FolderCreateCommand {
         type Output = Folder;
 

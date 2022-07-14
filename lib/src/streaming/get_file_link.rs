@@ -46,7 +46,7 @@ mod http {
     use crate::request::Response;
     use crate::streaming::Payload;
 
-    #[async_trait::async_trait(?Send)]
+    #[async_trait::async_trait]
     impl HttpCommand for GetFileLinkCommand {
         type Output = String;
 

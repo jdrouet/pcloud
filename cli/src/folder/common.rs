@@ -23,6 +23,7 @@ pub(crate) fn get_checksum(path: &Path) -> Result<String, String> {
 }
 
 /// Method to compare existing files
+#[derive(Clone, Copy)]
 pub(crate) enum CompareMethod {
     /// Compute the checksum of the existing file and compares it with the remote file
     Checksum,

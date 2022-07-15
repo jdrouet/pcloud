@@ -1,66 +1,14 @@
-use super::common::{get_checksum, CompareMethod};
+use super::common::{get_checksum, try_get_file_checksum, try_get_folder_content, CompareMethod};
 use async_recursion::async_recursion;
 use clap::Parser;
 use pcloud::entry::{Entry, File};
 use pcloud::error::Error as PCloudError;
-use pcloud::file::checksum::FileCheckSumCommand;
 use pcloud::file::download::FileDownloadCommand;
-use pcloud::folder::list::FolderListCommand;
 use pcloud::http::HttpClient;
 use pcloud::prelude::HttpCommand;
 use std::fs;
 use std::io::Error as IoError;
 use std::path::{Path, PathBuf};
-
-#[async_recursion]
-async fn try_get_folder_content(
-    pcloud: &HttpClient,
-    remote_path: &Path,
-    folder_id: u64,
-    retries: usize,
-) -> Result<Vec<Entry>, Error> {
-    tracing::info!(
-        "{:?} loading folder content, {} retries left",
-        remote_path,
-        retries
-    );
-    match FolderListCommand::new(folder_id.into())
-        .execute(pcloud)
-        .await
-    {
-        Err(err) if retries > 0 => {
-            tracing::warn!("{:?} unable to load folder content: {:?}", remote_path, err);
-            try_get_folder_content(pcloud, remote_path, folder_id, retries - 1).await
-        }
-        Err(err) => Err(err.into()),
-        Ok(res) => Ok(res.contents.unwrap_or_default()),
-    }
-}
-
-#[async_recursion]
-async fn try_get_file_checksum(
-    pcloud: &HttpClient,
-    remote_path: &Path,
-    file_id: u64,
-    retries: usize,
-) -> Result<String, Error> {
-    tracing::info!(
-        "{:?} loading file checksum, {} retries left",
-        remote_path,
-        retries
-    );
-    match FileCheckSumCommand::new(file_id.into())
-        .execute(pcloud)
-        .await
-    {
-        Err(err) if retries > 0 => {
-            tracing::warn!("{:?} unable to load file checksum: {:?}", remote_path, err);
-            try_get_file_checksum(pcloud, remote_path, file_id, retries - 1).await
-        }
-        Err(err) => Err(err.into()),
-        Ok(res) => Ok(res.sha256),
-    }
-}
 
 #[async_recursion]
 async fn try_download_file(
@@ -70,7 +18,7 @@ async fn try_download_file(
     local_path: &Path,
     retries: usize,
 ) -> Result<(), Error> {
-    tracing::info!("{:?} downloading to {:?}", remote_path, local_path);
+    tracing::info!("{:?} downloading", remote_path);
     let file = fs::OpenOptions::new()
         .create(true)
         .write(true)
@@ -349,7 +297,7 @@ mod tests {
             compare_method: CompareMethod::Checksum,
             retries: 5,
             path: PathBuf::from(root),
-            download_queue_capacity: 1024,
+            download_queue_capacity: 64,
             downloader_count: 2,
         }
     }

@@ -1,15 +1,68 @@
-use pcloud::entry::{File, Folder};
+use async_recursion::async_recursion;
+use pcloud::entry::{Entry, Folder};
+use pcloud::error::Error;
+use pcloud::http::HttpClient;
+use pcloud::prelude::HttpCommand;
 use sha2::{Digest, Sha256};
 use std::path::Path;
 use std::str::FromStr;
 
-/// Checks that a folder contains a file based on its filename
-pub(crate) fn contains_file<'f>(folder: &'f Folder, fname: &str) -> Option<&'f File> {
-    folder
-        .contents
-        .as_ref()
-        .and_then(|contents| contents.iter().find(|item| item.base().name == fname))
-        .and_then(|entry| entry.as_file())
+/// returns the content of a folder with retry mechanism
+#[async_recursion]
+pub(crate) async fn try_get_folder(
+    pcloud: &HttpClient,
+    remote_path: &Path,
+    folder_id: u64,
+    retries: usize,
+) -> Result<Folder, Error> {
+    tracing::info!("{:?} loading folder, {} retries left", remote_path, retries);
+    match pcloud::folder::list::FolderListCommand::new(folder_id.into())
+        .execute(pcloud)
+        .await
+    {
+        Err(err) if retries > 0 => {
+            tracing::warn!("{:?} unable to load folder: {:?}", remote_path, err);
+            try_get_folder(pcloud, remote_path, folder_id, retries - 1).await
+        }
+        other => other,
+    }
+}
+
+/// returns the content of a folder with retry mechanism
+pub(crate) async fn try_get_folder_content(
+    pcloud: &HttpClient,
+    remote_path: &Path,
+    folder_id: u64,
+    retries: usize,
+) -> Result<Vec<Entry>, Error> {
+    try_get_folder(pcloud, remote_path, folder_id, retries)
+        .await
+        .map(|folder| folder.contents.unwrap_or_default())
+}
+
+#[async_recursion]
+pub async fn try_get_file_checksum(
+    pcloud: &HttpClient,
+    remote_path: &Path,
+    file_id: u64,
+    retries: usize,
+) -> Result<String, Error> {
+    tracing::info!(
+        "{:?} loading file checksum, {} retries left",
+        remote_path,
+        retries
+    );
+    match pcloud::file::checksum::FileCheckSumCommand::new(file_id.into())
+        .execute(pcloud)
+        .await
+    {
+        Err(err) if retries > 0 => {
+            tracing::warn!("{:?} unable to load file checksum: {:?}", remote_path, err);
+            try_get_file_checksum(pcloud, remote_path, file_id, retries - 1).await
+        }
+        Err(err) => Err(err),
+        Ok(res) => Ok(res.sha256),
+    }
 }
 
 /// Computes the sha256 checksum of a local file

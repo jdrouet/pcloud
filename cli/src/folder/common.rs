@@ -11,18 +11,17 @@ use std::str::FromStr;
 #[async_recursion]
 pub(crate) async fn try_get_folder(
     pcloud: &HttpClient,
-    remote_path: &Path,
     folder_id: u64,
     retries: usize,
 ) -> Result<Folder, Error> {
-    tracing::info!("{:?} loading folder, {} retries left", remote_path, retries);
+    tracing::info!("loading folder, {} retries left", retries);
     match pcloud::folder::list::FolderListCommand::new(folder_id.into())
         .execute(pcloud)
         .await
     {
         Err(err) if retries > 0 => {
-            tracing::warn!("{:?} unable to load folder: {:?}", remote_path, err);
-            try_get_folder(pcloud, remote_path, folder_id, retries - 1).await
+            tracing::warn!("unable to load folder: {:?}", err);
+            try_get_folder(pcloud, folder_id, retries - 1).await
         }
         other => other,
     }
@@ -31,11 +30,10 @@ pub(crate) async fn try_get_folder(
 /// returns the content of a folder with retry mechanism
 pub(crate) async fn try_get_folder_content(
     pcloud: &HttpClient,
-    remote_path: &Path,
     folder_id: u64,
     retries: usize,
 ) -> Result<Vec<Entry>, Error> {
-    try_get_folder(pcloud, remote_path, folder_id, retries)
+    try_get_folder(pcloud, folder_id, retries)
         .await
         .map(|folder| folder.contents.unwrap_or_default())
 }
@@ -43,22 +41,17 @@ pub(crate) async fn try_get_folder_content(
 #[async_recursion]
 pub async fn try_get_file_checksum(
     pcloud: &HttpClient,
-    remote_path: &Path,
     file_id: u64,
     retries: usize,
 ) -> Result<String, Error> {
-    tracing::info!(
-        "{:?} loading file checksum, {} retries left",
-        remote_path,
-        retries
-    );
+    tracing::info!("loading file checksum, {} retries left", retries);
     match pcloud::file::checksum::FileCheckSumCommand::new(file_id.into())
         .execute(pcloud)
         .await
     {
         Err(err) if retries > 0 => {
-            tracing::warn!("{:?} unable to load file checksum: {:?}", remote_path, err);
-            try_get_file_checksum(pcloud, remote_path, file_id, retries - 1).await
+            tracing::warn!("unable to load file checksum: {:?}", err);
+            try_get_file_checksum(pcloud, file_id, retries - 1).await
         }
         Err(err) => Err(err),
         Ok(res) => Ok(res.sha256),

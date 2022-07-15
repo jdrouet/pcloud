@@ -9,6 +9,15 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use temp_dir::TempDir;
 
+pub(crate) fn init() {
+    if let Err(err) = tracing_subscriber::fmt()
+        .with_env_filter("pcloud_cli=trace")
+        .try_init()
+    {
+        tracing::debug!("tracer error: {:?}", err);
+    }
+}
+
 pub(crate) fn random_name() -> String {
     rand::thread_rng()
         .sample_iter(&Alphanumeric)

@@ -8,9 +8,10 @@ use pcloud::prelude::HttpCommand;
 use std::collections::HashMap;
 use std::io::Error as IoError;
 use std::path::{Path, PathBuf};
+use tracing::{info_span, Instrument};
 
 fn read_local_folder(path: &Path) -> Vec<(String, PathBuf)> {
-    tracing::debug!("{:?} reading local folder", path);
+    tracing::debug!("reading local folder");
     match std::fs::read_dir(path) {
         Ok(list) => list
             .filter_map(|entry| entry.ok())
@@ -24,7 +25,7 @@ fn read_local_folder(path: &Path) -> Vec<(String, PathBuf)> {
             })
             .collect(),
         Err(err) => {
-            tracing::warn!("{:?} unable to read directory: {:?}", path, err);
+            tracing::warn!("unable to read directory: {:?}", err);
             Vec::new()
         }
     }
@@ -33,19 +34,18 @@ fn read_local_folder(path: &Path) -> Vec<(String, PathBuf)> {
 #[async_recursion]
 async fn try_create_folder(
     client: &HttpClient,
-    remote_path: &Path,
     parent_folder: u64,
     fname: &str,
     retries: usize,
 ) -> Result<Folder, Error> {
-    tracing::info!("{:?} creating", remote_path);
+    tracing::info!("creating folder");
     match pcloud::folder::create::FolderCreateCommand::new(fname.to_string(), parent_folder)
         .execute(client)
         .await
     {
         Err(err) if retries > 0 => {
-            tracing::warn!("{:?} unable to create folder: {:?}", remote_path, err);
-            try_create_folder(client, remote_path, parent_folder, fname, retries - 1).await
+            tracing::warn!("unable to create folder: {:?}", err);
+            try_create_folder(client, parent_folder, fname, retries - 1).await
         }
         Err(err) => Err(err.into()),
         Ok(res) => Ok(res),
@@ -55,13 +55,12 @@ async fn try_create_folder(
 #[async_recursion]
 async fn try_upload_file(
     pcloud: &HttpClient,
-    remote_path: &Path,
     local_path: &Path,
     folder_id: u64,
     fname: &str,
     retries: usize,
 ) -> Result<(), Error> {
-    tracing::info!("{:?} uploading", remote_path);
+    tracing::info!("uploading, {} retries left", retries);
     let reader = std::fs::File::open(local_path).unwrap();
     match pcloud::file::upload::FileUploadCommand::new(fname, folder_id, reader)
         .no_partial(false)
@@ -69,16 +68,8 @@ async fn try_upload_file(
         .await
     {
         Err(err) if retries > 0 => {
-            tracing::warn!("{:?} unable to upload file: {:?}", remote_path, err);
-            try_upload_file(
-                pcloud,
-                remote_path,
-                local_path,
-                folder_id,
-                fname,
-                retries - 1,
-            )
-            .await
+            tracing::warn!("unable to upload file: {:?}", err);
+            try_upload_file(pcloud, local_path, folder_id, fname, retries - 1).await
         }
         Err(err) => Err(err.into()),
         Ok(_) => Ok(()),
@@ -101,18 +92,11 @@ impl FileUploader {
         retries: usize,
     ) -> Result<(), Error> {
         if compare_method
-            .should_upload_file(
-                client,
-                &self.remote_path,
-                &self.remote_existing_id,
-                &self.local_path,
-                retries,
-            )
+            .should_upload_file(client, &self.remote_existing_id, &self.local_path, retries)
             .await?
         {
             try_upload_file(
                 client,
-                &self.remote_path,
                 &self.local_path,
                 self.remote_folder_id,
                 self.filename.as_str(),
@@ -130,22 +114,16 @@ enum RemoteFolder {
 }
 
 impl RemoteFolder {
-    async fn get(
-        &self,
-        client: &HttpClient,
-        remote_path: &Path,
-        retries: usize,
-    ) -> Result<Folder, Error> {
+    async fn get(&self, client: &HttpClient, retries: usize) -> Result<Folder, Error> {
         let folder_id = match self {
             Self::Existing(folder_id) => *folder_id,
             Self::Missing(parent_folder_id, filename) => {
                 let created_folder =
-                    try_create_folder(client, remote_path, *parent_folder_id, filename, retries)
-                        .await?;
+                    try_create_folder(client, *parent_folder_id, filename, retries).await?;
                 created_folder.folder_id
             }
         };
-        Ok(try_get_folder(client, remote_path, folder_id, retries).await?)
+        Ok(try_get_folder(client, folder_id, retries).await?)
     }
 }
 
@@ -156,7 +134,6 @@ struct FolderVisitor {
 }
 
 impl FolderVisitor {
-    #[tracing::instrument(name = "folder_visitor", skip_all)]
     async fn execute(
         self,
         client: &HttpClient,
@@ -164,10 +141,7 @@ impl FolderVisitor {
         retries: usize,
         queue: async_channel::Sender<FileUploader>,
     ) -> Result<Vec<FolderVisitor>, Error> {
-        let folder = self
-            .remote_folder
-            .get(client, &self.remote_path, retries)
-            .await?;
+        let folder = self.remote_folder.get(client, retries).await?;
         let remote_content: HashMap<&str, &Entry> = folder
             .contents
             .as_ref()
@@ -244,19 +218,17 @@ impl From<IoError> for Error {
 
 async fn should_upload_file_with_checksum(
     pcloud: &HttpClient,
-    remote_path: &Path,
     remote_id: &Option<u64>,
     local_path: &Path,
     retries: usize,
 ) -> Result<bool, Error> {
     if let Some(file_id) = remote_id {
-        tracing::info!("{:?} already exists remotely", remote_path);
+        tracing::info!("already exists remotely");
         match get_checksum(local_path) {
             Ok(checksum) => {
-                let remote_checksum =
-                    try_get_file_checksum(pcloud, remote_path, *file_id, retries).await?;
+                let remote_checksum = try_get_file_checksum(pcloud, *file_id, retries).await?;
                 if remote_checksum != checksum {
-                    tracing::debug!("{:?} checksum mismatch, uploading again", remote_path);
+                    tracing::debug!("checksum mismatch, uploading again");
                 }
                 Ok(remote_checksum != checksum)
             }
@@ -266,7 +238,7 @@ async fn should_upload_file_with_checksum(
             }
         }
     } else {
-        tracing::info!("{:?} missing remotely, uploading", remote_path);
+        tracing::info!("missing remotely, uploading");
         Ok(true)
     }
 }
@@ -275,21 +247,13 @@ impl CompareMethod {
     async fn should_upload_file(
         &self,
         pcloud: &HttpClient,
-        remote_path: &Path,
         remote_id: &Option<u64>,
         local_path: &Path,
         retries: usize,
     ) -> Result<bool, Error> {
         match self {
             Self::Checksum => {
-                should_upload_file_with_checksum(
-                    pcloud,
-                    remote_path,
-                    remote_id,
-                    local_path,
-                    retries,
-                )
-                .await
+                should_upload_file_with_checksum(pcloud, remote_id, local_path, retries).await
             }
             Self::Force => Ok(true),
             Self::Presence => Ok(remote_id.is_some()),
@@ -324,24 +288,29 @@ impl Command {
         let (tx, rx) = async_channel::bounded::<FileUploader>(self.upload_queue_capacity);
 
         let mut uploaders = Vec::with_capacity(self.uploader_count);
-        for _ in 0..self.uploader_count {
+        for index in 0..self.uploader_count {
             let uploader_rx = rx.clone();
             let uploader_client = client.clone();
             let uploader_retries = self.retries;
             let uploader_compare_method = self.compare_method;
 
-            uploaders.push(tokio::spawn(async move {
-                while let Ok(next) = uploader_rx.recv().await {
-                    if let Err(err) = next
-                        .execute(&uploader_client, uploader_compare_method, uploader_retries)
-                        .await
-                    {
-                        tracing::error!("unable to upload file: {:?}", err);
+            uploaders.push(tokio::spawn(
+                async move {
+                    while let Ok(next) = uploader_rx.recv().await {
+                        let remote_path = next.remote_path.clone();
+                        if let Err(err) = next
+                            .execute(&uploader_client, uploader_compare_method, uploader_retries)
+                            .instrument(info_span!("execute", path = remote_path.to_str()))
+                            .await
+                        {
+                            tracing::error!("unable to upload file: {:?}", err);
+                        }
+                        tracing::info!("uploading queue contains now {} items", uploader_rx.len());
                     }
-                    tracing::info!("uploading queue contains now {} items", uploader_rx.len());
+                    tracing::debug!("uploading queue is closed and empty, closing thread");
                 }
-                tracing::debug!("uploading queue is closed and empty, closing thread");
-            }));
+                .instrument(info_span!("uploader", index)),
+            ));
         }
 
         let mut visitor_queue = vec![FolderVisitor {
@@ -350,8 +319,10 @@ impl Command {
             local_path: self.path.clone(),
         }];
         while let Some(next) = visitor_queue.pop() {
+            let path = next.remote_path.clone();
             match next
                 .execute(&client, &self.exclude, self.retries, tx.clone())
+                .instrument(info_span!("visitor", path = path.to_str()))
                 .await
             {
                 Ok(found) => visitor_queue.extend(found),
@@ -391,6 +362,7 @@ mod tests {
 
     #[tokio::test]
     async fn simple() {
+        init();
         // prepare basic folder
         let root = create_root();
         let _root_file = create_local_file(root.path(), "foo.txt");
@@ -436,6 +408,7 @@ mod tests {
 
     #[tokio::test]
     async fn exclude_bin_files() {
+        init();
         // prepare basic folder
         let root = create_root();
         let _root_file = create_local_file(root.path(), "foo.txt");

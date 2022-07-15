@@ -9,16 +9,16 @@ use pcloud::prelude::HttpCommand;
 use std::fs;
 use std::io::Error as IoError;
 use std::path::{Path, PathBuf};
+use tracing::{info_span, Instrument};
 
 #[async_recursion]
 async fn try_download_file(
     pcloud: &HttpClient,
-    remote_path: &Path,
     file_id: u64,
     local_path: &Path,
     retries: usize,
 ) -> Result<(), Error> {
-    tracing::info!("{:?} downloading", remote_path);
+    tracing::info!("downloading file");
     let file = fs::OpenOptions::new()
         .create(true)
         .write(true)
@@ -29,8 +29,8 @@ async fn try_download_file(
         .await
     {
         Err(err) if retries > 0 => {
-            tracing::warn!("{:?} unable to download file: {:?}", remote_path, err);
-            try_download_file(pcloud, remote_path, file_id, local_path, retries - 1).await
+            tracing::warn!("unable to download file: {:?}", err);
+            try_download_file(pcloud, file_id, local_path, retries - 1).await
         }
         Err(err) => Err(err.into()),
         Ok(_) => Ok(()),
@@ -39,7 +39,6 @@ async fn try_download_file(
 
 async fn should_download_file_with_checksum(
     pcloud: &HttpClient,
-    remote_path: &Path,
     remote_file: &File,
     local_path: &Path,
     retries: usize,
@@ -48,10 +47,9 @@ async fn should_download_file_with_checksum(
         match get_checksum(local_path) {
             Ok(checksum) => {
                 let remote_checksum =
-                    try_get_file_checksum(pcloud, remote_path, remote_file.file_id, retries)
-                        .await?;
+                    try_get_file_checksum(pcloud, remote_file.file_id, retries).await?;
                 if remote_checksum != checksum {
-                    tracing::debug!("{:?} checksum mismatch, downloading again", local_path);
+                    tracing::debug!("checksum mismatch, downloading again");
                 }
                 Ok(remote_checksum != checksum)
             }
@@ -69,21 +67,13 @@ impl CompareMethod {
     async fn should_download_file(
         &self,
         pcloud: &HttpClient,
-        remote_path: &Path,
         remote_file: &File,
         local_path: &Path,
         retries: usize,
     ) -> Result<bool, Error> {
         match self {
             Self::Checksum => {
-                should_download_file_with_checksum(
-                    pcloud,
-                    remote_path,
-                    remote_file,
-                    local_path,
-                    retries,
-                )
-                .await
+                should_download_file_with_checksum(pcloud, remote_file, local_path, retries).await
             }
             Self::Force => Ok(true),
             Self::Presence => Ok(!local_path.exists()),
@@ -97,7 +87,6 @@ struct FileDownloader {
 }
 
 impl FileDownloader {
-    #[tracing::instrument(name = "file_downloader", skip_all)]
     async fn execute(
         self,
         client: &HttpClient,
@@ -105,23 +94,10 @@ impl FileDownloader {
         retries: usize,
     ) -> Result<(), Error> {
         if compare_method
-            .should_download_file(
-                client,
-                &self.remote_path,
-                &self.remote_file,
-                &self.local_path,
-                retries,
-            )
+            .should_download_file(client, &self.remote_file, &self.local_path, retries)
             .await?
         {
-            try_download_file(
-                client,
-                &self.remote_path,
-                self.remote_file.file_id,
-                &self.local_path,
-                retries,
-            )
-            .await?;
+            try_download_file(client, self.remote_file.file_id, &self.local_path, retries).await?;
         }
         Ok(())
     }
@@ -134,7 +110,6 @@ struct FolderVisitor {
 }
 
 impl FolderVisitor {
-    #[tracing::instrument(name = "folder_visitor", skip_all)]
     async fn execute(
         self,
         client: &HttpClient,
@@ -143,10 +118,7 @@ impl FolderVisitor {
         queue: async_channel::Sender<FileDownloader>,
     ) -> Result<Vec<FolderVisitor>, Error> {
         let mut results = Vec::new();
-        for entry in
-            try_get_folder_content(client, &self.remote_path, self.remote_folder_id, retries)
-                .await?
-        {
+        for entry in try_get_folder_content(client, self.remote_folder_id, retries).await? {
             let new_remote_path = self.remote_path.join(entry.base().name.as_str());
             if excludes.iter().any(|p| p.matches_path(&new_remote_path)) {
                 tracing::info!(
@@ -232,30 +204,35 @@ impl Command {
         let (tx, rx) = async_channel::bounded::<FileDownloader>(self.download_queue_capacity);
 
         let mut downloaders = Vec::with_capacity(self.downloader_count);
-        for _ in 0..self.downloader_count {
+        for index in 0..self.downloader_count {
             let downloader_rx = rx.clone();
             let downloader_client = pcloud.clone();
             let downloader_retries = self.retries;
             let downloader_compare_method = self.compare_method;
-            downloaders.push(tokio::spawn(async move {
-                while let Ok(next) = downloader_rx.recv().await {
-                    if let Err(err) = next
-                        .execute(
-                            &downloader_client,
-                            &downloader_compare_method,
-                            downloader_retries,
-                        )
-                        .await
-                    {
-                        tracing::error!("unable to download file: {:?}", err);
+            downloaders.push(tokio::spawn(
+                async move {
+                    while let Ok(next) = downloader_rx.recv().await {
+                        let remote_path = next.remote_path.clone();
+                        if let Err(err) = next
+                            .execute(
+                                &downloader_client,
+                                &downloader_compare_method,
+                                downloader_retries,
+                            )
+                            .instrument(info_span!("execute", path = remote_path.to_str()))
+                            .await
+                        {
+                            tracing::error!("unable to download file: {:?}", err);
+                        }
+                        tracing::info!(
+                            "downloading queue contains now {} items...",
+                            downloader_rx.len()
+                        );
                     }
-                    tracing::info!(
-                        "downloading queue contains now {} items...",
-                        downloader_rx.len()
-                    );
+                    tracing::debug!("downloading queue is closed and empty, closing thread");
                 }
-                tracing::debug!("downloading queue is closed and empty, closing thread");
-            }));
+                .instrument(info_span!("downloader", index)),
+            ));
         }
         let mut visitor_queue = vec![FolderVisitor {
             remote_path: PathBuf::from("/"),
@@ -263,8 +240,10 @@ impl Command {
             local_path: self.path.clone(),
         }];
         while let Some(next) = visitor_queue.pop() {
+            let path = next.remote_path.clone();
             match next
                 .execute(&pcloud, &self.exclude, self.retries, tx.clone())
+                .instrument(info_span!("visitor", path = path.to_str()))
                 .await
             {
                 Ok(found) => visitor_queue.extend(found),
@@ -304,6 +283,7 @@ mod tests {
 
     #[tokio::test]
     async fn simple() {
+        init();
         // prepare basic folder
         let client = create_client();
         let remote_root = create_remote_dir(&client, 0).await.unwrap();
@@ -354,6 +334,7 @@ mod tests {
 
     #[tokio::test]
     async fn with_exclude() {
+        init();
         // prepare basic folder
         let client = create_client();
         let remote_root = create_remote_dir(&client, 0).await.unwrap();

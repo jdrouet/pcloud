@@ -44,21 +44,47 @@ impl From<u64> for FolderIdentifier {
     }
 }
 
+#[cfg(feature = "client-http")]
 impl FolderIdentifier {
-    #[cfg(feature = "client-http")]
-    pub fn to_http_params(&self) -> Vec<(&str, String)> {
+    pub fn to_named_http_param(
+        &self,
+        path: &'static str,
+        folder_id: &'static str,
+    ) -> (&'static str, String) {
         match self {
-            Self::Path(value) => vec![("path", value.clone())],
-            Self::FolderId(value) => vec![("folderid", value.to_string())],
+            Self::Path(value) => (path, value.clone()),
+            Self::FolderId(value) => (folder_id, value.to_string()),
         }
     }
 
-    #[cfg(feature = "client-binary")]
-    pub fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
+    pub fn to_http_params(&self) -> Vec<(&str, String)> {
+        vec![self.to_http_param()]
+    }
+
+    pub fn to_http_param(&self) -> (&str, String) {
+        self.to_named_http_param("path", "folderid")
+    }
+}
+
+#[cfg(feature = "client-binary")]
+impl FolderIdentifier {
+    pub fn to_named_binary_param(
+        &self,
+        path: &'static str,
+        folder_id: &'static str,
+    ) -> (&'static str, BinaryValue) {
         match self {
-            Self::Path(value) => vec![("path", BinaryValue::Text(value.clone()))],
-            Self::FolderId(value) => vec![("folderid", BinaryValue::Number(*value))],
+            Self::Path(value) => (path, BinaryValue::Text(value.clone())),
+            Self::FolderId(value) => (folder_id, BinaryValue::Number(*value)),
         }
+    }
+
+    pub fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
+        vec![self.to_binary_param()]
+    }
+
+    pub fn to_binary_param(&self) -> (&str, BinaryValue) {
+        self.to_named_binary_param("path", "folderid")
     }
 }
 

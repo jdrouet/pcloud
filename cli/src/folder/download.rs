@@ -11,8 +11,6 @@ use pcloud::prelude::HttpCommand;
 use std::fs;
 use std::io::Error as IoError;
 use std::path::{Path, PathBuf};
-use std::sync::{atomic::AtomicBool, Arc};
-use tokio::sync::mpsc;
 
 #[async_recursion]
 async fn try_get_folder_content(
@@ -194,7 +192,7 @@ impl FolderVisitor {
         client: &HttpClient,
         excludes: &[glob::Pattern],
         retries: usize,
-        queue: mpsc::Sender<FileDownloader>,
+        queue: async_channel::Sender<FileDownloader>,
     ) -> Result<Vec<FolderVisitor>, Error> {
         let mut results = Vec::new();
         for entry in
@@ -270,6 +268,12 @@ pub struct Command {
     /// Number of allowed failure.
     #[clap(long, default_value_t = 5)]
     retries: usize,
+    /// Number of downloads in parallel
+    #[clap(long, default_value_t = 5)]
+    downloader_count: usize,
+    /// Capacity of the download queue
+    #[clap(long, default_value_t = 1024)]
+    download_queue_capacity: usize,
     /// Local folder to synchronize.
     #[clap()]
     path: PathBuf,
@@ -277,17 +281,16 @@ pub struct Command {
 
 impl Command {
     pub async fn execute(&self, pcloud: HttpClient, folder_id: u64) {
-        let (tx, mut rx) = mpsc::channel::<FileDownloader>(100);
-        // value to set to false when the visitor is done
-        let visiting = Arc::new(AtomicBool::new(true));
+        let (tx, rx) = async_channel::bounded::<FileDownloader>(self.download_queue_capacity);
 
-        let downloader_client = pcloud.clone();
-        let downloader_retries = self.retries;
-        let downloader_compare_method = self.compare_method;
-        let downloader_visiting = Arc::clone(&visiting);
-        let downloader_handler = tokio::spawn(async move {
-            loop {
-                if let Some(next) = rx.recv().await {
+        let mut downloaders = Vec::with_capacity(self.downloader_count);
+        for _ in 0..self.downloader_count {
+            let downloader_rx = rx.clone();
+            let downloader_client = pcloud.clone();
+            let downloader_retries = self.retries;
+            let downloader_compare_method = self.compare_method;
+            downloaders.push(tokio::spawn(async move {
+                while let Ok(next) = downloader_rx.recv().await {
                     if let Err(err) = next
                         .execute(
                             &downloader_client,
@@ -298,21 +301,19 @@ impl Command {
                     {
                         tracing::error!("unable to download file: {:?}", err);
                     }
-                } else if !downloader_visiting.load(std::sync::atomic::Ordering::Relaxed) {
-                    tracing::info!("nothing in the download queue, visitor is finished, closing");
-                    break;
-                } else {
-                    tracing::info!("nothing in the download queue, waiting 1s");
-                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                    tracing::info!(
+                        "downloading queue contains now {} items...",
+                        downloader_rx.len()
+                    );
                 }
-            }
-        });
-        let mut visitor_queue = Vec::new();
-        visitor_queue.push(FolderVisitor {
+                tracing::debug!("downloading queue is closed and empty, closing thread");
+            }));
+        }
+        let mut visitor_queue = vec![FolderVisitor {
             remote_path: PathBuf::from("/"),
             remote_folder_id: folder_id,
             local_path: self.path.clone(),
-        });
+        }];
         while let Some(next) = visitor_queue.pop() {
             match next
                 .execute(&pcloud, &self.exclude, self.retries, tx.clone())
@@ -322,10 +323,12 @@ impl Command {
                 Err(err) => tracing::error!("unable to visit folder: {:?}", err),
             };
         }
-        visiting.store(false, std::sync::atomic::Ordering::Relaxed);
+        tx.close();
         tracing::info!("visitor is done, waiting for the downloader to finish");
-        if let Err(err) = downloader_handler.await {
-            tracing::error!("something wrong happened with the downloaders: {:?}", err);
+        for downloader_handler in downloaders {
+            if let Err(err) = downloader_handler.await {
+                tracing::error!("something wrong happened with the downloaders: {:?}", err);
+            }
         }
     }
 }
@@ -337,9 +340,8 @@ mod tests {
     use crate::tests::*;
     use std::path::{Path, PathBuf};
 
-    fn build_cmd(root: &Path, remove_after_download: bool, exclude: Vec<String>) -> Command {
+    fn build_cmd(root: &Path, exclude: Vec<String>) -> Command {
         Command {
-            remove_after_download,
             exclude: exclude
                 .iter()
                 .map(|item| glob::Pattern::new(item).unwrap())
@@ -347,6 +349,8 @@ mod tests {
             compare_method: CompareMethod::Checksum,
             retries: 5,
             path: PathBuf::from(root),
+            download_queue_capacity: 1024,
+            downloader_count: 2,
         }
     }
 
@@ -366,7 +370,7 @@ mod tests {
             .unwrap();
         //
         let root = create_root();
-        build_cmd(root.path(), false, vec![])
+        build_cmd(root.path(), vec![])
             .execute(client.clone(), remote_root.folder_id)
             .await;
         assert!(root
@@ -386,7 +390,7 @@ mod tests {
         let remote_file_third = create_remote_file(&client, remote_folder_first.folder_id)
             .await
             .unwrap();
-        build_cmd(root.path(), false, vec![])
+        build_cmd(root.path(), vec![])
             .execute(client.clone(), remote_root.folder_id)
             .await;
         assert!(root
@@ -421,7 +425,6 @@ mod tests {
         let root = create_root();
         build_cmd(
             root.path(),
-            false,
             vec![format!(
                 "/{}/{}",
                 remote_folder_first.base.name, remote_file_third.base.name
@@ -451,44 +454,5 @@ mod tests {
         delete_remote_dir(&client, remote_root.folder_id)
             .await
             .unwrap();
-    }
-
-    #[tokio::test]
-    async fn remove_after() {
-        // prepare basic folder
-        let client = create_client();
-        let remote_root = create_remote_dir(&client, 0).await.unwrap();
-        let remote_file_first = create_remote_file(&client, remote_root.folder_id)
-            .await
-            .unwrap();
-        let remote_folder_first = create_remote_dir(&client, remote_root.folder_id)
-            .await
-            .unwrap();
-        let remote_file_second = create_remote_file(&client, remote_folder_first.folder_id)
-            .await
-            .unwrap();
-        //
-        let root = create_root();
-        build_cmd(root.path(), true, vec![])
-            .execute(client.clone(), remote_root.folder_id)
-            .await;
-        assert!(root
-            .path()
-            .join(remote_file_first.base.name.as_str())
-            .exists());
-        assert!(root
-            .path()
-            .join(remote_folder_first.base.name.as_str())
-            .exists());
-        assert!(root
-            .path()
-            .join(remote_folder_first.base.name.as_str())
-            .join(remote_file_second.base.name.as_str())
-            .exists());
-        //
-        let error = scan_remote_dir(&client, remote_folder_first.folder_id)
-            .await
-            .unwrap_err();
-        assert!(matches!(error, pcloud::error::Error::Protocol(2005, _)));
     }
 }

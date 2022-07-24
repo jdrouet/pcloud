@@ -1382,7 +1382,6 @@ name = "pcloud-fuse"
 version = "0.2.0"
 dependencies = [
  "clap",
- "dirs",
  "fuser",
  "libc",
  "pcloud",

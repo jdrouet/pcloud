@@ -54,12 +54,12 @@ struct Opts {
 }
 
 impl Opts {
-    fn options<'a>(&'a self) -> HashMap<&'a str, Option<&'a str>> {
+    fn options(&self) -> HashMap<&str, Option<&str>> {
         self.options
             .as_ref()
             .map(|inner| {
                 inner
-                    .split(",")
+                    .split(',')
                     .map(|item| {
                         if let Some((key, value)) = item.split_once('=') {
                             (key, Some(value))

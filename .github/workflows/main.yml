@@ -52,6 +52,7 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+      - uses: taiki-e/install-action@nextest
       - name: install libfuse3-dev
         run: sudo apt-get install -y libfuse3-dev
       - uses: actions-rs/cargo@v1
@@ -61,5 +62,5 @@ jobs:
           PCLOUD_REGION: "${{secrets.PCLOUD_REGION}}"
           PCLOUD_TIMEOUT: "5000" # timeout to 5s
         with:
-          command: test
-          args: --features protected
+          command: nextest
+          args: run --features protected --retries 5

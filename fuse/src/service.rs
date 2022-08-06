@@ -124,6 +124,7 @@ pub enum Error {
     InvalidArgument,
     Network,
     NotFound,
+    #[allow(dead_code)]
     NotImplemented,
     PermissionDenied,
 }
@@ -302,6 +303,7 @@ impl Service {
                 (Ok(folder), _) => Ok(Entry::Folder(folder)),
                 (_, Ok(cs)) => Ok(Entry::File(cs.metadata)),
                 (Err(err), _) => Err(err.into()),
+                #[allow(unreachable_patterns)]
                 _ => Err(Error::NotFound),
             }
         })?)

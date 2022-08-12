@@ -212,4 +212,18 @@ impl HttpClient {
             .await?;
         read_response("PUT", method, res).await
     }
+
+    pub(crate) async fn post_request_multipart<T: serde::de::DeserializeOwned>(
+        &self,
+        method: &str,
+        params: &[(&str, String)],
+        form: reqwest::multipart::Form,
+    ) -> Result<T, Error> {
+        let mut local_params = self.credentials.to_http_params();
+        local_params.extend_from_slice(params);
+        let uri = self.build_url(method);
+        let req = self.client.post(uri).query(&local_params).multipart(form);
+        let res = req.send().await?;
+        read_response("POST", method, res).await
+    }
 }

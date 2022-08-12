@@ -1,5 +1,5 @@
 use clap::Parser;
-use pcloud::file::upload::FileUploadCommand;
+use pcloud::file::upload::MultipartFileUploadCommand;
 use pcloud::http::HttpClient;
 use pcloud::prelude::HttpCommand;
 use std::fs::File;
@@ -36,13 +36,20 @@ impl Command {
     pub async fn execute(&self, pcloud: HttpClient) {
         let file = File::open(&self.path).expect("unable to open file");
         let filename = self.filename();
-        match FileUploadCommand::new(filename.as_str(), self.folder_id, file)
-            .no_partial(!self.allow_partial_upload)
-            .execute(&pcloud)
-            .await
-        {
+        let cmd = MultipartFileUploadCommand::new(self.folder_id);
+        let cmd = match cmd.add_sync_file_entry(filename, file) {
+            Ok(cmd) => cmd,
+            Err(err) => {
+                tracing::error!("unable to read file: {:?}", err);
+                std::process::exit(exitcode::DATAERR);
+            }
+        };
+        match cmd.execute(&pcloud).await {
             Ok(res) => {
-                tracing::info!("file uploaded: {}", res.file_id);
+                tracing::info!(
+                    "file uploaded: {:?}",
+                    res.iter().map(|f| f.file_id).collect::<Vec<_>>()
+                );
                 std::process::exit(exitcode::OK);
             }
             Err(err) => {

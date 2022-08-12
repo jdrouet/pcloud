@@ -138,7 +138,7 @@ impl BinaryReader {
 }
 
 /// A representation of all the possible type of values returned by the binary protocol
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value {
     Bool(bool),
     Text(String),

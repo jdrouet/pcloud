@@ -1443,6 +1443,7 @@ dependencies = [
  "dirs",
  "fuser",
  "libc",
+ "mockito",
  "pcloud",
  "serde",
  "serde_json",

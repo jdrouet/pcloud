@@ -13,6 +13,10 @@ pub struct Payload {
 impl Payload {
     fn to_url(&self) -> String {
         let host = self.hosts.get(0).unwrap();
-        format!("https://{}{}", host, self.path)
+        if host.starts_with("http://") || host.starts_with("https://") {
+            format!("{}{}", host, self.path)
+        } else {
+            format!("https://{}{}", host, self.path)
+        }
     }
 }

@@ -37,7 +37,7 @@ impl Command {
         let file = File::open(&self.path).expect("unable to open file");
         let filename = self.filename();
         let cmd = MultipartFileUploadCommand::new(self.folder_id);
-        let cmd = match cmd.add_sync_file_entry(filename, file) {
+        let cmd = match cmd.add_sync_entry(filename, file) {
             Ok(cmd) => cmd,
             Err(err) => {
                 tracing::error!("unable to read file: {:?}", err);

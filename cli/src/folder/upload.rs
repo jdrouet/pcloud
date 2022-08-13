@@ -63,7 +63,7 @@ async fn try_upload_file(
     tracing::info!("uploading, {} retries left", retries);
     let reader = std::fs::File::open(local_path).unwrap();
     let cmd = pcloud::file::upload::MultipartFileUploadCommand::new(folder_id);
-    let cmd = cmd.add_sync_file_entry(fname.to_string(), reader)?;
+    let cmd = cmd.add_sync_entry(fname.to_string(), reader)?;
     match cmd.execute(pcloud).await {
         Err(err) if retries > 0 => {
             tracing::warn!("unable to upload file: {:?}", err);

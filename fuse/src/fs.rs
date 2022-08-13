@@ -254,9 +254,21 @@ impl Filesystem for PCloudFs {
     ) {
         let name = parse_str!(name, reply);
         let newname = parse_str!(newname, reply);
-        match self.service.move_file(parent, name, newparent, newname) {
+        match self.service.move_entry(parent, name, newparent, newname) {
             Ok(_) => reply.ok(),
             Err(err) => reply.error(err.into_code()),
         }
+    }
+
+    #[instrument(skip(self, _req, _lock_owner, reply))]
+    fn flush(
+        &mut self,
+        _req: &fuser::Request<'_>,
+        ino: u64,
+        fh: u64,
+        _lock_owner: u64,
+        reply: fuser::ReplyEmpty,
+    ) {
+        reply.ok();
     }
 }

@@ -4,10 +4,11 @@ use pcloud::file::checksum::FileCheckSumCommand;
 use pcloud::file::delete::FileDeleteCommand;
 use pcloud::file::download::FileDownloadCommand;
 use pcloud::file::rename::{FileMoveCommand, FileRenameCommand};
-use pcloud::file::upload::FileUploadCommand;
+use pcloud::file::upload::MultipartFileUploadCommand;
 use pcloud::folder::create::FolderCreateCommand;
 use pcloud::folder::delete::FolderDeleteCommand;
 use pcloud::folder::list::FolderListCommand;
+use pcloud::folder::rename::{FolderMoveCommand, FolderRenameCommand};
 use pcloud::http::HttpClient;
 use pcloud::prelude::HttpCommand;
 use std::collections::{HashMap, HashSet};
@@ -121,12 +122,14 @@ impl FolderEntry {
 
 pub enum Error {
     BehaviorUndefined,
+    Cache,
     InvalidArgument,
     Network,
     NotFound,
     #[allow(dead_code)]
     NotImplemented,
     PermissionDenied,
+    UnexpectedBehavior,
 }
 
 impl Error {
@@ -134,10 +137,16 @@ impl Error {
         tracing::debug!("received error {}: {:?}", code, message);
         Self::InvalidArgument
     }
+
+    fn from_cache(err: std::io::Error) -> Self {
+        tracing::error!("unable to read cache file: {:?}", err);
+        Self::Cache
+    }
 }
 
 impl From<PCloudError> for Error {
     fn from(err: PCloudError) -> Self {
+        tracing::error!("unable to perform pcloud action: {:?}", err);
         match err {
             PCloudError::Protocol(code, message) => Self::from_code(code, message),
             _ => Self::Network,
@@ -150,10 +159,11 @@ impl Error {
         match self {
             Self::BehaviorUndefined => libc::EPERM,
             Self::InvalidArgument => libc::EINVAL,
-            Self::Network => libc::EIO,
+            Self::Network | Self::Cache => libc::EIO,
             Self::NotFound => libc::ENOENT,
             Self::NotImplemented => libc::ENOSYS,
             Self::PermissionDenied => libc::EACCES,
+            Self::UnexpectedBehavior => libc::EPROTO,
         }
     }
 }
@@ -385,11 +395,6 @@ impl Service {
             .ok_or(Error::NotFound)
     }
 
-    fn get_file_in_directory(&mut self, inode: u64, name: &str) -> Result<File, Error> {
-        let entry = self.get_entry_in_directory(inode, name)?;
-        entry.into_file().ok_or(Error::NotFound)
-    }
-
     pub fn read_file_in_directory(
         &mut self,
         inode: u64,
@@ -445,7 +450,9 @@ impl Service {
                 tracing::error!("unable to open file: {:?}", err);
                 Error::BehaviorUndefined
             })?;
-            FileUploadCommand::new(fname, inode_to_pcloud_id(parent), f)
+            MultipartFileUploadCommand::new(inode_to_pcloud_id(parent))
+                .add_sync_entry(fname.to_string(), f)
+                .map_err(Error::from_cache)?
                 .execute(&self.client)
                 .await
                 .map_err(Error::from)?;
@@ -564,12 +571,16 @@ impl Service {
         parent: u64,
         name: &str,
     ) -> Result<(fuser::FileAttr, u64), Error> {
-        let created_file = self.runtime.block_on(async {
+        let mut created_files = self.runtime.block_on(async {
             let empty: [u8; 0] = [];
-            FileUploadCommand::new(name, inode_to_pcloud_id(parent), empty.as_slice())
+            MultipartFileUploadCommand::new(inode_to_pcloud_id(parent))
+                .add_sync_entry(name.to_string(), empty.as_slice())
+                .map_err(Error::from_cache)?
                 .execute(&self.client)
                 .await
+                .map_err(Error::from)
         })?;
+        let created_file = created_files.pop().ok_or(Error::UnexpectedBehavior)?;
         tracing::debug!("created new file with inode={}", created_file.file_id);
         let inode = pcloud_id_to_inode(created_file.file_id);
         let handler = self.next_handler();
@@ -626,14 +637,28 @@ impl Service {
         })
     }
 
-    pub fn move_file(
+    pub fn move_entry(
         &mut self,
         parent: u64,
         name: &str,
         new_parent: u64,
         new_name: &str,
     ) -> Result<(), Error> {
-        let origin = self.get_file_in_directory(parent, name)?;
+        let origin = self.get_entry_in_directory(parent, name)?;
+        match origin {
+            Entry::File(file) => self.move_file(file, parent, name, new_parent, new_name),
+            Entry::Folder(folder) => self.move_folder(folder, parent, name, new_parent, new_name),
+        }
+    }
+
+    pub fn move_file(
+        &mut self,
+        origin: File,
+        parent: u64,
+        name: &str,
+        new_parent: u64,
+        new_name: &str,
+    ) -> Result<(), Error> {
         // cleaning up cache before action
         self.file_cache.remove(&pcloud_id_to_inode(origin.file_id));
         self.dir_cache.remove(&parent);
@@ -651,6 +676,39 @@ impl Service {
             if name != new_name {
                 tracing::debug!("rename file to a different name");
                 FileRenameCommand::new(file_id.into(), new_name.to_string())
+                    .execute(&self.client)
+                    .await?;
+            }
+            Ok(())
+        });
+        result
+    }
+
+    pub fn move_folder(
+        &mut self,
+        origin: Folder,
+        parent: u64,
+        name: &str,
+        new_parent: u64,
+        new_name: &str,
+    ) -> Result<(), Error> {
+        // cleaning up cache before action
+        self.dir_cache.remove(&pcloud_id_to_inode(origin.folder_id));
+        self.dir_cache.remove(&parent);
+        self.dir_cache.remove(&new_parent);
+        let result: Result<(), Error> = self.runtime.block_on(async {
+            let mut folder_id = origin.folder_id;
+            if parent != new_parent {
+                tracing::debug!("moving folder to a different parent");
+                folder_id =
+                    FolderMoveCommand::new(folder_id.into(), inode_to_pcloud_id(new_parent).into())
+                        .execute(&self.client)
+                        .await
+                        .map(|item| item.folder_id)?;
+            }
+            if name != new_name {
+                tracing::debug!("rename folder to a different name");
+                FolderRenameCommand::new(folder_id.into(), new_name.to_string())
                     .execute(&self.client)
                     .await?;
             }

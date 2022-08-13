@@ -3,7 +3,7 @@
 use pcloud::file::checksum::FileCheckSumCommand;
 use pcloud::file::download::FileDownloadCommand;
 use pcloud::file::rename::FileRenameCommand;
-use pcloud::file::upload::FileUploadCommand;
+use pcloud::file::upload::MultipartFileUploadCommand;
 use pcloud::folder::create::FolderCreateCommand;
 use pcloud::folder::delete::FolderDeleteCommand;
 use pcloud::folder::rename::FolderMoveCommand;
@@ -70,10 +70,13 @@ async fn complete() {
     let filename = create_filename("bin");
     let mut filecontent = create_file(1024 * 1024 * 10); // 10Mo
     let cursor = Cursor::new(&mut filecontent);
-    let file = FileUploadCommand::new(filename.as_str(), folder.folder_id, cursor)
+    let mut files = MultipartFileUploadCommand::new(folder.folder_id)
+        .add_sync_read_entry(filename, cursor)
+        .unwrap()
         .execute(&client)
         .await
         .unwrap();
+    let file = files.pop().unwrap();
     // get file info
     let file_info = FileCheckSumCommand::new(file.file_id.into())
         .execute(&client)

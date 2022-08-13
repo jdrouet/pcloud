@@ -88,8 +88,19 @@ impl FolderIdentifier {
     }
 }
 
-#[cfg(all(test, feature = "protected", feature = "client-binary"))]
+#[cfg(test)]
 mod tests {
+    use super::FolderResponse;
+
+    #[test]
+    fn decode_example() {
+        let example = include_str!("./list-response.json");
+        let _decoded: FolderResponse = serde_json::from_str(example).unwrap();
+    }
+}
+
+#[cfg(all(test, feature = "protected", feature = "client-binary"))]
+mod tests_binary {
     use crate::binary::BinaryClientBuilder;
     use crate::prelude::BinaryCommand;
 

@@ -30,15 +30,7 @@ impl MultipartFileUploadCommand {
     //     self.add_entry(filename, Body::from(file))
     // }
 
-    pub fn add_sync_file_entry(
-        self,
-        filename: String,
-        file: std::fs::File,
-    ) -> Result<Self, std::io::Error> {
-        self.add_sync_read_entry(filename, std::io::BufReader::new(file))
-    }
-
-    pub fn add_sync_read_entry<R: Read>(
+    pub fn add_sync_entry<R: Read>(
         self,
         filename: String,
         mut reader: R,
@@ -334,7 +326,7 @@ mod http_tests {
         //
         let file = File::open("./readme.md").unwrap();
         let cmd = MultipartFileUploadCommand::new(0)
-            .add_sync_file_entry("big-file.bin".to_string(), file)
+            .add_sync_entry("big-file.bin".to_string(), file)
             .unwrap();
         let result = cmd.execute(&api).await.unwrap();
         //

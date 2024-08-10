@@ -6,7 +6,6 @@ mod folder;
 mod tests;
 
 use clap::Parser;
-use clap_verbosity_flag::{InfoLevel, Verbosity};
 use pcloud::http::HttpClient;
 use std::path::PathBuf;
 
@@ -16,8 +15,8 @@ struct Command {
     /// Path to load the configuration file. Default to ~/.config/pcloud.json. If not found, loading from environment.
     #[clap(short, long)]
     config: Option<PathBuf>,
-    #[clap(flatten)]
-    verbose: Verbosity<InfoLevel>,
+    // #[clap(flatten)]
+    // verbose: Verbosity<InfoLevel>,
     #[clap(subcommand)]
     subcmd: SubCommand,
 }
@@ -54,7 +53,8 @@ impl Command {
 
     fn set_log_level(&self) {
         tracing_subscriber::fmt()
-            .with_env_filter(self.verbose.log_level_filter().as_str())
+            // .with_env_filter(self.verbose.log_level_filter().as_str())
+            .with_env_filter("DEBUG")
             .try_init()
             .expect("couldn't init logger");
     }

@@ -23,7 +23,7 @@ async fn try_download_file(
         .create(true)
         .write(true)
         .truncate(true)
-        .open(&local_path)?;
+        .open(local_path)?;
     match FileDownloadCommand::new(file_id.into(), file)
         .execute(pcloud)
         .await
@@ -160,6 +160,7 @@ impl FolderVisitor {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 enum Error {
     PCloud(PCloudError),
     Io(IoError),

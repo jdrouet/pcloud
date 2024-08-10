@@ -130,46 +130,6 @@ mod http {
     }
 }
 
-#[cfg(feature = "client-binary")]
-mod binary {
-    use super::FolderListCommand;
-    use crate::binary::{BinaryClient, Value as BinaryValue};
-    use crate::entry::Folder;
-    use crate::error::Error;
-    use crate::folder::FolderResponse;
-    use crate::prelude::BinaryCommand;
-    use crate::request::Response;
-
-    impl FolderListCommand {
-        fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
-            let mut res = self.identifier.to_binary_params();
-            if self.recursive {
-                res.push(("recursive", BinaryValue::Bool(true)));
-            }
-            if self.show_deleted {
-                res.push(("showdeleted", BinaryValue::Bool(true)));
-            }
-            if self.no_files {
-                res.push(("no_files", BinaryValue::Bool(true)));
-            }
-            if self.no_shares {
-                res.push(("no_shares", BinaryValue::Bool(true)));
-            }
-            res
-        }
-    }
-
-    impl BinaryCommand for FolderListCommand {
-        type Output = Folder;
-
-        fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
-            let result = client.send_command("listfolder", &self.to_binary_params())?;
-            let result: Response<FolderResponse> = serde_json::from_value(result)?;
-            result.payload().map(|res| res.metadata)
-        }
-    }
-}
-
 #[cfg(all(test, feature = "client-http"))]
 mod http_tests {
     use super::FolderListCommand;
@@ -177,12 +137,14 @@ mod http_tests {
     use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::region::Region;
-    use mockito::{mock, Matcher};
+    use mockito::Matcher;
 
     #[tokio::test]
     async fn success() {
         crate::tests::init();
-        let m = mock("GET", "/listfolder")
+        let mut server = mockito::Server::new_async().await;
+        let m = server
+            .mock("GET", "/listfolder")
             .match_query(Matcher::AllOf(vec![
                 Matcher::UrlEncoded("access_token".into(), "access-token".into()),
                 Matcher::UrlEncoded("folderid".into(), "0".into()),
@@ -209,7 +171,7 @@ mod http_tests {
             )
             .create();
         let creds = Credentials::AccessToken("access-token".into());
-        let dc = Region::mock();
+        let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
         let payload = FolderListCommand::new(0.into())
             .execute(&api)
@@ -222,7 +184,9 @@ mod http_tests {
     #[tokio::test]
     async fn error() {
         crate::tests::init();
-        let m = mock("GET", "/listfolder")
+        let mut server = mockito::Server::new_async().await;
+        let m = server
+            .mock("GET", "/listfolder")
             .match_query(Matcher::AllOf(vec![
                 Matcher::UrlEncoded("access_token".into(), "access-token".into()),
                 Matcher::UrlEncoded("folderid".into(), "0".into()),
@@ -231,7 +195,7 @@ mod http_tests {
             .with_body(r#"{ "result": 1020, "error": "something went wrong" }"#)
             .create();
         let creds = Credentials::AccessToken("access-token".into());
-        let dc = Region::mock();
+        let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
         let error = FolderListCommand::new(0.into())
             .execute(&api)
@@ -239,21 +203,5 @@ mod http_tests {
             .unwrap_err();
         assert!(matches!(error, crate::error::Error::Protocol(_, _)));
         m.assert();
-    }
-}
-
-#[cfg(all(test, feature = "client-binary", feature = "protected"))]
-mod binary_tests {
-    use super::FolderListCommand;
-    use crate::binary::BinaryClientBuilder;
-    use crate::prelude::BinaryCommand;
-
-    #[test]
-    fn binary_success() {
-        let mut client = BinaryClientBuilder::from_env().build().unwrap();
-        let res = FolderListCommand::new(0.into())
-            .execute(&mut client)
-            .unwrap();
-        assert_eq!(res.base.name, "/");
     }
 }

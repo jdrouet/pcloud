@@ -87,33 +87,3 @@ mod http {
         }
     }
 }
-
-#[cfg(feature = "client-binary")]
-mod binary {
-    use super::FileCopyCommand;
-    use crate::binary::{BinaryClient, Value as BinaryValue};
-    use crate::entry::File;
-    use crate::error::Error;
-    use crate::file::FileResponse;
-    use crate::prelude::BinaryCommand;
-    use crate::request::Response;
-
-    impl FileCopyCommand {
-        fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
-            vec![
-                ("fileid", BinaryValue::Number(self.file_id)),
-                ("tofolderid", BinaryValue::Number(self.to_folder_id)),
-            ]
-        }
-    }
-
-    impl BinaryCommand for FileCopyCommand {
-        type Output = File;
-
-        fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
-            let result = client.send_command("copyfile", &self.to_binary_params())?;
-            let result: Response<FileResponse> = serde_json::from_value(result)?;
-            result.payload().map(|item| item.metadata)
-        }
-    }
-}

@@ -275,13 +275,15 @@ mod http_tests {
     use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::region::Region;
-    use mockito::{mock, Matcher};
+    use mockito::Matcher;
     use std::fs::File;
 
     #[tokio::test]
     async fn multipart_success() {
         crate::tests::init();
-        let m_upload = mock("POST", "/uploadfile")
+        let mut server = mockito::Server::new_async().await;
+        let m_upload = server
+            .mock("POST", "/uploadfile")
             .match_query(Matcher::AllOf(vec![
                 Matcher::UrlEncoded("access_token".into(), "access-token".into()),
                 Matcher::UrlEncoded("folderid".into(), "0".into()),
@@ -329,7 +331,7 @@ mod http_tests {
             )
             .create();
         let creds = Credentials::AccessToken("access-token".into());
-        let dc = Region::mock();
+        let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
         //
         let file = File::open("./readme.md").unwrap();
@@ -345,7 +347,9 @@ mod http_tests {
     #[tokio::test]
     async fn success() {
         crate::tests::init();
-        let m_create = mock("GET", "/upload_create")
+        let mut server = mockito::Server::new_async().await;
+        let m_create = server
+            .mock("GET", "/upload_create")
             .match_query(Matcher::UrlEncoded(
                 "access_token".into(),
                 "access-token".into(),
@@ -353,7 +357,8 @@ mod http_tests {
             .with_status(200)
             .with_body(r#"{ "result": 0, "uploadid": 42 }"#)
             .create();
-        let m_write = mock("PUT", "/upload_write")
+        let m_write = server
+            .mock("PUT", "/upload_write")
             .match_query(Matcher::AllOf(vec![
                 Matcher::UrlEncoded("access_token".into(), "access-token".into()),
                 Matcher::UrlEncoded("uploadid".into(), "42".into()),
@@ -363,7 +368,8 @@ mod http_tests {
             .with_status(200)
             .with_body(r#"{ "result": 0 }"#)
             .create();
-        let m_save = mock("GET", "/upload_save")
+        let m_save = server
+            .mock("GET", "/upload_save")
             .match_query(Matcher::AllOf(vec![
                 Matcher::UrlEncoded("access_token".into(), "access-token".into()),
                 Matcher::UrlEncoded("uploadid".into(), "42".into()),
@@ -396,7 +402,7 @@ mod http_tests {
             .create();
 
         let creds = Credentials::AccessToken("access-token".into());
-        let dc = Region::mock();
+        let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
         //
         let cursor = std::io::Cursor::new("hello world!");

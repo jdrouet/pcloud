@@ -12,7 +12,7 @@ pub struct Payload {
 #[cfg(feature = "client-http")]
 impl Payload {
     fn to_url(&self) -> String {
-        let host = self.hosts.get(0).unwrap();
+        let host = self.hosts.first().unwrap();
         format!("https://{}{}", host, self.path)
     }
 }

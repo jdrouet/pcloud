@@ -113,6 +113,7 @@ impl Folder {
 /// The representation of what can be returned by the PCloud API, a file or a folder.
 #[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(untagged)]
+#[allow(clippy::large_enum_variant)]
 pub enum Entry {
     File(File),
     Folder(Folder),

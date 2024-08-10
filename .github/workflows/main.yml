@@ -13,18 +13,10 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - name: install libfuse3-dev
-        run: sudo apt-get install -y libfuse3-dev
       - uses: taiki-e/install-action@cargo-hack
-      - uses: actions-rs/cargo@v1
-        with:
-          command: hack
-          args: check --feature-powerset --tests
+      - run: cargo hack check --feature-powerset --tests
       - run: rustup component add clippy
-      - uses: actions-rs/cargo@v1
-        with:
-          command: hack
-          args: clippy --feature-powerset --tests -- -D warnings
+      - run: cargo hack clippy --feature-powerset --tests
 
   fmt:
     name: Rustfmt
@@ -41,7 +33,7 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
-  
+
   testing:
     name: Run all the tests
     runs-on: ubuntu-latest

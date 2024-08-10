@@ -1,7 +1,2 @@
 [workspace]
-members = [
-	"./cli",
-	"./fuse",
-	"./http-server",
-	"./lib",
-]
+members = ["./cli", "./http-server", "./lib"]

@@ -20,7 +20,7 @@ protected = []
 [dependencies]
 async-trait = { version = "0.1" }
 chrono = { version = "0.4", features = ["serde"] }
-reqwest = { default-features = false, features = ["json", "multipart", "rustls-tls", "stream"], version = "0.11", optional = true }
+reqwest = { default-features = false, features = ["json", "multipart", "rustls-tls", "stream"], version = "0.12", optional = true }
 serde = { features = ["derive"], version = "1.0" }
 serde_json = { version = "1.0" }
 tracing = { version = "0.1" }

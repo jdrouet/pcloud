@@ -197,6 +197,7 @@ impl FolderVisitor {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 enum Error {
     PCloud(PCloudError),
     Io(IoError),

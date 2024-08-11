@@ -5,8 +5,6 @@ pub mod prelude;
 /// The module to handle the responses from the server
 pub mod request;
 
-#[cfg(feature = "client-binary")]
-pub mod binary;
 #[cfg(feature = "client-http")]
 pub mod http;
 
@@ -18,9 +16,6 @@ pub mod error;
 
 /// The [file commands](https://docs.pcloud.com/methods/file/) from the PCloud documentation
 pub mod file;
-/// The [fileops commands](https://docs.pcloud.com/methods/fileops/) from the PCloud documentation
-#[cfg(feature = "client-binary")]
-pub mod fileops;
 /// The [folder commands](https://docs.pcloud.com/methods/folder/) from the PCloud documentation
 pub mod folder;
 /// The [general commands](https://docs.pcloud.com/methods/general/) from the PCloud documentation

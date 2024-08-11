@@ -62,7 +62,7 @@ impl FolderCreateCommand {
         self
     }
 
-    #[cfg(any(feature = "client-binary", feature = "client-http"))]
+    #[cfg(feature = "client-http")]
     fn method(&self) -> &str {
         if self.ignore_exists {
             "createfolderifnotexists"
@@ -104,36 +104,6 @@ mod http {
     }
 }
 
-#[cfg(feature = "client-binary")]
-mod binary {
-    use super::FolderCreateCommand;
-    use crate::binary::{BinaryClient, Value as BinaryValue};
-    use crate::entry::Folder;
-    use crate::error::Error;
-    use crate::folder::FolderResponse;
-    use crate::prelude::BinaryCommand;
-    use crate::request::Response;
-
-    impl FolderCreateCommand {
-        pub fn to_binary_params(&self) -> Vec<(&str, BinaryValue)> {
-            vec![
-                ("name", BinaryValue::Text(self.name.clone())),
-                ("folderid", BinaryValue::Number(self.parent_id)),
-            ]
-        }
-    }
-
-    impl BinaryCommand for FolderCreateCommand {
-        type Output = Folder;
-
-        fn execute(self, client: &mut BinaryClient) -> Result<Self::Output, Error> {
-            let result = client.send_command(self.method(), &self.to_binary_params())?;
-            let result: Response<FolderResponse> = serde_json::from_value(result)?;
-            result.payload().map(|item| item.metadata)
-        }
-    }
-}
-
 #[cfg(all(test, feature = "client-http"))]
 mod http_tests {
     use super::FolderCreateCommand;
@@ -141,12 +111,14 @@ mod http_tests {
     use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::region::Region;
-    use mockito::{mock, Matcher};
+    use mockito::Matcher;
 
     #[tokio::test]
     async fn success() {
         crate::tests::init();
-        let m = mock("GET", "/createfolder")
+        let mut server = mockito::Server::new_async().await;
+        let m = server
+            .mock("GET", "/createfolder")
             .match_query(Matcher::AllOf(vec![
                 Matcher::UrlEncoded("access_token".into(), "access-token".into()),
                 Matcher::UrlEncoded("folderid".into(), "0".into()),
@@ -174,7 +146,7 @@ mod http_tests {
             )
             .create();
         let creds = Credentials::AccessToken("access-token".into());
-        let dc = Region::mock();
+        let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
         let result = FolderCreateCommand::new("testing".into(), 0)
             .execute(&api)
@@ -187,7 +159,9 @@ mod http_tests {
     #[tokio::test]
     async fn error() {
         crate::tests::init();
-        let m = mock("GET", "/createfolder")
+        let mut server = mockito::Server::new_async().await;
+        let m = server
+            .mock("GET", "/createfolder")
             .match_query(Matcher::AllOf(vec![
                 Matcher::UrlEncoded("access_token".into(), "access-token".into()),
                 Matcher::UrlEncoded("folderid".into(), "0".into()),
@@ -197,7 +171,7 @@ mod http_tests {
             .with_body(r#"{ "result": 1020, "error": "something went wrong" }"#)
             .create();
         let creds = Credentials::AccessToken("access-token".into());
-        let dc = Region::mock();
+        let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
         let error = FolderCreateCommand::new("testing".into(), 0)
             .execute(&api)
@@ -205,22 +179,5 @@ mod http_tests {
             .unwrap_err();
         assert!(matches!(error, crate::error::Error::Protocol(_, _)));
         m.assert();
-    }
-}
-
-#[cfg(all(test, feature = "client-binary"))]
-mod binary_tests {
-    use super::FolderCreateCommand;
-    use crate::binary::BinaryClientBuilder;
-    use crate::prelude::BinaryCommand;
-
-    #[test]
-    fn binary_success() {
-        let name = crate::tests::random_name();
-        let mut client = BinaryClientBuilder::from_env().build().unwrap();
-        let res = FolderCreateCommand::new(name.clone(), 0)
-            .execute(&mut client)
-            .unwrap();
-        assert_eq!(res.base.name, name);
     }
 }

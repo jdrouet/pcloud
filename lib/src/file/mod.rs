@@ -5,8 +5,6 @@ pub mod download;
 pub mod rename;
 pub mod upload;
 
-#[cfg(feature = "client-binary")]
-use crate::binary::Value as BValue;
 use crate::entry::File;
 
 /// Structure returned when moving or copying a file
@@ -19,7 +17,7 @@ pub struct FileResponse {
 ///
 /// In most commands, a file can be identifier by it's path,
 /// although it's not recommended, or by it id
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum FileIdentifier {
     Path(String),
     FileId(u64),
@@ -68,27 +66,5 @@ impl FileIdentifier {
 
     pub fn to_http_params(&self) -> Vec<(&str, String)> {
         vec![self.to_http_param()]
-    }
-}
-
-#[cfg(feature = "client-binary")]
-impl FileIdentifier {
-    pub fn to_named_binary_param(
-        &self,
-        path: &'static str,
-        fileid: &'static str,
-    ) -> (&'static str, BValue) {
-        match self {
-            Self::Path(value) => (path, BValue::Text(value.clone())),
-            Self::FileId(value) => (fileid, BValue::Number(*value)),
-        }
-    }
-
-    pub fn to_binary_param(&self) -> (&str, BValue) {
-        self.to_named_binary_param("path", "fileid")
-    }
-
-    pub fn to_binary_params(&self) -> Vec<(&str, BValue)> {
-        vec![self.to_binary_param()]
     }
 }

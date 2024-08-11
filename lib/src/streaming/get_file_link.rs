@@ -66,12 +66,13 @@ mod http_tests {
     use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::region::Region;
-    use mockito::{mock, Matcher};
+    use mockito::Matcher;
 
     #[tokio::test]
     async fn success() {
         crate::tests::init();
-        let m = mock("GET", "/getfilelink")
+        let mut server = mockito::Server::new_async().await;
+        let m = server.mock("GET", "/getfilelink")
             .match_query(Matcher::AllOf(vec![
                                         Matcher::UrlEncoded("access_token".into(), "access-token".into()),
                                         Matcher::UrlEncoded("fileid".into(), "42".into()),
@@ -91,7 +92,7 @@ mod http_tests {
 }"#)
 .create();
         let creds = Credentials::AccessToken("access-token".into());
-        let dc = Region::mock();
+        let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
         let result = GetFileLinkCommand::new(42.into())
             .execute(&api)

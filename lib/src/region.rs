@@ -4,52 +4,30 @@
 #[derive(Clone, Debug)]
 pub struct Region {
     http_url: String,
-    binary_url: String,
 }
 
 impl Region {
     /// Creates a new region with the given parameters.
     ///
     /// This method should be used for testing when mocking the calls to the PCloud servers.
-    pub fn new(http_url: String, binary_url: String) -> Self {
-        Self {
-            http_url,
-            binary_url,
-        }
+    pub fn new(http_url: String) -> Self {
+        Self { http_url }
     }
 
     /// Creates a region object representing the EU region
     pub fn eu() -> Self {
-        Self::new(
-            "https://eapi.pcloud.com".into(),
-            "eapi.pcloud.com:8398".into(),
-        )
+        Self::new("https://eapi.pcloud.com".into())
     }
 
     /// Creates a region object representing the US region
     pub fn us() -> Self {
-        Self::new(
-            "https://api.pcloud.com".into(),
-            "api.pcloud.com:8398".into(),
-        )
-    }
-
-    #[cfg(test)]
-    pub fn mock() -> Self {
-        Self::new(
-            mockito::server_url(),
-            format!("{}:{}", mockito::server_url(), 8398),
-        )
+        Self::new("https://api.pcloud.com".into())
     }
 }
 
 impl Region {
     pub fn http_url(&self) -> &str {
         self.http_url.as_str()
-    }
-
-    pub fn binary_url(&self) -> &str {
-        self.binary_url.as_str()
     }
 }
 
@@ -62,9 +40,8 @@ impl Default for Region {
 impl Region {
     fn from_split_env() -> Option<Self> {
         let http_url = std::env::var("PCLOUD_REGION_HTTP_URL").ok()?;
-        let binary_url = std::env::var("PCLOUD_REGION_BINARY_URL").ok()?;
 
-        Some(Self::new(http_url, binary_url))
+        Some(Self::new(http_url))
     }
 
     /// Creates a region based on the region provided as a `&str`.

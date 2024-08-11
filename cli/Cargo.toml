@@ -13,8 +13,16 @@ extended-description = """
 Written in Rust, pcloud-cli is made to be fast, efficient and easy to use.
 """
 assets = [
-  ["target/release/pcloud-cli", "usr/bin/", "755"],
-  ["readme.md", "usr/share/doc/pcloud-cli/README", "644"],
+    [
+        "target/release/pcloud-cli",
+        "usr/bin/",
+        "755",
+    ],
+    [
+        "readme.md",
+        "usr/share/doc/pcloud-cli/README",
+        "644",
+    ],
 ]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -23,23 +31,31 @@ assets = [
 protected = []
 
 [dependencies]
-pcloud = { default-features = false, features = ["client-http"], path = "../lib", version = "1.1" }
+pcloud = { default-features = false, features = [
+    "client-http",
+], path = "../lib", version = "1.1" }
 #
-async-channel = { version = "1.6" }
-async-recursion = { version = "1.0" }
-clap = { version = "3.2", features = ["derive"] }
-clap-verbosity-flag = { version = "1.0.1" }
-dirs = { version = "4.0" }
+async-channel = { version = "2.3" }
+async-recursion = { version = "1.1" }
+clap = { version = "4.5", features = ["derive"] }
+# clap-verbosity-flag = { version = "1.0.1" }
+dirs = { version = "5.0" }
 exitcode = { version = "1.1" }
-futures-util = { version = "0.3", default-features = false, features = ["std", "alloc"] }
+futures-util = { version = "0.3", default-features = false, features = [
+    "std",
+    "alloc",
+] }
 glob = { version = "0.3" }
 hex = { version = "0.4" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
 sha2 = { version = "0.10" }
-tokio = { version = "1.19", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.39", features = ["macros", "rt-multi-thread"] }
 tracing = { version = "0.1" }
-tracing-futures = { version = "0.2.5", default-features = false, features = ["tokio", "tokio-executor"] }
+tracing-futures = { version = "0.2", default-features = false, features = [
+    "tokio",
+    "tokio-executor",
+] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dev-dependencies]

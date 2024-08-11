@@ -41,10 +41,6 @@ clap = { version = "4.5", features = ["derive"] }
 # clap-verbosity-flag = { version = "1.0.1" }
 dirs = { version = "5.0" }
 exitcode = { version = "1.1" }
-futures-util = { version = "0.3", default-features = false, features = [
-    "std",
-    "alloc",
-] }
 glob = { version = "0.3" }
 hex = { version = "0.4" }
 serde = { version = "1.0", features = ["derive"] }
@@ -52,10 +48,6 @@ serde_json = { version = "1.0" }
 sha2 = { version = "0.10" }
 tokio = { version = "1.39", features = ["macros", "rt-multi-thread"] }
 tracing = { version = "0.1" }
-tracing-futures = { version = "0.2", default-features = false, features = [
-    "tokio",
-    "tokio-executor",
-] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dev-dependencies]

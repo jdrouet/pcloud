@@ -6,7 +6,6 @@ use pcloud::entry::File;
 use pcloud::file::FileIdentifier;
 use pcloud::folder::list::FolderListCommand;
 use pcloud::prelude::HttpCommand;
-use std::fmt;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::string::FromUtf8Error;
@@ -14,33 +13,71 @@ use std::sync::Arc;
 
 const PREFIX: &str = "/by-path";
 
-#[derive(Debug)]
+#[derive(serde::Serialize)]
+struct ErrorReponse {
+    message: String,
+    details: Option<String>,
+}
+
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    InvalidPath(FromUtf8Error),
-    UnableListFolder(pcloud::error::Error),
-    UnableGetFile(pcloud::error::Error),
+    #[error("unable to path requested file path")]
+    InvalidPath(#[source] FromUtf8Error),
+    #[error("unable to list files in folder")]
+    UnableListFolder(#[source] pcloud::error::Error),
+    #[error("unable to get file")]
+    UnableGetFile(#[source] pcloud::error::Error),
+}
+
+impl Error {
+    fn status_code(&self) -> axum::http::StatusCode {
+        match self {
+            // Bad request
+            Self::UnableGetFile(pcloud::error::Error::Protocol(2010, _))
+            | Self::UnableListFolder(pcloud::error::Error::Protocol(2010, _))
+            | Self::InvalidPath(_) => axum::http::StatusCode::BAD_REQUEST,
+            // Unauthorized
+            Self::UnableGetFile(pcloud::error::Error::Protocol(1000, _))
+            | Self::UnableListFolder(pcloud::error::Error::Protocol(1000, _))
+            | Self::UnableGetFile(pcloud::error::Error::Protocol(2000, _))
+            | Self::UnableListFolder(pcloud::error::Error::Protocol(2000, _)) => {
+                axum::http::StatusCode::UNAUTHORIZED
+            }
+            // Forbidden
+            Self::UnableGetFile(pcloud::error::Error::Protocol(2003, _))
+            | Self::UnableListFolder(pcloud::error::Error::Protocol(2003, _)) => {
+                axum::http::StatusCode::FORBIDDEN
+            }
+            // Not found
+            Self::UnableGetFile(pcloud::error::Error::Protocol(2009, _))
+            | Self::UnableListFolder(pcloud::error::Error::Protocol(2005, _)) => {
+                axum::http::StatusCode::NOT_FOUND
+            }
+            _ => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+
+    fn details(&self) -> Option<String> {
+        match self {
+            Self::UnableGetFile(inner) | Self::UnableListFolder(inner) => Some(inner.to_string()),
+            _ => None,
+        }
+    }
+
+    fn response(&self) -> ErrorReponse {
+        ErrorReponse {
+            message: self.to_string(),
+            details: self.details(),
+        }
+    }
 }
 
 impl axum::response::IntoResponse for Error {
     fn into_response(self) -> axum::response::Response {
-        eprintln!("error: {self:?}");
-        axum::http::StatusCode::INTERNAL_SERVER_ERROR.into_response()
-    }
-}
+        let status = self.status_code();
+        let body = self.response();
 
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::InvalidPath(err) => {
-                write!(f, "unable to parse file path: {err:?}")
-            }
-            Self::UnableListFolder(err) => {
-                write!(f, "unable to list folder: {err:?}")
-            }
-            Self::UnableGetFile(err) => {
-                write!(f, "unable to get file: {err:?}")
-            }
-        }
+        (status, axum::Json(body)).into_response()
     }
 }
 

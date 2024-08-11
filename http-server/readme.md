@@ -16,6 +16,5 @@ docker run -d \
 	-e PCLOUD_PASSWORD=password \
 	pcloud-http-server
 # display content
-curl http://localhost:3000/
+curl http://localhost:3000/by-path/
 ```
-

@@ -12,9 +12,18 @@ repository = "https://github.com/jdrouet/pcloud"
 [dependencies]
 pcloud = { path = "../lib", version = "1.1" }
 #
-actix-web = { version = "4.1" }
-clap = { version = "3.2", features = ["derive", "env"] }
-env_logger = { version = "0.9" }
-human_bytes = { version = "0.3", features = ["bibytes"] }
+axum = { version = "0.7" }
+clap = { version = "4.5", features = ["derive", "env"] }
+env_logger = { version = "0.11" }
+human_bytes = { version = "0.4" }
 log = { version = "0.4" }
-reqwest = { version = "0.11", default-features = false, features = ["rustls-tls", "stream"] }
+reqwest = { version = "0.12", default-features = false, features = [
+    "rustls-tls",
+    "stream",
+] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tower-http = { version = "0.5", features = ["trace"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+urlencoding = { version = "2.1" }
+serde = { version = "1.0.206", features = ["derive"] }

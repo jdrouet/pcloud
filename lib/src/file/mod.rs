@@ -17,7 +17,7 @@ pub struct FileResponse {
 ///
 /// In most commands, a file can be identifier by it's path,
 /// although it's not recommended, or by it id
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum FileIdentifier {
     Path(String),
     FileId(u64),

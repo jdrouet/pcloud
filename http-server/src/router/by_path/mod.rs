@@ -3,6 +3,7 @@ use axum::extract::Query;
 use axum::response::{Html, IntoResponse};
 use axum::{extract::Path, Extension};
 use pcloud::entry::File;
+use pcloud::file::FileIdentifier;
 use pcloud::folder::list::FolderListCommand;
 use pcloud::prelude::HttpCommand;
 use std::fmt;
@@ -112,43 +113,33 @@ async fn handle(
         let local_path = crate::CloudPath::from_str(path).map_err(Error::InvalidPath)?;
         let remote_path = root_prefix.root_path().join_file(local_path);
 
+        let identifier: FileIdentifier = remote_path.to_string().into();
         let link = if params.stream {
-            let file =
-                pcloud::file::checksum::FileCheckSumCommand::new(remote_path.to_string().into())
-                    .execute(engine.as_ref())
-                    .await
-                    .map_err(Error::UnableGetFile)?;
+            let file = pcloud::file::checksum::FileCheckSumCommand::new(identifier.clone())
+                .execute(engine.as_ref())
+                .await
+                .map_err(Error::UnableGetFile)?;
 
             if is_video(&file.metadata) {
-                pcloud::streaming::get_video_link::GetVideoLinkCommand::new(
-                    remote_path.to_string().into(),
-                )
-                .execute(engine.as_ref())
-                .await
-                .map_err(Error::UnableGetFile)?
+                pcloud::streaming::get_video_link::GetVideoLinkCommand::new(identifier)
+                    .execute(engine.as_ref())
+                    .await
             } else if is_audio(&file.metadata) {
-                pcloud::streaming::get_audio_link::GetAudioLinkCommand::new(
-                    remote_path.to_string().into(),
-                )
-                .execute(engine.as_ref())
-                .await
-                .map_err(Error::UnableGetFile)?
+                pcloud::streaming::get_audio_link::GetAudioLinkCommand::new(identifier)
+                    .execute(engine.as_ref())
+                    .await
             } else {
-                pcloud::streaming::get_file_link::GetFileLinkCommand::new(
-                    remote_path.to_string().into(),
-                )
-                .execute(engine.as_ref())
-                .await
-                .map_err(Error::UnableGetFile)?
+                pcloud::streaming::get_file_link::GetFileLinkCommand::new(identifier)
+                    .execute(engine.as_ref())
+                    .await
             }
         } else {
-            pcloud::streaming::get_file_link::GetFileLinkCommand::new(
-                remote_path.to_string().into(),
-            )
-            .execute(engine.as_ref())
-            .await
-            .map_err(Error::UnableGetFile)?
+            pcloud::streaming::get_file_link::GetFileLinkCommand::new(identifier)
+                .execute(engine.as_ref())
+                .await
         };
+
+        let link = link.map_err(Error::UnableGetFile)?;
 
         Ok(Success::File(link))
     }

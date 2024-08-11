@@ -173,6 +173,8 @@ async fn read_response<T: serde::de::DeserializeOwned>(
         println!("{} {}: {}", action, method, body);
         Ok(serde_json::from_str(&body).unwrap())
     } else {
+        let status = res.status();
+        tracing::debug!("responded with status {status:?}");
         res.json::<T>().await.map_err(Error::from)
     }
 }
@@ -182,6 +184,7 @@ impl HttpClient {
         format!("{}/{}", self.region.http_url(), method)
     }
 
+    #[tracing::instrument(name = "get", skip(self, params))]
     pub(crate) async fn get_request<T: serde::de::DeserializeOwned>(
         &self,
         method: &str,
@@ -190,10 +193,12 @@ impl HttpClient {
         let mut local_params = self.credentials.to_http_params();
         local_params.extend_from_slice(params);
         let uri = self.build_url(method);
+        tracing::debug!("calling {uri}");
         let res = self.client.get(uri).query(&local_params).send().await?;
         read_response("GET", method, res).await
     }
 
+    #[tracing::instrument(name = "put", skip(self, params))]
     pub(crate) async fn put_request_data<T: serde::de::DeserializeOwned>(
         &self,
         method: &str,
@@ -213,6 +218,7 @@ impl HttpClient {
         read_response("PUT", method, res).await
     }
 
+    #[tracing::instrument(name = "post", skip(self, params))]
     pub(crate) async fn post_request_multipart<T: serde::de::DeserializeOwned>(
         &self,
         method: &str,

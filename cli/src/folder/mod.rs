@@ -7,7 +7,7 @@ mod list;
 mod upload;
 
 use clap::Parser;
-use pcloud::http::HttpClient;
+use pcloud::client::HttpClient;
 
 #[derive(Parser)]
 pub struct Command {

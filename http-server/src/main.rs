@@ -2,7 +2,7 @@ mod render;
 mod router;
 
 use clap::Parser;
-use pcloud::http::{HttpClient, HttpClientBuilder};
+use pcloud::client::{HttpClient, HttpClientBuilder};
 use std::{fmt::Write, net::IpAddr, str::FromStr, string::FromUtf8Error, sync::Arc};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};

@@ -1,10 +1,10 @@
 use super::common::{get_checksum, try_get_file_checksum, try_get_folder_content, CompareMethod};
 use async_recursion::async_recursion;
 use clap::Parser;
+use pcloud::client::HttpClient;
 use pcloud::entry::{Entry, File};
 use pcloud::error::Error as PCloudError;
 use pcloud::file::download::FileDownloadCommand;
-use pcloud::http::HttpClient;
 use pcloud::prelude::HttpCommand;
 use std::fs;
 use std::io::Error as IoError;

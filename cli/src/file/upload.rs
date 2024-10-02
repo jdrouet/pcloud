@@ -1,6 +1,6 @@
 use clap::Parser;
+use pcloud::client::HttpClient;
 use pcloud::file::upload::MultipartFileUploadCommand;
-use pcloud::http::HttpClient;
 use pcloud::prelude::HttpCommand;
 use std::fs::File;
 use std::path::PathBuf;

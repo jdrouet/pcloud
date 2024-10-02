@@ -1,22 +1,24 @@
+use std::borrow::Cow;
+
 use crate::file::FileIdentifier;
 
 #[derive(Debug)]
 /// Command to get video link for streaming
-pub struct GetVideoLinkCommand {
+pub struct GetVideoLinkCommand<'a> {
     /// File identifier
-    pub identifier: FileIdentifier,
+    pub identifier: FileIdentifier<'a>,
     /// int audio bit rate in kilobits, from 16 to 320
     pub audio_bit_rate: Option<u16>,
     /// int video bitrate in kilobits, from 16 to 4000
     pub video_bit_rate: Option<u32>,
     /// string in pixels, from 64x64 to 1280x960, WIDTHxHEIGHT
-    pub resolution: Option<String>,
+    pub resolution: Option<Cow<'a, str>>,
     /// if set, turns off adaptive streaming and the stream will be with a constant bitrate.
     pub fixed_bit_rate: bool,
 }
 
-impl GetVideoLinkCommand {
-    pub fn new(identifier: FileIdentifier) -> Self {
+impl<'a> GetVideoLinkCommand<'a> {
+    pub fn new(identifier: FileIdentifier<'a>) -> Self {
         Self {
             identifier,
             audio_bit_rate: None,
@@ -30,7 +32,7 @@ impl GetVideoLinkCommand {
         self.audio_bit_rate = value;
     }
 
-    pub fn audio_bit_rate(mut self, value: u16) -> Self {
+    pub fn with_audio_bit_rate(mut self, value: u16) -> Self {
         self.audio_bit_rate = Some(value);
         self
     }
@@ -39,17 +41,17 @@ impl GetVideoLinkCommand {
         self.video_bit_rate = value;
     }
 
-    pub fn video_bit_rate(mut self, value: u32) -> Self {
+    pub fn with_video_bit_rate(mut self, value: u32) -> Self {
         self.video_bit_rate = Some(value);
         self
     }
 
-    pub fn set_resolution(mut self, value: Option<String>) {
+    pub fn set_resolution(mut self, value: Option<Cow<'a, str>>) {
         self.resolution = value;
     }
 
-    pub fn resolution(mut self, value: String) -> Self {
-        self.resolution = Some(value);
+    pub fn with_resolution(mut self, value: impl Into<Cow<'a, str>>) -> Self {
+        self.resolution = Some(value.into());
         self
     }
 
@@ -57,7 +59,7 @@ impl GetVideoLinkCommand {
         self.fixed_bit_rate = value;
     }
 
-    pub fn fixed_bit_rate(mut self, value: bool) -> Self {
+    pub fn with_fixed_bit_rate(mut self, value: bool) -> Self {
         self.fixed_bit_rate = value;
         self
     }
@@ -65,41 +67,55 @@ impl GetVideoLinkCommand {
 
 #[cfg(feature = "client-http")]
 mod http {
-    use super::GetVideoLinkCommand;
-    use crate::error::Error;
-    use crate::http::HttpClient;
-    use crate::prelude::HttpCommand;
-    use crate::request::Response;
-    use crate::streaming::Payload;
+    use std::borrow::Cow;
 
-    impl GetVideoLinkCommand {
-        fn to_http_params(&self) -> Vec<(&str, String)> {
-            let mut res = self.identifier.to_http_params();
-            if let Some(abitrate) = self.audio_bit_rate {
-                res.push(("abitrate", abitrate.to_string()));
+    use super::GetVideoLinkCommand;
+    use crate::client::HttpClient;
+    use crate::error::Error;
+    use crate::file::FileIdentifierParam;
+    use crate::prelude::HttpCommand;
+    use crate::streaming::SteamingLinkList;
+
+    #[derive(serde::Serialize)]
+    /// Command to get video link for streaming
+    struct GetVideoLinkParams<'a> {
+        #[serde(flatten)]
+        identifier: FileIdentifierParam<'a>,
+        #[serde(rename = "abitrate", skip_serializing_if = "Option::is_none")]
+        audio_bit_rate: Option<u16>,
+        #[serde(rename = "vbitrate", skip_serializing_if = "Option::is_none")]
+        video_bit_rate: Option<u32>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        resolution: Option<Cow<'a, str>>,
+        #[serde(
+            rename = "fixedbitrate",
+            skip_serializing_if = "crate::client::is_false",
+            serialize_with = "crate::client::serialize_bool"
+        )]
+        fixed_bit_rate: bool,
+    }
+
+    impl<'a> From<GetVideoLinkCommand<'a>> for GetVideoLinkParams<'a> {
+        fn from(value: GetVideoLinkCommand<'a>) -> Self {
+            Self {
+                identifier: value.identifier.into(),
+                audio_bit_rate: value.audio_bit_rate,
+                video_bit_rate: value.video_bit_rate,
+                resolution: value.resolution,
+                fixed_bit_rate: value.fixed_bit_rate,
             }
-            if let Some(vbitrate) = self.video_bit_rate {
-                res.push(("vbitrate", vbitrate.to_string()));
-            }
-            if let Some(ref resolution) = self.resolution {
-                res.push(("resolution", resolution.to_string()));
-            }
-            if self.fixed_bit_rate {
-                res.push(("fixedbitrate", 1.to_string()));
-            }
-            res
         }
     }
 
     #[async_trait::async_trait]
-    impl HttpCommand for GetVideoLinkCommand {
-        type Output = String;
+    impl<'a> HttpCommand for GetVideoLinkCommand<'a> {
+        type Output = SteamingLinkList;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-            let result: Response<Payload> = client
-                .get_request("getvideolink", &self.to_http_params())
-                .await?;
-            result.payload().map(|item| item.to_url())
+            let params = GetVideoLinkParams::from(self);
+            client
+                .get_request::<SteamingLinkList, _>("getvideolink", params)
+                .await
         }
     }
 }

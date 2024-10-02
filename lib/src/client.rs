@@ -20,13 +20,13 @@ pub enum HttpClientBuilderError {
 /// A builder for the [`HttpClient`](HttpClient) structure
 ///
 /// ```
-/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::client::HttpClientBuilder;
 /// use pcloud::credentials::Credentials;
 /// use pcloud::region::Region;
 ///
 /// let _client = HttpClientBuilder::default()
-///    .credentials(Credentials::AccessToken("my-token".to_string()))
-///    .region(Region::eu())
+///    .with_credentials(Credentials::access_token("my-token"))
+///    .with_region(Region::eu())
 ///    .build()
 ///    .expect("unable to builder http client");
 /// ```
@@ -64,22 +64,38 @@ impl HttpClientBuilder {
         }
     }
 
-    pub fn client_builder(mut self, value: reqwest::ClientBuilder) -> Self {
+    pub fn set_client_builder(&mut self, value: reqwest::ClientBuilder) {
+        self.client_builder = value;
+    }
+
+    pub fn with_client_builder(mut self, value: reqwest::ClientBuilder) -> Self {
         self.client_builder = value;
         self
     }
 
-    pub fn credentials(mut self, value: Credentials) -> Self {
+    pub fn set_credentials(&mut self, value: Credentials) {
+        self.credentials = Some(value);
+    }
+
+    pub fn with_credentials(mut self, value: Credentials) -> Self {
         self.credentials = Some(value);
         self
     }
 
-    pub fn region(mut self, value: Region) -> Self {
+    pub fn set_region(&mut self, value: Region) {
+        self.region = Some(value);
+    }
+
+    pub fn with_region(mut self, value: Region) -> Self {
         self.region = Some(value);
         self
     }
 
-    pub fn timeout(mut self, value: Duration) -> Self {
+    pub fn set_timeout(&mut self, value: Duration) {
+        self.timeout = Some(value);
+    }
+
+    pub fn with_timeout(mut self, value: Duration) -> Self {
         self.timeout = Some(value);
         self
     }
@@ -96,8 +112,8 @@ impl HttpClientBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use pcloud::http::HttpClientBuilder;
-    /// use pcloud::http::HttpClientBuilderError;
+    /// use pcloud::client::HttpClientBuilder;
+    /// use pcloud::client::HttpClientBuilderError;
     ///
     /// match HttpClientBuilder::default().build() {
     ///     Ok(_client) => println!("success!"),
@@ -126,7 +142,7 @@ impl HttpClientBuilder {
 /// Client for the pCloud REST API
 ///
 /// ```rust
-/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::client::HttpClientBuilder;
 /// use pcloud::credentials::Credentials;
 /// use pcloud::region::Region;
 /// use pcloud::general::userinfo::UserInfoCommand;
@@ -168,15 +184,16 @@ async fn read_response<T: serde::de::DeserializeOwned>(
     method: &str,
     res: reqwest::Response,
 ) -> Result<T, Error> {
-    if cfg!(test) {
+    let res: Response<T> = if cfg!(test) {
         let body = res.text().await?;
         println!("{} {}: {}", action, method, body);
-        Ok(serde_json::from_str(&body).unwrap())
+        serde_json::from_str(&body).unwrap()
     } else {
         let status = res.status();
         tracing::debug!("responded with status {status:?}");
-        res.json::<T>().await.map_err(Error::from)
-    }
+        res.json::<Response<T>>().await.map_err(Error::from)?
+    };
+    res.payload()
 }
 
 impl HttpClient {
@@ -185,33 +202,40 @@ impl HttpClient {
     }
 
     #[tracing::instrument(name = "get", skip(self, params))]
-    pub(crate) async fn get_request<T: serde::de::DeserializeOwned>(
+    pub(crate) async fn get_request<T: serde::de::DeserializeOwned, P: serde::Serialize>(
         &self,
         method: &str,
-        params: &[(&str, String)],
+        params: P,
     ) -> Result<T, Error> {
-        let mut local_params = self.credentials.to_http_params();
-        local_params.extend_from_slice(params);
         let uri = self.build_url(method);
         tracing::debug!("calling {uri}");
-        let res = self.client.get(uri).query(&local_params).send().await?;
+        let res = self
+            .client
+            .get(uri)
+            .query(&WithCredentials {
+                credentials: &self.credentials,
+                inner: params,
+            })
+            .send()
+            .await?;
         read_response("GET", method, res).await
     }
 
     #[tracing::instrument(name = "put", skip(self, params))]
-    pub(crate) async fn put_request_data<T: serde::de::DeserializeOwned>(
+    pub(crate) async fn put_request_data<T: serde::de::DeserializeOwned, P: serde::Serialize>(
         &self,
         method: &str,
-        params: &[(&str, String)],
+        params: P,
         payload: Vec<u8>,
     ) -> Result<T, Error> {
-        let mut local_params = self.credentials.to_http_params();
-        local_params.extend_from_slice(params);
         let uri = self.build_url(method);
         let res = self
             .client
             .put(uri)
-            .query(&local_params)
+            .query(&WithCredentials {
+                credentials: &self.credentials,
+                inner: params,
+            })
             .body(payload)
             .send()
             .await?;
@@ -219,17 +243,68 @@ impl HttpClient {
     }
 
     #[tracing::instrument(name = "post", skip(self, params))]
-    pub(crate) async fn post_request_multipart<T: serde::de::DeserializeOwned>(
+    pub(crate) async fn post_request_multipart<
+        T: serde::de::DeserializeOwned,
+        P: serde::Serialize,
+    >(
         &self,
         method: &str,
-        params: &[(&str, String)],
+        params: P,
         form: reqwest::multipart::Form,
     ) -> Result<T, Error> {
-        let mut local_params = self.credentials.to_http_params();
-        local_params.extend_from_slice(params);
         let uri = self.build_url(method);
-        let req = self.client.post(uri).query(&local_params).multipart(form);
+        let req = self
+            .client
+            .post(uri)
+            .query(&WithCredentials {
+                credentials: &self.credentials,
+                inner: params,
+            })
+            .multipart(form);
         let res = req.send().await?;
         read_response("POST", method, res).await
+    }
+}
+
+#[derive(serde::Serialize)]
+struct WithCredentials<'a, I> {
+    #[serde(flatten)]
+    credentials: &'a Credentials,
+    #[serde(flatten)]
+    inner: I,
+}
+
+pub(crate) fn is_false(value: &bool) -> bool {
+    !*value
+}
+
+pub(crate) fn serialize_bool<S>(value: &bool, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    serializer.serialize_i8(if *value { 1 } else { 0 })
+}
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(untagged)]
+enum Response<T> {
+    Error {
+        result: u16,
+        error: String,
+    },
+    Success {
+        #[allow(unused)]
+        result: u16,
+        #[serde(flatten)]
+        payload: T,
+    },
+}
+
+impl<T> Response<T> {
+    fn payload(self) -> Result<T, Error> {
+        match self {
+            Self::Error { result, error } => Err(Error::Protocol(result, error)),
+            Self::Success { payload, .. } => Ok(payload),
+        }
     }
 }

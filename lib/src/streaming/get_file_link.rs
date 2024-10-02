@@ -8,12 +8,12 @@ use crate::file::FileIdentifier;
 ///
 /// [More about it on the documentation](https://docs.pcloud.com/methods/streaming/getfilelink.html)
 ///
-/// # Example using the [`HttpClient`](crate::http::HttpClient)
+/// # Example using the [`HttpClient`](crate::client::HttpClient)
 ///
 /// To use this, the `client-http` feature should be enabled.
 ///
 /// ```
-/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::client::HttpClientBuilder;
 /// use pcloud::prelude::HttpCommand;
 /// use pcloud::streaming::get_file_link::GetFileLinkCommand;
 ///
@@ -27,12 +27,12 @@ use crate::file::FileIdentifier;
 /// # })
 /// ```
 #[derive(Debug)]
-pub struct GetFileLinkCommand {
-    pub identifier: FileIdentifier,
+pub struct GetFileLinkCommand<'a> {
+    pub identifier: FileIdentifier<'a>,
 }
 
-impl GetFileLinkCommand {
-    pub fn new(identifier: FileIdentifier) -> Self {
+impl<'a> GetFileLinkCommand<'a> {
+    pub fn new(identifier: FileIdentifier<'a>) -> Self {
         Self { identifier }
     }
 }
@@ -40,21 +40,21 @@ impl GetFileLinkCommand {
 #[cfg(feature = "client-http")]
 mod http {
     use super::GetFileLinkCommand;
+    use crate::client::HttpClient;
     use crate::error::Error;
-    use crate::http::HttpClient;
+    use crate::file::FileIdentifierParam;
     use crate::prelude::HttpCommand;
-    use crate::request::Response;
-    use crate::streaming::Payload;
+    use crate::streaming::SteamingLinkList;
 
     #[async_trait::async_trait]
-    impl HttpCommand for GetFileLinkCommand {
-        type Output = String;
+    impl<'a> HttpCommand for GetFileLinkCommand<'a> {
+        type Output = SteamingLinkList;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-            let result: Response<Payload> = client
-                .get_request("getfilelink", &self.identifier.to_http_params())
-                .await?;
-            result.payload().map(|res| res.to_url())
+            let params = FileIdentifierParam::from(self.identifier);
+            client
+                .get_request::<SteamingLinkList, _>("getfilelink", params)
+                .await
         }
     }
 }
@@ -62,8 +62,8 @@ mod http {
 #[cfg(all(test, feature = "client-http"))]
 mod http_tests {
     use super::GetFileLinkCommand;
+    use crate::client::HttpClient;
     use crate::credentials::Credentials;
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::region::Region;
     use mockito::Matcher;
@@ -74,8 +74,8 @@ mod http_tests {
         let mut server = mockito::Server::new_async().await;
         let m = server.mock("GET", "/getfilelink")
             .match_query(Matcher::AllOf(vec![
-                                        Matcher::UrlEncoded("access_token".into(), "access-token".into()),
-                                        Matcher::UrlEncoded("fileid".into(), "42".into()),
+                Matcher::UrlEncoded("access_token".into(), "access-token".into()),
+                Matcher::UrlEncoded("fileid".into(), "42".into()),
             ]))
             .with_status(200)
             .with_body(r#"{
@@ -91,14 +91,15 @@ mod http_tests {
         ]
 }"#)
 .create();
-        let creds = Credentials::AccessToken("access-token".into());
+        let creds = Credentials::access_token("access-token");
         let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
         let result = GetFileLinkCommand::new(42.into())
             .execute(&api)
             .await
             .unwrap();
-        assert_eq!(result, "https://edef2.pcloud.com/DLZCAt2vXZejNfL5ZruLVZZTk2ev7Z2ZZNR5ZZdoz6ZXZQZZErw4bH0PfzBQt3LlgXMliXVtietX/SAkdyBjkA7mQABbT.bin");
+        let mut iter = result.links();
+        assert_eq!(iter.next().unwrap().to_string(), "https://edef2.pcloud.com/DLZCAt2vXZejNfL5ZruLVZZTk2ev7Z2ZZNR5ZZdoz6ZXZQZZErw4bH0PfzBQt3LlgXMliXVtietX/SAkdyBjkA7mQABbT.bin");
         m.assert();
     }
 }

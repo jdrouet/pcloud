@@ -6,7 +6,7 @@ pub enum Error {
     /// Server side error, properly handled, returning a code and a message
     #[error("protocol error status {0}: {1}")]
     Protocol(u16, String),
-    /// Error specific to the [`HttpClient`](crate::http::HttpClient)
+    /// Error specific to the [`HttpClient`](crate::client::HttpClient)
     #[cfg(feature = "client-http")]
     #[error("network error")]
     Reqwest(

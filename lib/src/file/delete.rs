@@ -8,12 +8,12 @@ use super::FileIdentifier;
 ///
 /// [More about it on the documentation](https://docs.pcloud.com/methods/file/deletefile.html)
 ///
-/// # Example using the [`HttpClient`](crate::http::HttpClient)
+/// # Example using the [`HttpClient`](crate::client::HttpClient)
 ///
 /// To use this, the `client-http` feature should be enabled.
 ///
 /// ```
-/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::client::HttpClientBuilder;
 /// use pcloud::prelude::HttpCommand;
 /// use pcloud::file::delete::FileDeleteCommand;
 ///
@@ -26,31 +26,14 @@ use super::FileIdentifier;
 /// }
 /// # })
 /// ```
-///
-/// # Example using the [`BinaryClient`](crate::binary::BinaryClient)
-///
-/// To use this, the `client-binary` feature should be enabled.
-///
-/// ```
-/// use pcloud::binary::BinaryClientBuilder;
-/// use pcloud::prelude::BinaryCommand;
-/// use pcloud::file::delete::FileDeleteCommand;
-///
-/// let mut client = BinaryClientBuilder::from_env().build().unwrap();
-/// let cmd = FileDeleteCommand::new("/foo/bar.txt".into());
-/// match cmd.execute(&mut client) {
-///   Ok(res) => println!("success"),
-///   Err(err) => eprintln!("error: {:?}", err),
-/// }
-/// ```
 
 #[derive(Debug)]
-pub struct FileDeleteCommand {
-    pub identifier: FileIdentifier,
+pub struct FileDeleteCommand<'a> {
+    pub identifier: FileIdentifier<'a>,
 }
 
-impl FileDeleteCommand {
-    pub fn new(identifier: FileIdentifier) -> Self {
+impl<'a> FileDeleteCommand<'a> {
+    pub fn new(identifier: FileIdentifier<'a>) -> Self {
         Self { identifier }
     }
 }
@@ -58,22 +41,25 @@ impl FileDeleteCommand {
 #[cfg(feature = "client-http")]
 mod http {
     use super::FileDeleteCommand;
+    use crate::client::HttpClient;
     use crate::entry::File;
     use crate::error::Error;
+    use crate::file::FileIdentifierParam;
     use crate::file::FileResponse;
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
-    use crate::request::Response;
 
     #[async_trait::async_trait]
-    impl HttpCommand for FileDeleteCommand {
+    impl<'a> HttpCommand for FileDeleteCommand<'a> {
         type Output = File;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-            let result: Response<FileResponse> = client
-                .get_request("deletefile", &self.identifier.to_http_params())
-                .await?;
-            result.payload().map(|res| res.metadata)
+            client
+                .get_request::<FileResponse, _>(
+                    "deletefile",
+                    FileIdentifierParam::from(self.identifier),
+                )
+                .await
+                .map(|res| res.metadata)
         }
     }
 }
@@ -81,8 +67,8 @@ mod http {
 #[cfg(all(test, feature = "client-http"))]
 mod http_tests {
     use super::FileDeleteCommand;
+    use crate::client::HttpClient;
     use crate::credentials::Credentials;
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::region::Region;
     use mockito::Matcher;
@@ -124,7 +110,7 @@ mod http_tests {
 }"#,
             )
             .create();
-        let creds = Credentials::AccessToken("access-token".into());
+        let creds = Credentials::access_token("access-token");
         let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
         FileDeleteCommand::new(42.into())

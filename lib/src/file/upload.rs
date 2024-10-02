@@ -1,6 +1,6 @@
 //! Resources needed to upload a file
 
-use std::io::Read;
+use std::{borrow::Cow, io::Read};
 
 /// Default size for splitting into chunks
 pub const DEFAULT_PART_SIZE: usize = 10485760;
@@ -60,12 +60,12 @@ impl MultipartFileUploadCommand {
 ///
 /// [More about it on the documentation](https://docs.pcloud.com/methods/file/uploadfile.html).
 ///
-/// # Example using the [`HttpClient`](crate::http::HttpClient)
+/// # Example using the [`HttpClient`](crate::client::HttpClient)
 ///
 /// To use this, the `client-http` feature should be enabled.
 ///
 /// ```
-/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::client::HttpClientBuilder;
 /// use pcloud::prelude::HttpCommand;
 /// use pcloud::file::upload::MultipartFileUploadCommand;
 /// use std::fs::File;
@@ -95,12 +95,12 @@ pub struct MultipartFileUploadResponse {
 ///
 /// [More about it on the documentation](https://docs.pcloud.com/methods/file/uploadfile.html).
 ///
-/// # Example using the [`HttpClient`](crate::http::HttpClient)
+/// # Example using the [`HttpClient`](crate::client::HttpClient)
 ///
 /// To use this, the `client-http` feature should be enabled.
 ///
 /// ```
-/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::client::HttpClientBuilder;
 /// use pcloud::prelude::HttpCommand;
 /// use pcloud::file::upload::FileUploadCommand;
 /// use std::fs::File;
@@ -117,7 +117,7 @@ pub struct MultipartFileUploadResponse {
 /// ```
 #[derive(Debug)]
 pub struct FileUploadCommand<'a, R> {
-    pub filename: &'a str,
+    pub filename: Cow<'a, str>,
     pub folder_id: u64,
     pub reader: R,
     pub no_partial: bool,
@@ -125,9 +125,9 @@ pub struct FileUploadCommand<'a, R> {
 }
 
 impl<'a, R: Read + Send> FileUploadCommand<'a, R> {
-    pub fn new(filename: &'a str, folder_id: u64, reader: R) -> Self {
+    pub fn new<F: Into<Cow<'a, str>>>(filename: F, folder_id: u64, reader: R) -> Self {
         Self {
-            filename,
+            filename: filename.into(),
             folder_id,
             reader,
             no_partial: false,
@@ -135,12 +135,20 @@ impl<'a, R: Read + Send> FileUploadCommand<'a, R> {
         }
     }
 
-    pub fn no_partial(mut self, no_partial: bool) -> Self {
+    pub fn set_no_partial(&mut self, no_partial: bool) {
+        self.no_partial = no_partial;
+    }
+
+    pub fn with_no_partial(mut self, no_partial: bool) -> Self {
         self.no_partial = no_partial;
         self
     }
 
-    pub fn part_size(mut self, part_size: usize) -> Self {
+    pub fn set_part_size(&mut self, part_size: usize) {
+        self.part_size = part_size;
+    }
+
+    pub fn with_part_size(mut self, part_size: usize) -> Self {
         self.part_size = part_size;
         self
     }
@@ -149,12 +157,12 @@ impl<'a, R: Read + Send> FileUploadCommand<'a, R> {
 #[cfg(feature = "client-http")]
 mod http {
     use super::{FileUploadCommand, MultipartFileUploadCommand, MultipartFileUploadResponse};
+    use crate::client::HttpClient;
     use crate::entry::File;
     use crate::error::Error;
     use crate::file::FileResponse;
-    use crate::http::HttpClient;
+    use crate::folder::FolderIdentifierParam;
     use crate::prelude::HttpCommand;
-    use crate::request::Response;
     use reqwest::multipart;
     use std::io::Read;
 
@@ -175,13 +183,44 @@ mod http {
                 form = form.part(part_name, part);
             }
 
-            let params = vec![("folderid", self.folder_id.to_string())];
-            let result: Response<MultipartFileUploadResponse> = client
-                .post_request_multipart("uploadfile", &params, form)
-                .await?;
-
-            Ok(result.payload()?.metadata)
+            client
+                .post_request_multipart::<MultipartFileUploadResponse, _>(
+                    "uploadfile",
+                    FolderIdentifierParam::FolderId {
+                        folderid: self.folder_id,
+                    },
+                    form,
+                )
+                .await
+                .map(|res| res.metadata)
         }
+    }
+
+    #[derive(serde::Serialize)]
+    struct CreateUploadParams {
+        #[serde(
+            rename = "nopartial",
+            skip_serializing_if = "crate::client::is_false",
+            serialize_with = "crate::client::serialize_bool"
+        )]
+        no_partial: bool,
+    }
+
+    #[derive(serde::Serialize)]
+    struct UploadWriteParams {
+        #[serde(rename = "uploadid")]
+        upload_id: u64,
+        #[serde(rename = "uploadoffset")]
+        offset: usize,
+    }
+
+    #[derive(serde::Serialize)]
+    struct UploadSaveParams<'a> {
+        #[serde(rename = "uploadid")]
+        upload_id: u64,
+        name: &'a str,
+        #[serde(rename = "folderid")]
+        folder_id: u64,
     }
 
     #[async_trait::async_trait]
@@ -189,38 +228,39 @@ mod http {
         type Output = File;
 
         async fn execute(self, client: &HttpClient) -> Result<File, Error> {
-            let params = if self.no_partial {
-                vec![("nopartial", 1.to_string())]
-            } else {
-                Vec::new()
-            };
-            let result: Response<CreateUploadPayload> =
-                client.get_request("upload_create", &params).await?;
-            let upload_id = result.payload().map(|item| item.upload_id)?;
+            let upload_id = client
+                .get_request::<CreateUploadPayload, _>(
+                    "upload_create",
+                    CreateUploadParams {
+                        no_partial: self.no_partial,
+                    },
+                )
+                .await
+                .map(|res| res.upload_id)?;
 
             let mut reader = ChunkReader::new(self.reader, self.part_size);
 
-            let upload_id_str = upload_id.to_string();
-
             while let (offset, Some(chunk)) = reader.next_chunk()? {
-                let offset = offset.to_string();
-                let params = vec![
-                    ("uploadid", upload_id_str.to_string()),
-                    ("uploadoffset", offset.to_string()),
-                ];
-                let response: Response<()> = client
-                    .put_request_data("upload_write", &params, chunk)
+                client
+                    .put_request_data::<(), _>(
+                        "upload_write",
+                        UploadWriteParams { upload_id, offset },
+                        chunk,
+                    )
                     .await?;
-                response.payload()?;
             }
 
-            let params = vec![
-                ("uploadid", upload_id.to_string()),
-                ("name", self.filename.to_string()),
-                ("folderid", self.folder_id.to_string()),
-            ];
-            let result: Response<FileResponse> = client.get_request("upload_save", &params).await?;
-            result.payload().map(|item| item.metadata)
+            client
+                .get_request::<FileResponse, _>(
+                    "upload_save",
+                    UploadSaveParams {
+                        upload_id,
+                        name: self.filename.as_ref(),
+                        folder_id: self.folder_id,
+                    },
+                )
+                .await
+                .map(|item| item.metadata)
         }
     }
 
@@ -271,8 +311,8 @@ mod http {
 #[cfg(all(test, feature = "client-http"))]
 mod http_tests {
     use super::{FileUploadCommand, MultipartFileUploadCommand};
+    use crate::client::HttpClient;
     use crate::credentials::Credentials;
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::region::Region;
     use mockito::Matcher;
@@ -290,7 +330,7 @@ mod http_tests {
             ]))
             .match_body(Matcher::Any)
             .match_header("accept", "*/*")
-            .match_header("user-agent", crate::http::USER_AGENT)
+            .match_header("user-agent", crate::client::USER_AGENT)
             .match_header(
                 "content-type",
                 Matcher::Regex("multipart/form-data; boundary=.*".to_string()),
@@ -330,7 +370,7 @@ mod http_tests {
 }"#,
             )
             .create();
-        let creds = Credentials::AccessToken("access-token".into());
+        let creds = Credentials::access_token("access-token");
         let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
         //
@@ -401,13 +441,16 @@ mod http_tests {
             )
             .create();
 
-        let creds = Credentials::AccessToken("access-token".into());
+        let creds = Credentials::access_token("access-token");
         let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
         //
         let cursor = std::io::Cursor::new("hello world!");
-        let cmd = FileUploadCommand::new("testing.txt", 0, cursor).no_partial(true);
-        let result = cmd.execute(&api).await.unwrap();
+        let result = FileUploadCommand::new("testing.txt", 0, cursor)
+            .with_no_partial(true)
+            .execute(&api)
+            .await
+            .unwrap();
         //
         assert_eq!(result.base.name, "testing.txt");
         m_create.assert();

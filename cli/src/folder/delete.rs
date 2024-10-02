@@ -1,6 +1,6 @@
 use clap::Parser;
+use pcloud::client::HttpClient;
 use pcloud::folder::delete::FolderDeleteCommand;
-use pcloud::http::HttpClient;
 use pcloud::prelude::HttpCommand;
 
 #[derive(Parser)]
@@ -13,7 +13,7 @@ impl Command {
     #[tracing::instrument(skip_all)]
     pub async fn execute(&self, pcloud: HttpClient, folder_id: u64) {
         match FolderDeleteCommand::new(folder_id.into())
-            .recursive(self.recursive)
+            .with_recursive(self.recursive)
             .execute(&pcloud)
             .await
         {

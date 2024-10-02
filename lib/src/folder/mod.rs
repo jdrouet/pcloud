@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 pub mod create;
 pub mod delete;
 pub mod list;
@@ -12,53 +14,61 @@ pub(crate) struct FolderResponse {
 }
 
 #[derive(Debug)]
-pub enum FolderIdentifier {
-    Path(String),
+pub enum FolderIdentifier<'a> {
+    Path(Cow<'a, str>),
     FolderId(u64),
 }
 
-impl Default for FolderIdentifier {
+impl<'a> FolderIdentifier<'a> {
+    #[inline]
+    pub fn path<P: Into<Cow<'a, str>>>(value: P) -> Self {
+        Self::Path(value.into())
+    }
+
+    #[inline]
+    pub fn folder_id(value: u64) -> Self {
+        Self::FolderId(value)
+    }
+}
+
+impl<'a> Default for FolderIdentifier<'a> {
     fn default() -> Self {
         Self::FolderId(0)
     }
 }
 
-impl From<&str> for FolderIdentifier {
-    fn from(value: &str) -> Self {
-        Self::Path(value.to_string())
+impl<'a> From<&'a str> for FolderIdentifier<'a> {
+    fn from(value: &'a str) -> Self {
+        Self::Path(Cow::Borrowed(value))
     }
 }
 
-impl From<String> for FolderIdentifier {
+impl<'a> From<String> for FolderIdentifier<'a> {
     fn from(value: String) -> Self {
-        Self::Path(value)
+        Self::Path(Cow::Owned(value))
     }
 }
 
-impl From<u64> for FolderIdentifier {
+impl<'a> From<u64> for FolderIdentifier<'a> {
     fn from(value: u64) -> Self {
         Self::FolderId(value)
     }
 }
 
 #[cfg(feature = "client-http")]
-impl FolderIdentifier {
-    pub fn to_named_http_param(
-        &self,
-        path: &'static str,
-        folder_id: &'static str,
-    ) -> (&'static str, String) {
-        match self {
-            Self::Path(value) => (path, value.clone()),
-            Self::FolderId(value) => (folder_id, value.to_string()),
+#[derive(serde::Serialize)]
+#[serde(untagged)]
+pub(crate) enum FolderIdentifierParam<'a> {
+    Path { path: Cow<'a, str> },
+    FolderId { folderid: u64 },
+}
+
+#[cfg(feature = "client-http")]
+impl<'a> From<FolderIdentifier<'a>> for FolderIdentifierParam<'a> {
+    fn from(value: FolderIdentifier<'a>) -> Self {
+        match value {
+            FolderIdentifier::FolderId(folderid) => Self::FolderId { folderid },
+            FolderIdentifier::Path(path) => Self::Path { path },
         }
-    }
-
-    pub fn to_http_params(&self) -> Vec<(&str, String)> {
-        vec![self.to_http_param()]
-    }
-
-    pub fn to_http_param(&self) -> (&str, String) {
-        self.to_named_http_param("path", "folderid")
     }
 }

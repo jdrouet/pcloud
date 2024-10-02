@@ -16,12 +16,12 @@ pub struct RecursivePayload {
 ///
 /// [More about it on the documentation](https://docs.pcloud.com/methods/folder/delete.html).
 ///
-/// # Example using the [`HttpClient`](crate::http::HttpClient)
+/// # Example using the [`HttpClient`](crate::client::HttpClient)
 ///
 /// To use this, the `client-http` feature should be enabled.
 ///
 /// ```
-/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::client::HttpClientBuilder;
 /// use pcloud::prelude::HttpCommand;
 /// use pcloud::folder::delete::FolderDeleteCommand;
 ///
@@ -34,38 +34,25 @@ pub struct RecursivePayload {
 /// }
 /// # })
 /// ```
-///
-/// # Example using the [`BinaryClient`](crate::binary::BinaryClient)
-///
-/// To use this, the `client-binary` feature should be enabled.
-///
-/// ```
-/// use pcloud::binary::BinaryClientBuilder;
-/// use pcloud::prelude::BinaryCommand;
-/// use pcloud::folder::delete::FolderDeleteCommand;
-///
-/// let mut client = BinaryClientBuilder::from_env().build().unwrap();
-/// let cmd = FolderDeleteCommand::new("/foo/bar".into()).recursive(true);
-/// match cmd.execute(&mut client) {
-///   Ok(res) => println!("success"),
-///   Err(err) => eprintln!("error: {:?}", err),
-/// }
-/// ```
 #[derive(Debug)]
-pub struct FolderDeleteCommand {
-    pub identifier: FolderIdentifier,
+pub struct FolderDeleteCommand<'a> {
+    pub identifier: FolderIdentifier<'a>,
     pub recursive: bool,
 }
 
-impl FolderDeleteCommand {
-    pub fn new(identifier: FolderIdentifier) -> Self {
+impl<'a> FolderDeleteCommand<'a> {
+    pub fn new(identifier: FolderIdentifier<'a>) -> Self {
         Self {
             identifier,
             recursive: false,
         }
     }
 
-    pub fn recursive(mut self, value: bool) -> Self {
+    pub fn set_recursive(&mut self, value: bool) {
+        self.recursive = value;
+    }
+
+    pub fn with_recursive(mut self, value: bool) -> Self {
         self.recursive = value;
         self
     }
@@ -74,33 +61,33 @@ impl FolderDeleteCommand {
 #[cfg(feature = "client-http")]
 mod http {
     use super::{FolderDeleteCommand, RecursivePayload};
+    use crate::client::HttpClient;
     use crate::error::Error;
-    use crate::folder::FolderResponse;
-    use crate::http::HttpClient;
+    use crate::folder::{FolderIdentifierParam, FolderResponse};
     use crate::prelude::HttpCommand;
-    use crate::request::Response;
 
-    impl FolderDeleteCommand {
-        async fn http_normal(&self, client: &HttpClient) -> Result<RecursivePayload, Error> {
-            let result: Response<FolderResponse> = client
-                .get_request("deletefolder", &self.identifier.to_http_params())
+    impl<'a> FolderDeleteCommand<'a> {
+        async fn http_normal(self, client: &HttpClient) -> Result<RecursivePayload, Error> {
+            let params = FolderIdentifierParam::from(self.identifier);
+            client
+                .get_request::<FolderResponse, _>("deletefolder", params)
                 .await?;
-            result.payload().map(|_| RecursivePayload {
+            Ok(RecursivePayload {
                 deleted_files: 0,
                 deleted_folders: 1,
             })
         }
 
-        async fn http_recursive(&self, client: &HttpClient) -> Result<RecursivePayload, Error> {
-            let result: Response<RecursivePayload> = client
-                .get_request("deletefolderrecursive", &self.identifier.to_http_params())
-                .await?;
-            result.payload()
+        async fn http_recursive(self, client: &HttpClient) -> Result<RecursivePayload, Error> {
+            let params = FolderIdentifierParam::from(self.identifier);
+            client
+                .get_request::<RecursivePayload, _>("deletefolderrecursive", params)
+                .await
         }
     }
 
     #[async_trait::async_trait]
-    impl HttpCommand for FolderDeleteCommand {
+    impl<'a> HttpCommand for FolderDeleteCommand<'a> {
         type Output = RecursivePayload;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
@@ -116,8 +103,8 @@ mod http {
 #[cfg(all(test, feature = "client-http"))]
 mod http_tests {
     use super::FolderDeleteCommand;
+    use crate::client::HttpClient;
     use crate::credentials::Credentials;
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::region::Region;
     use mockito::Matcher;
@@ -154,7 +141,7 @@ mod http_tests {
 }"#,
             )
             .create();
-        let creds = Credentials::AccessToken("access-token".into());
+        let creds = Credentials::access_token("access-token");
         let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
         let result = FolderDeleteCommand::new(42.into())

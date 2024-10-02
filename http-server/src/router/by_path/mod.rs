@@ -27,6 +27,8 @@ pub enum Error {
     UnableListFolder(#[source] pcloud::error::Error),
     #[error("unable to get file")]
     UnableGetFile(#[source] pcloud::error::Error),
+    #[error("unable to get file link")]
+    UnableGetLink,
 }
 
 impl Error {
@@ -151,7 +153,7 @@ async fn handle(
         let remote_path = root_prefix.root_path().join_file(local_path);
 
         let identifier: FileIdentifier = remote_path.to_string().into();
-        let link = if params.stream {
+        let list = if params.stream {
             let file = pcloud::file::checksum::FileCheckSumCommand::new(identifier.clone())
                 .execute(engine.as_ref())
                 .await
@@ -176,9 +178,10 @@ async fn handle(
                 .await
         };
 
-        let link = link.map_err(Error::UnableGetFile)?;
+        let list = list.map_err(Error::UnableGetFile)?;
+        let link = list.first_link().ok_or(Error::UnableGetLink)?;
 
-        Ok(Success::File(link))
+        Ok(Success::File(link.to_string()))
     }
 }
 

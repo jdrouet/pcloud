@@ -26,28 +26,49 @@ impl UserInfoCommand {
         self.get_auth = value;
     }
 
+    pub fn with_get_auth(mut self, value: bool) -> Self {
+        self.get_auth = value;
+        self
+    }
+
     pub fn set_logout(&mut self, value: bool) {
         self.logout = value;
+    }
+
+    pub fn with_logout(mut self, value: bool) -> Self {
+        self.logout = value;
+        self
     }
 }
 #[cfg(feature = "client-http")]
 mod http {
     use super::{UserInfo, UserInfoCommand};
+    use crate::client::HttpClient;
     use crate::error::Error;
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
-    use crate::request::Response;
 
-    impl UserInfoCommand {
-        fn to_http_params(&self) -> Vec<(&str, String)> {
-            let mut res = Vec::new();
-            if self.get_auth {
-                res.push(("getauth", 1.to_string()));
+    #[derive(serde::Serialize)]
+    struct UserInfoParams {
+        #[serde(
+            rename = "getauth",
+            skip_serializing_if = "crate::client::is_false",
+            serialize_with = "crate::client::serialize_bool"
+        )]
+        get_auth: bool,
+        #[serde(
+            rename = "getauth",
+            skip_serializing_if = "crate::client::is_false",
+            serialize_with = "crate::client::serialize_bool"
+        )]
+        logout: bool,
+    }
+
+    impl From<UserInfoCommand> for UserInfoParams {
+        fn from(value: UserInfoCommand) -> Self {
+            Self {
+                get_auth: value.get_auth,
+                logout: value.logout,
             }
-            if self.logout {
-                res.push(("logout", 1.to_string()));
-            }
-            res
         }
     }
 
@@ -55,11 +76,9 @@ mod http {
     impl HttpCommand for UserInfoCommand {
         type Output = UserInfo;
 
-        async fn execute(mut self, client: &HttpClient) -> Result<Self::Output, Error> {
-            let result: Response<UserInfo> = client
-                .get_request("userinfo", &self.to_http_params())
-                .await?;
-            result.payload()
+        async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
+            let params = UserInfoParams::from(self);
+            client.get_request::<UserInfo, _>("userinfo", params).await
         }
     }
 }
@@ -67,7 +86,7 @@ mod http {
 #[cfg(all(test, feature = "protected", feature = "client-http"))]
 mod http_tests {
     use super::UserInfoCommand;
-    use crate::http::HttpClientBuilder;
+    use crate::client::HttpClientBuilder;
     use crate::prelude::HttpCommand;
 
     #[tokio::test]

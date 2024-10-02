@@ -2,11 +2,9 @@
 mod date;
 /// The traits for implementing the commands
 pub mod prelude;
-/// The module to handle the responses from the server
-pub mod request;
 
 #[cfg(feature = "client-http")]
-pub mod http;
+pub mod client;
 
 pub mod credentials;
 pub mod region;

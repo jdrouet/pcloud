@@ -1,9 +1,9 @@
 use super::common::{get_checksum, try_get_file_checksum, try_get_folder, CompareMethod};
 use async_recursion::async_recursion;
 use clap::Parser;
+use pcloud::client::HttpClient;
 use pcloud::entry::{Entry, Folder};
 use pcloud::error::Error as PCloudError;
-use pcloud::http::HttpClient;
 use pcloud::prelude::HttpCommand;
 use std::collections::HashMap;
 use std::io::Error as IoError;

@@ -6,12 +6,12 @@
 ///
 /// [More about it on the documentation](https://docs.pcloud.com/methods/file/copyfile.html).
 ///
-/// # Example using the [`HttpClient`](crate::http::HttpClient)
+/// # Example using the [`HttpClient`](crate::client::HttpClient)
 ///
 /// To use this, the `client-http` feature should be enabled.
 ///
 /// ```
-/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::client::HttpClientBuilder;
 /// use pcloud::prelude::HttpCommand;
 /// use pcloud::file::copy::FileCopyCommand;
 ///
@@ -23,23 +23,6 @@
 ///   Err(err) => eprintln!("error: {:?}", err),
 /// }
 /// # })
-/// ```
-///
-/// # Example using the [`BinaryClient`](crate::binary::BinaryClient)
-///
-/// To use this, the `client-binary` feature should be enabled.
-///
-/// ```
-/// use pcloud::binary::BinaryClientBuilder;
-/// use pcloud::prelude::BinaryCommand;
-/// use pcloud::file::copy::FileCopyCommand;
-///
-/// let mut client = BinaryClientBuilder::from_env().build().unwrap();
-/// let cmd = FileCopyCommand::new(12, 42);
-/// match cmd.execute(&mut client) {
-///   Ok(res) => println!("success"),
-///   Err(err) => eprintln!("error: {:?}", err),
-/// }
 /// ```
 #[derive(Debug)]
 pub struct FileCopyCommand {
@@ -59,19 +42,26 @@ impl FileCopyCommand {
 #[cfg(feature = "client-http")]
 mod http {
     use super::FileCopyCommand;
+    use crate::client::HttpClient;
     use crate::entry::File;
     use crate::error::Error;
     use crate::file::FileResponse;
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
-    use crate::request::Response;
 
-    impl FileCopyCommand {
-        fn to_http_params(&self) -> Vec<(&str, String)> {
-            vec![
-                ("fileid", self.file_id.to_string()),
-                ("tofolderid", self.to_folder_id.to_string()),
-            ]
+    #[derive(serde::Serialize)]
+    struct FileCopyParams {
+        #[serde(rename = "fileid")]
+        file_id: u64,
+        #[serde(rename = "tofolderid")]
+        to_folder_id: u64,
+    }
+
+    impl From<FileCopyCommand> for FileCopyParams {
+        fn from(value: FileCopyCommand) -> Self {
+            Self {
+                file_id: value.file_id,
+                to_folder_id: value.to_folder_id,
+            }
         }
     }
 
@@ -80,10 +70,10 @@ mod http {
         type Output = File;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-            let result: Response<FileResponse> = client
-                .get_request("copyfile", &self.to_http_params())
-                .await?;
-            result.payload().map(|item| item.metadata)
+            client
+                .get_request::<FileResponse, _>("copyfile", FileCopyParams::from(self))
+                .await
+                .map(|item| item.metadata)
         }
     }
 }

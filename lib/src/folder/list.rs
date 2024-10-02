@@ -8,12 +8,12 @@ use super::FolderIdentifier;
 ///
 /// [More about it on the documentation](https://docs.pcloud.com/methods/folder/listfolder.html).
 ///
-/// # Example using the [`HttpClient`](crate::http::HttpClient)
+/// # Example using the [`HttpClient`](crate::client::HttpClient)
 ///
 /// To use this, the `client-http` feature should be enabled.
 ///
 /// ```
-/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::client::HttpClientBuilder;
 /// use pcloud::prelude::HttpCommand;
 /// use pcloud::folder::list::FolderListCommand;
 ///
@@ -26,34 +26,17 @@ use super::FolderIdentifier;
 /// }
 /// # })
 /// ```
-///
-/// # Example using the [`BinaryClient`](crate::binary::BinaryClient)
-///
-/// To use this, the `client-binary` feature should be enabled.
-///
-/// ```
-/// use pcloud::binary::BinaryClientBuilder;
-/// use pcloud::prelude::BinaryCommand;
-/// use pcloud::folder::list::FolderListCommand;
-///
-/// let mut client = BinaryClientBuilder::from_env().build().unwrap();
-/// let cmd = FolderListCommand::new("/".into());
-/// match cmd.execute(&mut client) {
-///   Ok(res) => println!("success"),
-///   Err(err) => eprintln!("error: {:?}", err),
-/// }
-/// ```
 #[derive(Debug)]
-pub struct FolderListCommand {
-    pub identifier: FolderIdentifier,
+pub struct FolderListCommand<'a> {
+    pub identifier: FolderIdentifier<'a>,
     pub recursive: bool,
     pub show_deleted: bool,
     pub no_files: bool,
     pub no_shares: bool,
 }
 
-impl FolderListCommand {
-    pub fn new(identifier: FolderIdentifier) -> Self {
+impl<'a> FolderListCommand<'a> {
+    pub fn new(identifier: FolderIdentifier<'a>) -> Self {
         Self {
             identifier,
             recursive: false,
@@ -64,25 +47,45 @@ impl FolderListCommand {
     }
 
     /// If is set full directory tree will be returned, which means that all directories will have contents filed.
-    pub fn recursive(mut self, value: bool) -> Self {
+    pub fn set_recursive(&mut self, value: bool) {
+        self.recursive = value;
+    }
+
+    /// If is set full directory tree will be returned, which means that all directories will have contents filed.
+    pub fn with_recursive(mut self, value: bool) -> Self {
         self.recursive = value;
         self
     }
 
     /// If is set, deleted files and folders that can be undeleted will be displayed.
-    pub fn show_deleted(mut self, value: bool) -> Self {
+    pub fn set_show_deleted(&mut self, value: bool) {
+        self.show_deleted = value;
+    }
+
+    /// If is set, deleted files and folders that can be undeleted will be displayed.
+    pub fn with_show_deleted(mut self, value: bool) -> Self {
         self.show_deleted = value;
         self
     }
 
     /// If is set, only the folder (sub)structure will be returned.
-    pub fn no_files(mut self, value: bool) -> Self {
+    pub fn set_no_files(&mut self, value: bool) {
+        self.no_files = value;
+    }
+
+    /// If is set, only the folder (sub)structure will be returned.
+    pub fn with_no_files(mut self, value: bool) -> Self {
         self.no_files = value;
         self
     }
 
     /// If is set, only user's own folders and files will be displayed.
-    pub fn no_shares(mut self, value: bool) -> Self {
+    pub fn set_no_shares(&mut self, value: bool) {
+        self.no_shares = value;
+    }
+
+    /// If is set, only user's own folders and files will be displayed.
+    pub fn with_no_shares(mut self, value: bool) -> Self {
         self.no_shares = value;
         self
     }
@@ -91,41 +94,61 @@ impl FolderListCommand {
 #[cfg(feature = "client-http")]
 mod http {
     use super::FolderListCommand;
+    use crate::client::HttpClient;
     use crate::entry::Folder;
     use crate::error::Error;
-    use crate::folder::FolderResponse;
-    use crate::http::HttpClient;
+    use crate::folder::{FolderIdentifierParam, FolderResponse};
     use crate::prelude::HttpCommand;
-    use crate::request::Response;
 
-    impl FolderListCommand {
-        fn to_http_params(&self) -> Vec<(&str, String)> {
-            let mut res = self.identifier.to_http_params();
-            if self.recursive {
-                res.push(("recursive", "1".to_string()));
+    #[derive(serde::Serialize)]
+    struct FolderListParams<'a> {
+        #[serde(flatten)]
+        identifier: FolderIdentifierParam<'a>,
+        #[serde(
+            skip_serializing_if = "crate::client::is_false",
+            serialize_with = "crate::client::serialize_bool"
+        )]
+        recursive: bool,
+        #[serde(
+            rename = "showdeleted",
+            skip_serializing_if = "crate::client::is_false",
+            serialize_with = "crate::client::serialize_bool"
+        )]
+        show_deleted: bool,
+        #[serde(
+            skip_serializing_if = "crate::client::is_false",
+            serialize_with = "crate::client::serialize_bool"
+        )]
+        no_files: bool,
+        #[serde(
+            skip_serializing_if = "crate::client::is_false",
+            serialize_with = "crate::client::serialize_bool"
+        )]
+        no_shares: bool,
+    }
+
+    impl<'a> From<FolderListCommand<'a>> for FolderListParams<'a> {
+        fn from(value: FolderListCommand<'a>) -> Self {
+            Self {
+                identifier: value.identifier.into(),
+                recursive: value.recursive,
+                show_deleted: value.show_deleted,
+                no_files: value.no_files,
+                no_shares: value.no_shares,
             }
-            if self.show_deleted {
-                res.push(("showdeleted", "1".to_string()));
-            }
-            if self.no_files {
-                res.push(("no_files", "1".to_string()));
-            }
-            if self.no_shares {
-                res.push(("no_shares", "1".to_string()));
-            }
-            res
         }
     }
 
     #[async_trait::async_trait]
-    impl HttpCommand for FolderListCommand {
+    impl<'a> HttpCommand for FolderListCommand<'a> {
         type Output = Folder;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-            let result: Response<FolderResponse> = client
-                .get_request("listfolder", &self.to_http_params())
-                .await?;
-            result.payload().map(|item| item.metadata)
+            let params = FolderListParams::from(self);
+            client
+                .get_request::<FolderResponse, _>("listfolder", params)
+                .await
+                .map(|res| res.metadata)
         }
     }
 }
@@ -133,8 +156,8 @@ mod http {
 #[cfg(all(test, feature = "client-http"))]
 mod http_tests {
     use super::FolderListCommand;
+    use crate::client::HttpClient;
     use crate::credentials::Credentials;
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::region::Region;
     use mockito::Matcher;
@@ -170,7 +193,7 @@ mod http_tests {
 }"#,
             )
             .create();
-        let creds = Credentials::AccessToken("access-token".into());
+        let creds = Credentials::access_token("access-token");
         let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
         let payload = FolderListCommand::new(0.into())
@@ -194,7 +217,7 @@ mod http_tests {
             .with_status(200)
             .with_body(r#"{ "result": 1020, "error": "something went wrong" }"#)
             .create();
-        let creds = Credentials::AccessToken("access-token".into());
+        let creds = Credentials::access_token("access-token");
         let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
         let error = FolderListCommand::new(0.into())

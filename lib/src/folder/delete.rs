@@ -65,14 +65,14 @@ mod http {
     use crate::error::Error;
     use crate::folder::{FolderIdentifierParam, FolderResponse};
     use crate::prelude::HttpCommand;
-    use crate::request::Response;
 
     impl<'a> FolderDeleteCommand<'a> {
         async fn http_normal(self, client: &HttpClient) -> Result<RecursivePayload, Error> {
             let params = FolderIdentifierParam::from(self.identifier);
-            let result: Response<FolderResponse> =
-                client.get_request("deletefolder", &params).await?;
-            result.payload().map(|_| RecursivePayload {
+            client
+                .get_request::<FolderResponse, _>("deletefolder", params)
+                .await?;
+            Ok(RecursivePayload {
                 deleted_files: 0,
                 deleted_folders: 1,
             })
@@ -80,9 +80,9 @@ mod http {
 
         async fn http_recursive(self, client: &HttpClient) -> Result<RecursivePayload, Error> {
             let params = FolderIdentifierParam::from(self.identifier);
-            let result: Response<RecursivePayload> =
-                client.get_request("deletefolderrecursive", &params).await?;
-            result.payload()
+            client
+                .get_request::<RecursivePayload, _>("deletefolderrecursive", params)
+                .await
         }
     }
 

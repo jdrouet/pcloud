@@ -47,7 +47,6 @@ mod http {
     use crate::error::Error;
     use crate::file::FileResponse;
     use crate::prelude::HttpCommand;
-    use crate::request::Response;
 
     #[derive(serde::Serialize)]
     struct FileCopyParams {
@@ -71,9 +70,10 @@ mod http {
         type Output = File;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-            let params = FileCopyParams::from(self);
-            let result: Response<FileResponse> = client.get_request("copyfile", &params).await?;
-            result.payload().map(|item| item.metadata)
+            client
+                .get_request::<FileResponse, _>("copyfile", FileCopyParams::from(self))
+                .await
+                .map(|item| item.metadata)
         }
     }
 }

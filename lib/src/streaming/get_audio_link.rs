@@ -46,8 +46,7 @@ mod http {
     use crate::error::Error;
     use crate::file::FileIdentifierParam;
     use crate::prelude::HttpCommand;
-    use crate::request::Response;
-    use crate::streaming::Payload;
+    use crate::streaming::SteamingLinkList;
 
     #[derive(serde::Serialize)]
     struct GetAudioLinkParams<'a> {
@@ -75,12 +74,13 @@ mod http {
 
     #[async_trait::async_trait]
     impl<'a> HttpCommand for GetAudioLinkCommand<'a> {
-        type Output = String;
+        type Output = SteamingLinkList;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
             let params = GetAudioLinkParams::from(self);
-            let result: Response<Payload> = client.get_request("getaudiolink", &params).await?;
-            result.payload().map(|item| item.to_url())
+            client
+                .get_request::<SteamingLinkList, _>("getaudiolink", params)
+                .await
         }
     }
 }

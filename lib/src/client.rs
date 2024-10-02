@@ -184,15 +184,16 @@ async fn read_response<T: serde::de::DeserializeOwned>(
     method: &str,
     res: reqwest::Response,
 ) -> Result<T, Error> {
-    if cfg!(test) {
+    let res: Response<T> = if cfg!(test) {
         let body = res.text().await?;
         println!("{} {}: {}", action, method, body);
-        Ok(serde_json::from_str(&body).unwrap())
+        serde_json::from_str(&body).unwrap()
     } else {
         let status = res.status();
         tracing::debug!("responded with status {status:?}");
-        res.json::<T>().await.map_err(Error::from)
-    }
+        res.json::<Response<T>>().await.map_err(Error::from)?
+    };
+    res.payload()
 }
 
 impl HttpClient {
@@ -204,7 +205,7 @@ impl HttpClient {
     pub(crate) async fn get_request<T: serde::de::DeserializeOwned, P: serde::Serialize>(
         &self,
         method: &str,
-        params: &P,
+        params: P,
     ) -> Result<T, Error> {
         let uri = self.build_url(method);
         tracing::debug!("calling {uri}");
@@ -224,7 +225,7 @@ impl HttpClient {
     pub(crate) async fn put_request_data<T: serde::de::DeserializeOwned, P: serde::Serialize>(
         &self,
         method: &str,
-        params: &P,
+        params: P,
         payload: Vec<u8>,
     ) -> Result<T, Error> {
         let uri = self.build_url(method);
@@ -248,7 +249,7 @@ impl HttpClient {
     >(
         &self,
         method: &str,
-        params: &P,
+        params: P,
         form: reqwest::multipart::Form,
     ) -> Result<T, Error> {
         let uri = self.build_url(method);
@@ -273,13 +274,37 @@ struct WithCredentials<'a, I> {
     inner: I,
 }
 
-pub fn is_false(value: &bool) -> bool {
+pub(crate) fn is_false(value: &bool) -> bool {
     !*value
 }
 
-pub fn serialize_bool<S>(value: &bool, serializer: S) -> Result<S::Ok, S::Error>
+pub(crate) fn serialize_bool<S>(value: &bool, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
     serializer.serialize_i8(if *value { 1 } else { 0 })
+}
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(untagged)]
+enum Response<T> {
+    Error {
+        result: u16,
+        error: String,
+    },
+    Success {
+        #[allow(unused)]
+        result: u16,
+        #[serde(flatten)]
+        payload: T,
+    },
+}
+
+impl<T> Response<T> {
+    fn payload(self) -> Result<T, Error> {
+        match self {
+            Self::Error { result, error } => Err(Error::Protocol(result, error)),
+            Self::Success { payload, .. } => Ok(payload),
+        }
+    }
 }

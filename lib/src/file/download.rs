@@ -55,9 +55,16 @@ mod http {
         type Output = usize;
 
         async fn execute(mut self, client: &HttpClient) -> Result<Self::Output, Error> {
-            let link = GetFileLinkCommand::new(self.identifier)
+            let links = GetFileLinkCommand::new(self.identifier)
                 .execute(client)
                 .await?;
+            let link = links.first_link().ok_or_else(|| {
+                Error::Download(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "unable to find a link for requested file",
+                ))
+            })?;
+            let link = link.to_string();
             let mut req = client.client.get(&link).send().await?;
             let mut size = 0;
             while let Some(chunk) = req.chunk().await? {

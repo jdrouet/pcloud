@@ -74,8 +74,7 @@ mod http {
     use crate::error::Error;
     use crate::file::FileIdentifierParam;
     use crate::prelude::HttpCommand;
-    use crate::request::Response;
-    use crate::streaming::Payload;
+    use crate::streaming::SteamingLinkList;
 
     #[derive(serde::Serialize)]
     /// Command to get video link for streaming
@@ -110,12 +109,13 @@ mod http {
 
     #[async_trait::async_trait]
     impl<'a> HttpCommand for GetVideoLinkCommand<'a> {
-        type Output = String;
+        type Output = SteamingLinkList;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
             let params = GetVideoLinkParams::from(self);
-            let result: Response<Payload> = client.get_request("getvideolink", &params).await?;
-            result.payload().map(|item| item.to_url())
+            client
+                .get_request::<SteamingLinkList, _>("getvideolink", params)
+                .await
         }
     }
 }

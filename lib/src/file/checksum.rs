@@ -52,7 +52,6 @@ mod http {
     use crate::error::Error;
     use crate::file::FileIdentifierParam;
     use crate::prelude::HttpCommand;
-    use crate::request::Response;
 
     #[async_trait::async_trait]
     impl<'a> HttpCommand for FileCheckSumCommand<'a> {
@@ -60,9 +59,7 @@ mod http {
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
             let params = FileIdentifierParam::from(self.identifier);
-            let result: Response<CheckSumFile> =
-                client.get_request("checksumfile", &params).await?;
-            result.payload()
+            client.get_request("checksumfile", params).await
         }
     }
 }

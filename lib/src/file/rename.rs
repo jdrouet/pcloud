@@ -94,7 +94,6 @@ mod http {
     use crate::file::{FileIdentifierParam, FileResponse};
     use crate::folder::FolderIdentifier;
     use crate::prelude::HttpCommand;
-    use crate::request::Response;
 
     #[derive(serde::Serialize)]
     #[serde(untagged)]
@@ -141,8 +140,10 @@ mod http {
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
             let params = FileMoveParams::from(self);
-            let result: Response<FileResponse> = client.get_request("renamefile", &params).await?;
-            result.payload().map(|item| item.metadata)
+            client
+                .get_request::<FileResponse, _>("renamefile", &params)
+                .await
+                .map(|item| item.metadata)
         }
     }
 
@@ -168,9 +169,10 @@ mod http {
         type Output = File;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-            let params = FileRenameParams::from(self);
-            let result: Response<FileResponse> = client.get_request("renamefile", &params).await?;
-            result.payload().map(|item| item.metadata)
+            client
+                .get_request::<FileResponse, _>("renamefile", FileRenameParams::from(self))
+                .await
+                .map(|item| item.metadata)
         }
     }
 }

@@ -47,16 +47,19 @@ mod http {
     use crate::file::FileIdentifierParam;
     use crate::file::FileResponse;
     use crate::prelude::HttpCommand;
-    use crate::request::Response;
 
     #[async_trait::async_trait]
     impl<'a> HttpCommand for FileDeleteCommand<'a> {
         type Output = File;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-            let params = FileIdentifierParam::from(self.identifier);
-            let result: Response<FileResponse> = client.get_request("deletefile", &params).await?;
-            result.payload().map(|res| res.metadata)
+            client
+                .get_request::<FileResponse, _>(
+                    "deletefile",
+                    FileIdentifierParam::from(self.identifier),
+                )
+                .await
+                .map(|res| res.metadata)
         }
     }
 }

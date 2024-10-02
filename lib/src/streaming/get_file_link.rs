@@ -44,17 +44,17 @@ mod http {
     use crate::error::Error;
     use crate::file::FileIdentifierParam;
     use crate::prelude::HttpCommand;
-    use crate::request::Response;
-    use crate::streaming::Payload;
+    use crate::streaming::SteamingLinkList;
 
     #[async_trait::async_trait]
     impl<'a> HttpCommand for GetFileLinkCommand<'a> {
-        type Output = String;
+        type Output = SteamingLinkList;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
             let params = FileIdentifierParam::from(self.identifier);
-            let result: Response<Payload> = client.get_request("getfilelink", &params).await?;
-            result.payload().map(|res| res.to_url())
+            client
+                .get_request::<SteamingLinkList, _>("getfilelink", params)
+                .await
         }
     }
 }
@@ -98,7 +98,8 @@ mod http_tests {
             .execute(&api)
             .await
             .unwrap();
-        assert_eq!(result, "https://edef2.pcloud.com/DLZCAt2vXZejNfL5ZruLVZZTk2ev7Z2ZZNR5ZZdoz6ZXZQZZErw4bH0PfzBQt3LlgXMliXVtietX/SAkdyBjkA7mQABbT.bin");
+        let mut iter = result.links();
+        assert_eq!(iter.next().unwrap().to_string(), "https://edef2.pcloud.com/DLZCAt2vXZejNfL5ZruLVZZTk2ev7Z2ZZNR5ZZdoz6ZXZQZZErw4bH0PfzBQt3LlgXMliXVtietX/SAkdyBjkA7mQABbT.bin");
         m.assert();
     }
 }

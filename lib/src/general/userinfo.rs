@@ -46,7 +46,6 @@ mod http {
     use crate::client::HttpClient;
     use crate::error::Error;
     use crate::prelude::HttpCommand;
-    use crate::request::Response;
 
     #[derive(serde::Serialize)]
     struct UserInfoParams {
@@ -79,8 +78,7 @@ mod http {
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
             let params = UserInfoParams::from(self);
-            let result: Response<UserInfo> = client.get_request("userinfo", &params).await?;
-            result.payload()
+            client.get_request::<UserInfo, _>("userinfo", params).await
         }
     }
 }

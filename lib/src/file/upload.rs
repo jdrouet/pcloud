@@ -163,7 +163,6 @@ mod http {
     use crate::file::FileResponse;
     use crate::folder::FolderIdentifierParam;
     use crate::prelude::HttpCommand;
-    use crate::request::Response;
     use reqwest::multipart;
     use std::io::Read;
 
@@ -184,14 +183,16 @@ mod http {
                 form = form.part(part_name, part);
             }
 
-            let params = FolderIdentifierParam::FolderId {
-                folderid: self.folder_id,
-            };
-            let result: Response<MultipartFileUploadResponse> = client
-                .post_request_multipart("uploadfile", &params, form)
-                .await?;
-
-            Ok(result.payload()?.metadata)
+            client
+                .post_request_multipart::<MultipartFileUploadResponse, _>(
+                    "uploadfile",
+                    FolderIdentifierParam::FolderId {
+                        folderid: self.folder_id,
+                    },
+                    form,
+                )
+                .await
+                .map(|res| res.metadata)
         }
     }
 
@@ -227,40 +228,39 @@ mod http {
         type Output = File;
 
         async fn execute(self, client: &HttpClient) -> Result<File, Error> {
-            let result: Response<CreateUploadPayload> = client
-                .get_request(
+            let upload_id = client
+                .get_request::<CreateUploadPayload, _>(
                     "upload_create",
-                    &CreateUploadParams {
+                    CreateUploadParams {
                         no_partial: self.no_partial,
                     },
                 )
-                .await?;
-            let upload_id = result.payload().map(|item| item.upload_id)?;
+                .await
+                .map(|res| res.upload_id)?;
 
             let mut reader = ChunkReader::new(self.reader, self.part_size);
 
             while let (offset, Some(chunk)) = reader.next_chunk()? {
-                let response: Response<()> = client
-                    .put_request_data(
+                client
+                    .put_request_data::<(), _>(
                         "upload_write",
-                        &UploadWriteParams { upload_id, offset },
+                        UploadWriteParams { upload_id, offset },
                         chunk,
                     )
                     .await?;
-                response.payload()?;
             }
 
-            let result: Response<FileResponse> = client
-                .get_request(
+            client
+                .get_request::<FileResponse, _>(
                     "upload_save",
-                    &UploadSaveParams {
+                    UploadSaveParams {
                         upload_id,
                         name: self.filename.as_ref(),
                         folder_id: self.folder_id,
                     },
                 )
-                .await?;
-            result.payload().map(|item| item.metadata)
+                .await
+                .map(|item| item.metadata)
         }
     }
 

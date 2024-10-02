@@ -71,7 +71,6 @@ mod http {
     use crate::error::Error;
     use crate::folder::FolderResponse;
     use crate::prelude::HttpCommand;
-    use crate::request::Response;
 
     #[derive(serde::Serialize)]
     struct FolderCreateParams<'a> {
@@ -96,8 +95,10 @@ mod http {
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
             let method = self.method();
             let params = FolderCreateParams::from(self);
-            let result: Response<FolderResponse> = client.get_request(method, &params).await?;
-            result.payload().map(|item| item.metadata)
+            client
+                .get_request::<FolderResponse, _>(method, params)
+                .await
+                .map(|item| item.metadata)
         }
     }
 }

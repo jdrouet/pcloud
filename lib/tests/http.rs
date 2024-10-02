@@ -1,5 +1,6 @@
 #![cfg(all(feature = "protected", feature = "client-http"))]
 
+use pcloud::client::HttpClientBuilder;
 use pcloud::file::checksum::FileCheckSumCommand;
 use pcloud::file::download::FileDownloadCommand;
 use pcloud::file::rename::FileRenameCommand;
@@ -9,7 +10,6 @@ use pcloud::folder::delete::FolderDeleteCommand;
 use pcloud::folder::rename::FolderMoveCommand;
 use pcloud::folder::rename::FolderRenameCommand;
 use pcloud::folder::ROOT;
-use pcloud::http::HttpClientBuilder;
 use pcloud::prelude::HttpCommand;
 use pcloud::streaming::get_file_link::GetFileLinkCommand;
 use rand::distributions::Alphanumeric;

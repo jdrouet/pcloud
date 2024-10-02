@@ -1,5 +1,5 @@
+use pcloud::client::{HttpClient, HttpClientBuilder, HttpClientBuilderError};
 use pcloud::credentials::Credentials;
-use pcloud::http::{HttpClient, HttpClientBuilder, HttpClientBuilderError};
 use pcloud::region::Region;
 use serde::Deserialize;
 use std::path::Path;

@@ -1,5 +1,5 @@
+use pcloud::client::{HttpClient, HttpClientBuilder};
 use pcloud::error::Error;
-use pcloud::http::{HttpClient, HttpClientBuilder};
 use pcloud::prelude::HttpCommand;
 use rand::distributions::Alphanumeric;
 use rand::Rng;

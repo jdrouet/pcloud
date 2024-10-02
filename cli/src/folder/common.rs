@@ -1,7 +1,7 @@
 use async_recursion::async_recursion;
+use pcloud::client::HttpClient;
 use pcloud::entry::{Entry, Folder};
 use pcloud::error::Error;
-use pcloud::http::HttpClient;
 use pcloud::prelude::HttpCommand;
 use sha2::{Digest, Sha256};
 use std::path::Path;

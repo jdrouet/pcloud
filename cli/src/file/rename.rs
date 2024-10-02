@@ -1,6 +1,6 @@
 use clap::Parser;
+use pcloud::client::HttpClient;
 use pcloud::file::rename::FileRenameCommand;
-use pcloud::http::HttpClient;
 use pcloud::prelude::HttpCommand;
 
 #[derive(Parser)]

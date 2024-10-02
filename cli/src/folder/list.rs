@@ -1,7 +1,7 @@
 use clap::Parser;
+use pcloud::client::HttpClient;
 use pcloud::entry::Entry;
 use pcloud::folder::list::FolderListCommand;
-use pcloud::http::HttpClient;
 use pcloud::prelude::HttpCommand;
 
 #[derive(Parser)]

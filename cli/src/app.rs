@@ -1,5 +1,5 @@
 use clap::Parser;
-use pcloud::http::HttpClient;
+use pcloud::client::HttpClient;
 use std::path::PathBuf;
 
 #[derive(Parser)]

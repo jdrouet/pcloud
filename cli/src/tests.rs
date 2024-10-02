@@ -77,7 +77,7 @@ pub(crate) async fn scan_remote_dir(
     folder_id: u64,
 ) -> Result<HashSet<String>, Error> {
     let folder = pcloud::folder::list::FolderListCommand::new(folder_id.into())
-        .recursive(true)
+        .with_recursive(true)
         .execute(client)
         .await?;
     let root = PathBuf::from("/");
@@ -108,7 +108,7 @@ pub(crate) async fn create_remote_file(
 
 pub(crate) async fn delete_remote_dir(client: &HttpClient, folder_id: u64) -> Result<(), Error> {
     let _ = pcloud::folder::delete::FolderDeleteCommand::new(folder_id.into())
-        .recursive(true)
+        .with_recursive(true)
         .execute(client)
         .await?;
     Ok(())

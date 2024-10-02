@@ -5,6 +5,7 @@ use pcloud::file::checksum::FileCheckSumCommand;
 use pcloud::file::download::FileDownloadCommand;
 use pcloud::file::rename::FileRenameCommand;
 use pcloud::file::upload::FileUploadCommand;
+use pcloud::file::FileIdentifier;
 use pcloud::folder::create::FolderCreateCommand;
 use pcloud::folder::delete::FolderDeleteCommand;
 use pcloud::folder::rename::FolderMoveCommand;
@@ -94,7 +95,7 @@ async fn complete() {
         .unwrap();
     assert_eq!(buffer, filecontent);
     // rename file
-    let renamed_file = FileRenameCommand::new(file.file_id.into(), "hello.world".into())
+    let renamed_file = FileRenameCommand::new(FileIdentifier::FileId(file.file_id), "hello.world")
         .execute(&client)
         .await
         .unwrap();
@@ -118,7 +119,7 @@ async fn complete() {
     assert_eq!(moved.base.parent_folder_id, Some(folder.folder_id));
     // delete folder
     let result = FolderDeleteCommand::new(folder.folder_id.into())
-        .recursive(true)
+        .with_recursive(true)
         .execute(&client)
         .await
         .unwrap();

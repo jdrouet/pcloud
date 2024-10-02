@@ -1,7 +1,47 @@
 //! Resources needed to rename a file
 
+use std::borrow::Cow;
+
 use super::FileIdentifier;
 use crate::folder::FolderIdentifier;
+
+/// Command to move a file
+///
+/// Executing this command will return a [`File`](crate::entry::File) on success.
+///
+/// [More about it on the documentation](https://docs.pcloud.com/methods/file/renamefile.html).
+///
+/// # Example using the [`HttpClient`](crate::client::HttpClient)
+///
+/// To use this, the `client-http` feature should be enabled.
+///
+/// ```
+/// use pcloud::client::HttpClientBuilder;
+/// use pcloud::prelude::HttpCommand;
+/// use pcloud::file::FileIdentifier;
+/// use pcloud::file::rename::FileMoveCommand;
+/// use pcloud::folder::FolderIdentifier;
+///
+/// # tokio_test::block_on(async {
+/// let client = HttpClientBuilder::from_env().build().unwrap();
+/// let cmd = FileMoveCommand::new(FileIdentifier::path("/foo/bar"), FolderIdentifier::path("/foz"));
+/// match cmd.execute(&client).await {
+///   Ok(res) => println!("success"),
+///   Err(err) => eprintln!("error: {:?}", err),
+/// }
+/// # })
+/// ```
+#[derive(Debug)]
+pub struct FileMoveCommand<'a> {
+    pub from: FileIdentifier<'a>,
+    pub to: FolderIdentifier<'a>,
+}
+
+impl<'a> FileMoveCommand<'a> {
+    pub fn new(from: FileIdentifier<'a>, to: FolderIdentifier<'a>) -> Self {
+        Self { from, to }
+    }
+}
 
 /// Command to rename a file
 ///
@@ -16,11 +56,12 @@ use crate::folder::FolderIdentifier;
 /// ```
 /// use pcloud::client::HttpClientBuilder;
 /// use pcloud::prelude::HttpCommand;
+/// use pcloud::file::FileIdentifier;
 /// use pcloud::file::rename::FileRenameCommand;
 ///
 /// # tokio_test::block_on(async {
 /// let client = HttpClientBuilder::from_env().build().unwrap();
-/// let cmd = FileRenameCommand::new("/foo/bar.txt".into(), "/foo/baz.txt".into());
+/// let cmd = FileRenameCommand::new(FileIdentifier::path("/foo/bar"), "/foo/baz.txt");
 /// match cmd.execute(&client).await {
 ///   Ok(res) => println!("success"),
 ///   Err(err) => eprintln!("error: {:?}", err),
@@ -28,30 +69,24 @@ use crate::folder::FolderIdentifier;
 /// # })
 /// ```
 #[derive(Debug)]
-pub struct FileMoveCommand {
-    pub from: FileIdentifier,
-    pub to: FolderIdentifier,
+pub struct FileRenameCommand<'a> {
+    pub identifier: FileIdentifier<'a>,
+    pub name: Cow<'a, str>,
 }
 
-impl FileMoveCommand {
-    pub fn new(from: FileIdentifier, to: FolderIdentifier) -> Self {
-        Self { from, to }
-    }
-}
-#[derive(Debug)]
-pub struct FileRenameCommand {
-    pub identifier: FileIdentifier,
-    pub name: String,
-}
-
-impl FileRenameCommand {
-    pub fn new(identifier: FileIdentifier, name: String) -> Self {
-        Self { identifier, name }
+impl<'a> FileRenameCommand<'a> {
+    pub fn new<N: Into<Cow<'a, str>>>(identifier: FileIdentifier<'a>, name: N) -> Self {
+        Self {
+            identifier,
+            name: name.into(),
+        }
     }
 }
 
 #[cfg(feature = "client-http")]
 mod http {
+    use std::borrow::Cow;
+
     use super::{FileMoveCommand, FileRenameCommand};
     use crate::client::HttpClient;
     use crate::entry::File;
@@ -63,10 +98,10 @@ mod http {
 
     #[derive(serde::Serialize)]
     #[serde(untagged)]
-    enum ToFolderIdentifierParam {
+    enum ToFolderIdentifierParam<'a> {
         Path {
             #[serde(rename = "topath")]
-            to_path: String,
+            to_path: Cow<'a, str>,
         },
         FolderId {
             #[serde(rename = "tofolderid")]
@@ -74,8 +109,8 @@ mod http {
         },
     }
 
-    impl From<FolderIdentifier> for ToFolderIdentifierParam {
-        fn from(value: FolderIdentifier) -> Self {
+    impl<'a> From<FolderIdentifier<'a>> for ToFolderIdentifierParam<'a> {
+        fn from(value: FolderIdentifier<'a>) -> Self {
             match value {
                 FolderIdentifier::Path(to_path) => Self::Path { to_path },
                 FolderIdentifier::FolderId(to_folder_id) => Self::FolderId { to_folder_id },
@@ -84,15 +119,15 @@ mod http {
     }
 
     #[derive(serde::Serialize)]
-    struct FileMoveParams {
+    struct FileMoveParams<'a> {
         #[serde(flatten)]
-        from: FileIdentifierParam,
+        from: FileIdentifierParam<'a>,
         #[serde(flatten)]
-        to: ToFolderIdentifierParam,
+        to: ToFolderIdentifierParam<'a>,
     }
 
-    impl From<FileMoveCommand> for FileMoveParams {
-        fn from(value: FileMoveCommand) -> Self {
+    impl<'a> From<FileMoveCommand<'a>> for FileMoveParams<'a> {
+        fn from(value: FileMoveCommand<'a>) -> Self {
             Self {
                 from: FileIdentifierParam::from(value.from),
                 to: ToFolderIdentifierParam::from(value.to),
@@ -101,7 +136,7 @@ mod http {
     }
 
     #[async_trait::async_trait]
-    impl HttpCommand for FileMoveCommand {
+    impl<'a> HttpCommand for FileMoveCommand<'a> {
         type Output = File;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
@@ -112,15 +147,15 @@ mod http {
     }
 
     #[derive(serde::Serialize)]
-    struct FileRenameParams {
+    struct FileRenameParams<'a> {
         #[serde(flatten)]
-        identifier: FileIdentifierParam,
+        identifier: FileIdentifierParam<'a>,
         #[serde(rename = "toname")]
-        to_name: String,
+        to_name: Cow<'a, str>,
     }
 
-    impl From<FileRenameCommand> for FileRenameParams {
-        fn from(value: FileRenameCommand) -> Self {
+    impl<'a> From<FileRenameCommand<'a>> for FileRenameParams<'a> {
+        fn from(value: FileRenameCommand<'a>) -> Self {
             Self {
                 identifier: FileIdentifierParam::from(value.identifier),
                 to_name: value.name,
@@ -129,7 +164,7 @@ mod http {
     }
 
     #[async_trait::async_trait]
-    impl HttpCommand for FileRenameCommand {
+    impl<'a> HttpCommand for FileRenameCommand<'a> {
         type Output = File;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {

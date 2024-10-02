@@ -1,6 +1,6 @@
 //! Resources needed to upload a file
 
-use std::io::Read;
+use std::{borrow::Cow, io::Read};
 
 /// Default size for splitting into chunks
 pub const DEFAULT_PART_SIZE: usize = 10485760;
@@ -117,7 +117,7 @@ pub struct MultipartFileUploadResponse {
 /// ```
 #[derive(Debug)]
 pub struct FileUploadCommand<'a, R> {
-    pub filename: &'a str,
+    pub filename: Cow<'a, str>,
     pub folder_id: u64,
     pub reader: R,
     pub no_partial: bool,
@@ -125,9 +125,9 @@ pub struct FileUploadCommand<'a, R> {
 }
 
 impl<'a, R: Read + Send> FileUploadCommand<'a, R> {
-    pub fn new(filename: &'a str, folder_id: u64, reader: R) -> Self {
+    pub fn new<F: Into<Cow<'a, str>>>(filename: F, folder_id: u64, reader: R) -> Self {
         Self {
-            filename,
+            filename: filename.into(),
             folder_id,
             reader,
             no_partial: false,
@@ -255,7 +255,7 @@ mod http {
                     "upload_save",
                     &UploadSaveParams {
                         upload_id,
-                        name: self.filename,
+                        name: self.filename.as_ref(),
                         folder_id: self.folder_id,
                     },
                 )

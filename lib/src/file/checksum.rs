@@ -28,12 +28,12 @@ use crate::entry::File;
 /// # })
 /// ```
 #[derive(Debug)]
-pub struct FileCheckSumCommand {
-    pub identifier: FileIdentifier,
+pub struct FileCheckSumCommand<'a> {
+    pub identifier: FileIdentifier<'a>,
 }
 
-impl FileCheckSumCommand {
-    pub fn new(identifier: FileIdentifier) -> Self {
+impl<'a> FileCheckSumCommand<'a> {
+    pub fn new(identifier: FileIdentifier<'a>) -> Self {
         Self { identifier }
     }
 }
@@ -55,7 +55,7 @@ mod http {
     use crate::request::Response;
 
     #[async_trait::async_trait]
-    impl HttpCommand for FileCheckSumCommand {
+    impl<'a> HttpCommand for FileCheckSumCommand<'a> {
         type Output = CheckSumFile;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {

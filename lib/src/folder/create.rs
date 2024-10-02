@@ -1,5 +1,7 @@
 //! Resources needed to copy a folder
 
+use std::borrow::Cow;
+
 /// Command to create a folder in a defined folder
 ///
 /// Executing this command will return a [`Folder`](crate::entry::Folder) on success.
@@ -25,16 +27,16 @@
 /// # })
 /// ```
 #[derive(Debug)]
-pub struct FolderCreateCommand {
-    pub name: String,
+pub struct FolderCreateCommand<'a> {
+    pub name: Cow<'a, str>,
     pub parent_id: u64,
     pub ignore_exists: bool,
 }
 
-impl FolderCreateCommand {
-    pub fn new(name: String, parent_id: u64) -> Self {
+impl<'a> FolderCreateCommand<'a> {
+    pub fn new<N: Into<Cow<'a, str>>>(name: N, parent_id: u64) -> Self {
         Self {
-            name,
+            name: name.into(),
             parent_id,
             ignore_exists: false,
         }
@@ -61,6 +63,8 @@ impl FolderCreateCommand {
 
 #[cfg(feature = "client-http")]
 mod http {
+    use std::borrow::Cow;
+
     use super::FolderCreateCommand;
     use crate::client::HttpClient;
     use crate::entry::Folder;
@@ -70,14 +74,14 @@ mod http {
     use crate::request::Response;
 
     #[derive(serde::Serialize)]
-    struct FolderCreateParams {
-        name: String,
+    struct FolderCreateParams<'a> {
+        name: Cow<'a, str>,
         #[serde(rename = "folderid")]
         folder_id: u64,
     }
 
-    impl From<FolderCreateCommand> for FolderCreateParams {
-        fn from(value: FolderCreateCommand) -> Self {
+    impl<'a> From<FolderCreateCommand<'a>> for FolderCreateParams<'a> {
+        fn from(value: FolderCreateCommand<'a>) -> Self {
             Self {
                 name: value.name,
                 folder_id: value.parent_id,
@@ -86,7 +90,7 @@ mod http {
     }
 
     #[async_trait::async_trait]
-    impl HttpCommand for FolderCreateCommand {
+    impl<'a> HttpCommand for FolderCreateCommand<'a> {
         type Output = Folder;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
@@ -142,7 +146,7 @@ mod http_tests {
         let creds = Credentials::access_token("access-token");
         let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
-        let result = FolderCreateCommand::new("testing".into(), 0)
+        let result = FolderCreateCommand::new("testing", 0)
             .execute(&api)
             .await
             .unwrap();
@@ -167,7 +171,7 @@ mod http_tests {
         let creds = Credentials::access_token("access-token");
         let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
-        let error = FolderCreateCommand::new("testing".into(), 0)
+        let error = FolderCreateCommand::new("testing", 0)
             .execute(&api)
             .await
             .unwrap_err();

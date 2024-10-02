@@ -35,13 +35,13 @@ pub struct RecursivePayload {
 /// # })
 /// ```
 #[derive(Debug)]
-pub struct FolderDeleteCommand {
-    pub identifier: FolderIdentifier,
+pub struct FolderDeleteCommand<'a> {
+    pub identifier: FolderIdentifier<'a>,
     pub recursive: bool,
 }
 
-impl FolderDeleteCommand {
-    pub fn new(identifier: FolderIdentifier) -> Self {
+impl<'a> FolderDeleteCommand<'a> {
+    pub fn new(identifier: FolderIdentifier<'a>) -> Self {
         Self {
             identifier,
             recursive: false,
@@ -67,7 +67,7 @@ mod http {
     use crate::prelude::HttpCommand;
     use crate::request::Response;
 
-    impl FolderDeleteCommand {
+    impl<'a> FolderDeleteCommand<'a> {
         async fn http_normal(self, client: &HttpClient) -> Result<RecursivePayload, Error> {
             let params = FolderIdentifierParam::from(self.identifier);
             let result: Response<FolderResponse> =
@@ -87,7 +87,7 @@ mod http {
     }
 
     #[async_trait::async_trait]
-    impl HttpCommand for FolderDeleteCommand {
+    impl<'a> HttpCommand for FolderDeleteCommand<'a> {
         type Output = RecursivePayload;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {

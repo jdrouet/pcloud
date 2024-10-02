@@ -1,5 +1,7 @@
 //! Resources needed to rename and move a folder
 
+use std::borrow::Cow;
+
 /// Command to rename a folder
 ///
 /// Executing this command will return a [`Folder`](crate::entry::Folder) on success.
@@ -17,7 +19,7 @@
 ///
 /// # tokio_test::block_on(async {
 /// let client = HttpClientBuilder::from_env().build().unwrap();
-/// let cmd = FolderRenameCommand::new(12, "foo".into());
+/// let cmd = FolderRenameCommand::new(12, "foo");
 /// match cmd.execute(&client).await {
 ///   Ok(res) => println!("success"),
 ///   Err(err) => eprintln!("error: {:?}", err),
@@ -25,14 +27,17 @@
 /// # })
 /// ```
 #[derive(Debug)]
-pub struct FolderRenameCommand {
+pub struct FolderRenameCommand<'a> {
     pub identifier: u64,
-    pub name: String,
+    pub name: Cow<'a, str>,
 }
 
-impl FolderRenameCommand {
-    pub fn new(identifier: u64, name: String) -> Self {
-        Self { identifier, name }
+impl<'a> FolderRenameCommand<'a> {
+    pub fn new(identifier: u64, name: impl Into<Cow<'a, str>>) -> Self {
+        Self {
+            identifier,
+            name: name.into(),
+        }
     }
 }
 
@@ -74,6 +79,8 @@ impl FolderMoveCommand {
 
 #[cfg(feature = "client-http")]
 mod http {
+    use std::borrow::Cow;
+
     use super::{FolderMoveCommand, FolderRenameCommand};
     use crate::client::HttpClient;
     use crate::entry::Folder;
@@ -83,15 +90,15 @@ mod http {
     use crate::request::Response;
 
     #[derive(serde::Serialize)]
-    struct FolderRenameParams {
+    struct FolderRenameParams<'a> {
         #[serde(rename = "folderid")]
         folder_id: u64,
         #[serde(rename = "toname")]
-        to_name: String,
+        to_name: Cow<'a, str>,
     }
 
-    impl From<FolderRenameCommand> for FolderRenameParams {
-        fn from(value: FolderRenameCommand) -> Self {
+    impl<'a> From<FolderRenameCommand<'a>> for FolderRenameParams<'a> {
+        fn from(value: FolderRenameCommand<'a>) -> Self {
             Self {
                 folder_id: value.identifier,
                 to_name: value.name,
@@ -100,7 +107,7 @@ mod http {
     }
 
     #[async_trait::async_trait]
-    impl HttpCommand for FolderRenameCommand {
+    impl<'a> HttpCommand for FolderRenameCommand<'a> {
         type Output = Folder;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {

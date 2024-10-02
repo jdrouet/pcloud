@@ -30,13 +30,13 @@ use std::io::Write;
 /// # })
 /// ```
 #[derive(Debug)]
-pub struct FileDownloadCommand<W> {
-    pub identifier: FileIdentifier,
+pub struct FileDownloadCommand<'a, W> {
+    pub identifier: FileIdentifier<'a>,
     pub writer: W,
 }
 
-impl<W: Write> FileDownloadCommand<W> {
-    pub fn new(identifier: FileIdentifier, writer: W) -> Self {
+impl<'a, W: Write> FileDownloadCommand<'a, W> {
+    pub fn new(identifier: FileIdentifier<'a>, writer: W) -> Self {
         Self { identifier, writer }
     }
 }
@@ -51,7 +51,7 @@ mod http {
     use std::io::Write;
 
     #[async_trait::async_trait]
-    impl<W: Write + Send> HttpCommand for FileDownloadCommand<W> {
+    impl<'a, W: Write + Send> HttpCommand for FileDownloadCommand<'a, W> {
         type Output = usize;
 
         async fn execute(mut self, client: &HttpClient) -> Result<Self::Output, Error> {

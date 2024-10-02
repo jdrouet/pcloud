@@ -27,16 +27,16 @@ use super::FolderIdentifier;
 /// # })
 /// ```
 #[derive(Debug)]
-pub struct FolderListCommand {
-    pub identifier: FolderIdentifier,
+pub struct FolderListCommand<'a> {
+    pub identifier: FolderIdentifier<'a>,
     pub recursive: bool,
     pub show_deleted: bool,
     pub no_files: bool,
     pub no_shares: bool,
 }
 
-impl FolderListCommand {
-    pub fn new(identifier: FolderIdentifier) -> Self {
+impl<'a> FolderListCommand<'a> {
+    pub fn new(identifier: FolderIdentifier<'a>) -> Self {
         Self {
             identifier,
             recursive: false,
@@ -102,9 +102,9 @@ mod http {
     use crate::request::Response;
 
     #[derive(serde::Serialize)]
-    struct FolderListParams {
+    struct FolderListParams<'a> {
         #[serde(flatten)]
-        identifier: FolderIdentifierParam,
+        identifier: FolderIdentifierParam<'a>,
         #[serde(
             skip_serializing_if = "crate::client::is_false",
             serialize_with = "crate::client::serialize_bool"
@@ -128,8 +128,8 @@ mod http {
         no_shares: bool,
     }
 
-    impl From<FolderListCommand> for FolderListParams {
-        fn from(value: FolderListCommand) -> Self {
+    impl<'a> From<FolderListCommand<'a>> for FolderListParams<'a> {
+        fn from(value: FolderListCommand<'a>) -> Self {
             Self {
                 identifier: value.identifier.into(),
                 recursive: value.recursive,
@@ -141,7 +141,7 @@ mod http {
     }
 
     #[async_trait::async_trait]
-    impl HttpCommand for FolderListCommand {
+    impl<'a> HttpCommand for FolderListCommand<'a> {
         type Output = Folder;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {

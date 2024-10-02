@@ -28,12 +28,12 @@ use super::FileIdentifier;
 /// ```
 
 #[derive(Debug)]
-pub struct FileDeleteCommand {
-    pub identifier: FileIdentifier,
+pub struct FileDeleteCommand<'a> {
+    pub identifier: FileIdentifier<'a>,
 }
 
-impl FileDeleteCommand {
-    pub fn new(identifier: FileIdentifier) -> Self {
+impl<'a> FileDeleteCommand<'a> {
+    pub fn new(identifier: FileIdentifier<'a>) -> Self {
         Self { identifier }
     }
 }
@@ -50,7 +50,7 @@ mod http {
     use crate::request::Response;
 
     #[async_trait::async_trait]
-    impl HttpCommand for FileDeleteCommand {
+    impl<'a> HttpCommand for FileDeleteCommand<'a> {
         type Output = File;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {

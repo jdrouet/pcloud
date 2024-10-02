@@ -27,12 +27,12 @@ use crate::file::FileIdentifier;
 /// # })
 /// ```
 #[derive(Debug)]
-pub struct GetFileLinkCommand {
-    pub identifier: FileIdentifier,
+pub struct GetFileLinkCommand<'a> {
+    pub identifier: FileIdentifier<'a>,
 }
 
-impl GetFileLinkCommand {
-    pub fn new(identifier: FileIdentifier) -> Self {
+impl<'a> GetFileLinkCommand<'a> {
+    pub fn new(identifier: FileIdentifier<'a>) -> Self {
         Self { identifier }
     }
 }
@@ -48,7 +48,7 @@ mod http {
     use crate::streaming::Payload;
 
     #[async_trait::async_trait]
-    impl HttpCommand for GetFileLinkCommand {
+    impl<'a> HttpCommand for GetFileLinkCommand<'a> {
         type Output = String;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {

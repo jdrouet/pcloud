@@ -2,17 +2,17 @@ use crate::file::FileIdentifier;
 
 #[derive(Debug)]
 /// Command to get the audio link for streaming
-pub struct GetAudioLinkCommand {
+pub struct GetAudioLinkCommand<'a> {
     /// File identifier
-    pub identifier: FileIdentifier,
+    pub identifier: FileIdentifier<'a>,
     /// int audio bit rate in kilobits, from 16 to 320
     pub audio_bit_rate: Option<u16>,
     /// Download with Content-Type = application/octet-stream
     pub force_download: bool,
 }
 
-impl GetAudioLinkCommand {
-    pub fn new(identifier: FileIdentifier) -> Self {
+impl<'a> GetAudioLinkCommand<'a> {
+    pub fn new(identifier: FileIdentifier<'a>) -> Self {
         Self {
             identifier,
             audio_bit_rate: None,
@@ -50,9 +50,9 @@ mod http {
     use crate::streaming::Payload;
 
     #[derive(serde::Serialize)]
-    struct GetAudioLinkParams {
+    struct GetAudioLinkParams<'a> {
         #[serde(flatten)]
-        identifier: FileIdentifierParam,
+        identifier: FileIdentifierParam<'a>,
         #[serde(rename = "abitrate", skip_serializing_if = "Option::is_none")]
         audio_bit_rate: Option<u16>,
         #[serde(
@@ -63,8 +63,8 @@ mod http {
         force_download: bool,
     }
 
-    impl From<GetAudioLinkCommand> for GetAudioLinkParams {
-        fn from(value: GetAudioLinkCommand) -> Self {
+    impl<'a> From<GetAudioLinkCommand<'a>> for GetAudioLinkParams<'a> {
+        fn from(value: GetAudioLinkCommand<'a>) -> Self {
             Self {
                 identifier: FileIdentifierParam::from(value.identifier),
                 audio_bit_rate: value.audio_bit_rate,
@@ -74,7 +74,7 @@ mod http {
     }
 
     #[async_trait::async_trait]
-    impl HttpCommand for GetAudioLinkCommand {
+    impl<'a> HttpCommand for GetAudioLinkCommand<'a> {
         type Output = String;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {

@@ -135,12 +135,20 @@ impl<'a, R: Read + Send> FileUploadCommand<'a, R> {
         }
     }
 
-    pub fn no_partial(mut self, no_partial: bool) -> Self {
+    pub fn set_no_partial(&mut self, no_partial: bool) {
+        self.no_partial = no_partial;
+    }
+
+    pub fn with_no_partial(mut self, no_partial: bool) -> Self {
         self.no_partial = no_partial;
         self
     }
 
-    pub fn part_size(mut self, part_size: usize) -> Self {
+    pub fn set_part_size(&mut self, part_size: usize) {
+        self.part_size = part_size;
+    }
+
+    pub fn with_part_size(mut self, part_size: usize) -> Self {
         self.part_size = part_size;
         self
     }

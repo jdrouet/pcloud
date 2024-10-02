@@ -48,7 +48,11 @@ impl FolderDeleteCommand {
         }
     }
 
-    pub fn recursive(mut self, value: bool) -> Self {
+    pub fn set_recursive(&mut self, value: bool) {
+        self.recursive = value;
+    }
+
+    pub fn with_recursive(mut self, value: bool) -> Self {
         self.recursive = value;
         self
     }

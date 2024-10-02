@@ -24,7 +24,7 @@ impl GetAudioLinkCommand {
         self.audio_bit_rate = value;
     }
 
-    pub fn audio_bit_rate(mut self, value: u16) -> Self {
+    pub fn with_audio_bit_rate(mut self, value: u16) -> Self {
         self.audio_bit_rate = Some(value);
         self
     }
@@ -33,7 +33,7 @@ impl GetAudioLinkCommand {
         self.force_download = value;
     }
 
-    pub fn force_download(mut self, value: bool) -> Self {
+    pub fn with_force_download(mut self, value: bool) -> Self {
         self.force_download = value;
         self
     }

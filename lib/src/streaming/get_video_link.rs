@@ -30,7 +30,7 @@ impl GetVideoLinkCommand {
         self.audio_bit_rate = value;
     }
 
-    pub fn audio_bit_rate(mut self, value: u16) -> Self {
+    pub fn with_audio_bit_rate(mut self, value: u16) -> Self {
         self.audio_bit_rate = Some(value);
         self
     }
@@ -39,7 +39,7 @@ impl GetVideoLinkCommand {
         self.video_bit_rate = value;
     }
 
-    pub fn video_bit_rate(mut self, value: u32) -> Self {
+    pub fn with_video_bit_rate(mut self, value: u32) -> Self {
         self.video_bit_rate = Some(value);
         self
     }
@@ -48,7 +48,7 @@ impl GetVideoLinkCommand {
         self.resolution = value;
     }
 
-    pub fn resolution(mut self, value: String) -> Self {
+    pub fn with_resolution(mut self, value: String) -> Self {
         self.resolution = Some(value);
         self
     }
@@ -57,7 +57,7 @@ impl GetVideoLinkCommand {
         self.fixed_bit_rate = value;
     }
 
-    pub fn fixed_bit_rate(mut self, value: bool) -> Self {
+    pub fn with_fixed_bit_rate(mut self, value: bool) -> Self {
         self.fixed_bit_rate = value;
         self
     }

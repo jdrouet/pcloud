@@ -40,7 +40,11 @@ impl FolderCreateCommand {
         }
     }
 
-    pub fn ignore_exists(mut self, value: bool) -> Self {
+    pub fn set_ignore_exists(&mut self, value: bool) {
+        self.ignore_exists = value;
+    }
+
+    pub fn with_ignore_exists(mut self, value: bool) -> Self {
         self.ignore_exists = value;
         self
     }

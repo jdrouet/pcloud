@@ -47,25 +47,45 @@ impl FolderListCommand {
     }
 
     /// If is set full directory tree will be returned, which means that all directories will have contents filed.
-    pub fn recursive(mut self, value: bool) -> Self {
+    pub fn set_recursive(&mut self, value: bool) {
+        self.recursive = value;
+    }
+
+    /// If is set full directory tree will be returned, which means that all directories will have contents filed.
+    pub fn with_recursive(mut self, value: bool) -> Self {
         self.recursive = value;
         self
     }
 
     /// If is set, deleted files and folders that can be undeleted will be displayed.
-    pub fn show_deleted(mut self, value: bool) -> Self {
+    pub fn set_show_deleted(&mut self, value: bool) {
+        self.show_deleted = value;
+    }
+
+    /// If is set, deleted files and folders that can be undeleted will be displayed.
+    pub fn with_show_deleted(mut self, value: bool) -> Self {
         self.show_deleted = value;
         self
     }
 
     /// If is set, only the folder (sub)structure will be returned.
-    pub fn no_files(mut self, value: bool) -> Self {
+    pub fn set_no_files(&mut self, value: bool) {
+        self.no_files = value;
+    }
+
+    /// If is set, only the folder (sub)structure will be returned.
+    pub fn with_no_files(mut self, value: bool) -> Self {
         self.no_files = value;
         self
     }
 
     /// If is set, only user's own folders and files will be displayed.
-    pub fn no_shares(mut self, value: bool) -> Self {
+    pub fn set_no_shares(&mut self, value: bool) {
+        self.no_shares = value;
+    }
+
+    /// If is set, only user's own folders and files will be displayed.
+    pub fn with_no_shares(mut self, value: bool) -> Self {
         self.no_shares = value;
         self
     }

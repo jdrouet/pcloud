@@ -26,8 +26,18 @@ impl UserInfoCommand {
         self.get_auth = value;
     }
 
+    pub fn with_get_auth(mut self, value: bool) -> Self {
+        self.get_auth = value;
+        self
+    }
+
     pub fn set_logout(&mut self, value: bool) {
         self.logout = value;
+    }
+
+    pub fn with_logout(mut self, value: bool) -> Self {
+        self.logout = value;
+        self
     }
 }
 #[cfg(feature = "client-http")]

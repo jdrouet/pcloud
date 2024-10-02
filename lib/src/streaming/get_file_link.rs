@@ -8,12 +8,12 @@ use crate::file::FileIdentifier;
 ///
 /// [More about it on the documentation](https://docs.pcloud.com/methods/streaming/getfilelink.html)
 ///
-/// # Example using the [`HttpClient`](crate::http::HttpClient)
+/// # Example using the [`HttpClient`](crate::client::HttpClient)
 ///
 /// To use this, the `client-http` feature should be enabled.
 ///
 /// ```
-/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::client::HttpClientBuilder;
 /// use pcloud::prelude::HttpCommand;
 /// use pcloud::streaming::get_file_link::GetFileLinkCommand;
 ///
@@ -40,9 +40,9 @@ impl GetFileLinkCommand {
 #[cfg(feature = "client-http")]
 mod http {
     use super::GetFileLinkCommand;
+    use crate::client::HttpClient;
     use crate::error::Error;
     use crate::file::FileIdentifierParam;
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::request::Response;
     use crate::streaming::Payload;
@@ -62,8 +62,8 @@ mod http {
 #[cfg(all(test, feature = "client-http"))]
 mod http_tests {
     use super::GetFileLinkCommand;
+    use crate::client::HttpClient;
     use crate::credentials::Credentials;
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::region::Region;
     use mockito::Matcher;

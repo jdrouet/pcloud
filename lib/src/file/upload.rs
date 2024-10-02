@@ -60,12 +60,12 @@ impl MultipartFileUploadCommand {
 ///
 /// [More about it on the documentation](https://docs.pcloud.com/methods/file/uploadfile.html).
 ///
-/// # Example using the [`HttpClient`](crate::http::HttpClient)
+/// # Example using the [`HttpClient`](crate::client::HttpClient)
 ///
 /// To use this, the `client-http` feature should be enabled.
 ///
 /// ```
-/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::client::HttpClientBuilder;
 /// use pcloud::prelude::HttpCommand;
 /// use pcloud::file::upload::MultipartFileUploadCommand;
 /// use std::fs::File;
@@ -95,12 +95,12 @@ pub struct MultipartFileUploadResponse {
 ///
 /// [More about it on the documentation](https://docs.pcloud.com/methods/file/uploadfile.html).
 ///
-/// # Example using the [`HttpClient`](crate::http::HttpClient)
+/// # Example using the [`HttpClient`](crate::client::HttpClient)
 ///
 /// To use this, the `client-http` feature should be enabled.
 ///
 /// ```
-/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::client::HttpClientBuilder;
 /// use pcloud::prelude::HttpCommand;
 /// use pcloud::file::upload::FileUploadCommand;
 /// use std::fs::File;
@@ -157,11 +157,11 @@ impl<'a, R: Read + Send> FileUploadCommand<'a, R> {
 #[cfg(feature = "client-http")]
 mod http {
     use super::{FileUploadCommand, MultipartFileUploadCommand, MultipartFileUploadResponse};
+    use crate::client::HttpClient;
     use crate::entry::File;
     use crate::error::Error;
     use crate::file::FileResponse;
     use crate::folder::FolderIdentifierParam;
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::request::Response;
     use reqwest::multipart;
@@ -199,8 +199,8 @@ mod http {
     struct CreateUploadParams {
         #[serde(
             rename = "nopartial",
-            skip_serializing_if = "crate::http::is_false",
-            serialize_with = "crate::http::serialize_bool"
+            skip_serializing_if = "crate::client::is_false",
+            serialize_with = "crate::client::serialize_bool"
         )]
         no_partial: bool,
     }
@@ -311,8 +311,8 @@ mod http {
 #[cfg(all(test, feature = "client-http"))]
 mod http_tests {
     use super::{FileUploadCommand, MultipartFileUploadCommand};
+    use crate::client::HttpClient;
     use crate::credentials::Credentials;
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::region::Region;
     use mockito::Matcher;
@@ -330,7 +330,7 @@ mod http_tests {
             ]))
             .match_body(Matcher::Any)
             .match_header("accept", "*/*")
-            .match_header("user-agent", crate::http::USER_AGENT)
+            .match_header("user-agent", crate::client::USER_AGENT)
             .match_header(
                 "content-type",
                 Matcher::Regex("multipart/form-data; boundary=.*".to_string()),
@@ -446,8 +446,11 @@ mod http_tests {
         let api = HttpClient::new(creds, dc);
         //
         let cursor = std::io::Cursor::new("hello world!");
-        let cmd = FileUploadCommand::new("testing.txt", 0, cursor).no_partial(true);
-        let result = cmd.execute(&api).await.unwrap();
+        let result = FileUploadCommand::new("testing.txt", 0, cursor)
+            .with_no_partial(true)
+            .execute(&api)
+            .await
+            .unwrap();
         //
         assert_eq!(result.base.name, "testing.txt");
         m_create.assert();

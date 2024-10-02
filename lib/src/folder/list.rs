@@ -8,12 +8,12 @@ use super::FolderIdentifier;
 ///
 /// [More about it on the documentation](https://docs.pcloud.com/methods/folder/listfolder.html).
 ///
-/// # Example using the [`HttpClient`](crate::http::HttpClient)
+/// # Example using the [`HttpClient`](crate::client::HttpClient)
 ///
 /// To use this, the `client-http` feature should be enabled.
 ///
 /// ```
-/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::client::HttpClientBuilder;
 /// use pcloud::prelude::HttpCommand;
 /// use pcloud::folder::list::FolderListCommand;
 ///
@@ -94,10 +94,10 @@ impl FolderListCommand {
 #[cfg(feature = "client-http")]
 mod http {
     use super::FolderListCommand;
+    use crate::client::HttpClient;
     use crate::entry::Folder;
     use crate::error::Error;
     use crate::folder::{FolderIdentifierParam, FolderResponse};
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::request::Response;
 
@@ -106,24 +106,24 @@ mod http {
         #[serde(flatten)]
         identifier: FolderIdentifierParam,
         #[serde(
-            skip_serializing_if = "crate::http::is_false",
-            serialize_with = "crate::http::serialize_bool"
+            skip_serializing_if = "crate::client::is_false",
+            serialize_with = "crate::client::serialize_bool"
         )]
         recursive: bool,
         #[serde(
             rename = "showdeleted",
-            skip_serializing_if = "crate::http::is_false",
-            serialize_with = "crate::http::serialize_bool"
+            skip_serializing_if = "crate::client::is_false",
+            serialize_with = "crate::client::serialize_bool"
         )]
         show_deleted: bool,
         #[serde(
-            skip_serializing_if = "crate::http::is_false",
-            serialize_with = "crate::http::serialize_bool"
+            skip_serializing_if = "crate::client::is_false",
+            serialize_with = "crate::client::serialize_bool"
         )]
         no_files: bool,
         #[serde(
-            skip_serializing_if = "crate::http::is_false",
-            serialize_with = "crate::http::serialize_bool"
+            skip_serializing_if = "crate::client::is_false",
+            serialize_with = "crate::client::serialize_bool"
         )]
         no_shares: bool,
     }
@@ -156,8 +156,8 @@ mod http {
 #[cfg(all(test, feature = "client-http"))]
 mod http_tests {
     use super::FolderListCommand;
+    use crate::client::HttpClient;
     use crate::credentials::Credentials;
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::region::Region;
     use mockito::Matcher;

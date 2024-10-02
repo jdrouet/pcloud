@@ -66,9 +66,9 @@ impl GetVideoLinkCommand {
 #[cfg(feature = "client-http")]
 mod http {
     use super::GetVideoLinkCommand;
+    use crate::client::HttpClient;
     use crate::error::Error;
     use crate::file::FileIdentifierParam;
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::request::Response;
     use crate::streaming::Payload;
@@ -86,8 +86,8 @@ mod http {
         resolution: Option<String>,
         #[serde(
             rename = "fixedbitrate",
-            skip_serializing_if = "crate::http::is_false",
-            serialize_with = "crate::http::serialize_bool"
+            skip_serializing_if = "crate::client::is_false",
+            serialize_with = "crate::client::serialize_bool"
         )]
         fixed_bit_rate: bool,
     }

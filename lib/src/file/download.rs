@@ -9,12 +9,12 @@ use std::io::Write;
 ///
 /// [More about it on the documentation](https://docs.pcloud.com/methods/file/downloadfile.html)
 ///
-/// # Example using the [`HttpClient`](crate::http::HttpClient)
+/// # Example using the [`HttpClient`](crate::client::HttpClient)
 ///
 /// To use this, the `client-http` feature should be enabled.
 ///
 /// ```
-/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::client::HttpClientBuilder;
 /// use pcloud::prelude::HttpCommand;
 /// use pcloud::file::download::FileDownloadCommand;
 /// use std::fs::File;
@@ -44,8 +44,8 @@ impl<W: Write> FileDownloadCommand<W> {
 #[cfg(feature = "client-http")]
 mod http {
     use super::FileDownloadCommand;
+    use crate::client::HttpClient;
     use crate::error::Error;
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::streaming::get_file_link::GetFileLinkCommand;
     use std::io::Write;

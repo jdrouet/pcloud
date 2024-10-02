@@ -43,8 +43,8 @@ impl UserInfoCommand {
 #[cfg(feature = "client-http")]
 mod http {
     use super::{UserInfo, UserInfoCommand};
+    use crate::client::HttpClient;
     use crate::error::Error;
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::request::Response;
 
@@ -52,14 +52,14 @@ mod http {
     struct UserInfoParams {
         #[serde(
             rename = "getauth",
-            skip_serializing_if = "crate::http::is_false",
-            serialize_with = "crate::http::serialize_bool"
+            skip_serializing_if = "crate::client::is_false",
+            serialize_with = "crate::client::serialize_bool"
         )]
         get_auth: bool,
         #[serde(
             rename = "getauth",
-            skip_serializing_if = "crate::http::is_false",
-            serialize_with = "crate::http::serialize_bool"
+            skip_serializing_if = "crate::client::is_false",
+            serialize_with = "crate::client::serialize_bool"
         )]
         logout: bool,
     }
@@ -88,7 +88,7 @@ mod http {
 #[cfg(all(test, feature = "protected", feature = "client-http"))]
 mod http_tests {
     use super::UserInfoCommand;
-    use crate::http::HttpClientBuilder;
+    use crate::client::HttpClientBuilder;
     use crate::prelude::HttpCommand;
 
     #[tokio::test]

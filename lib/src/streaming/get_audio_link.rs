@@ -42,9 +42,9 @@ impl GetAudioLinkCommand {
 #[cfg(feature = "client-http")]
 mod http {
     use super::GetAudioLinkCommand;
+    use crate::client::HttpClient;
     use crate::error::Error;
     use crate::file::FileIdentifierParam;
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::request::Response;
     use crate::streaming::Payload;
@@ -57,8 +57,8 @@ mod http {
         audio_bit_rate: Option<u16>,
         #[serde(
             rename = "forcedownload",
-            skip_serializing_if = "crate::http::is_false",
-            serialize_with = "crate::http::serialize_bool"
+            skip_serializing_if = "crate::client::is_false",
+            serialize_with = "crate::client::serialize_bool"
         )]
         force_download: bool,
     }

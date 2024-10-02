@@ -8,12 +8,12 @@ use super::FileIdentifier;
 ///
 /// [More about it on the documentation](https://docs.pcloud.com/methods/file/deletefile.html)
 ///
-/// # Example using the [`HttpClient`](crate::http::HttpClient)
+/// # Example using the [`HttpClient`](crate::client::HttpClient)
 ///
 /// To use this, the `client-http` feature should be enabled.
 ///
 /// ```
-/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::client::HttpClientBuilder;
 /// use pcloud::prelude::HttpCommand;
 /// use pcloud::file::delete::FileDeleteCommand;
 ///
@@ -41,11 +41,11 @@ impl FileDeleteCommand {
 #[cfg(feature = "client-http")]
 mod http {
     use super::FileDeleteCommand;
+    use crate::client::HttpClient;
     use crate::entry::File;
     use crate::error::Error;
     use crate::file::FileIdentifierParam;
     use crate::file::FileResponse;
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::request::Response;
 
@@ -64,8 +64,8 @@ mod http {
 #[cfg(all(test, feature = "client-http"))]
 mod http_tests {
     use super::FileDeleteCommand;
+    use crate::client::HttpClient;
     use crate::credentials::Credentials;
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::region::Region;
     use mockito::Matcher;

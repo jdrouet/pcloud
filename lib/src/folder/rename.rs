@@ -6,12 +6,12 @@
 ///
 /// [More about it on the documentation](https://docs.pcloud.com/methods/folder/renamefolder.html).
 ///
-/// # Example using the [`HttpClient`](crate::http::HttpClient)
+/// # Example using the [`HttpClient`](crate::client::HttpClient)
 ///
 /// To use this, the `client-http` feature should be enabled.
 ///
 /// ```
-/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::client::HttpClientBuilder;
 /// use pcloud::prelude::HttpCommand;
 /// use pcloud::folder::rename::FolderRenameCommand;
 ///
@@ -42,12 +42,12 @@ impl FolderRenameCommand {
 ///
 /// [More about it on the documentation](https://docs.pcloud.com/methods/folder/renamefolder.html).
 ///
-/// # Example using the [`HttpClient`](crate::http::HttpClient)
+/// # Example using the [`HttpClient`](crate::client::HttpClient)
 ///
 /// To use this, the `client-http` feature should be enabled.
 ///
 /// ```
-/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::client::HttpClientBuilder;
 /// use pcloud::prelude::HttpCommand;
 /// use pcloud::folder::rename::FolderMoveCommand;
 ///
@@ -75,10 +75,10 @@ impl FolderMoveCommand {
 #[cfg(feature = "client-http")]
 mod http {
     use super::{FolderMoveCommand, FolderRenameCommand};
+    use crate::client::HttpClient;
     use crate::entry::Folder;
     use crate::error::Error;
     use crate::folder::FolderResponse;
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::request::Response;
 

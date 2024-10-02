@@ -20,7 +20,7 @@ pub enum HttpClientBuilderError {
 /// A builder for the [`HttpClient`](HttpClient) structure
 ///
 /// ```
-/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::client::HttpClientBuilder;
 /// use pcloud::credentials::Credentials;
 /// use pcloud::region::Region;
 ///
@@ -96,8 +96,8 @@ impl HttpClientBuilder {
     /// # Example
     ///
     /// ```rust
-    /// use pcloud::http::HttpClientBuilder;
-    /// use pcloud::http::HttpClientBuilderError;
+    /// use pcloud::client::HttpClientBuilder;
+    /// use pcloud::client::HttpClientBuilderError;
     ///
     /// match HttpClientBuilder::default().build() {
     ///     Ok(_client) => println!("success!"),
@@ -126,7 +126,7 @@ impl HttpClientBuilder {
 /// Client for the pCloud REST API
 ///
 /// ```rust
-/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::client::HttpClientBuilder;
 /// use pcloud::credentials::Credentials;
 /// use pcloud::region::Region;
 /// use pcloud::general::userinfo::UserInfoCommand;

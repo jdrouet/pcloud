@@ -16,12 +16,12 @@ pub struct RecursivePayload {
 ///
 /// [More about it on the documentation](https://docs.pcloud.com/methods/folder/delete.html).
 ///
-/// # Example using the [`HttpClient`](crate::http::HttpClient)
+/// # Example using the [`HttpClient`](crate::client::HttpClient)
 ///
 /// To use this, the `client-http` feature should be enabled.
 ///
 /// ```
-/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::client::HttpClientBuilder;
 /// use pcloud::prelude::HttpCommand;
 /// use pcloud::folder::delete::FolderDeleteCommand;
 ///
@@ -61,9 +61,9 @@ impl FolderDeleteCommand {
 #[cfg(feature = "client-http")]
 mod http {
     use super::{FolderDeleteCommand, RecursivePayload};
+    use crate::client::HttpClient;
     use crate::error::Error;
     use crate::folder::{FolderIdentifierParam, FolderResponse};
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::request::Response;
 
@@ -103,8 +103,8 @@ mod http {
 #[cfg(all(test, feature = "client-http"))]
 mod http_tests {
     use super::FolderDeleteCommand;
+    use crate::client::HttpClient;
     use crate::credentials::Credentials;
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::region::Region;
     use mockito::Matcher;

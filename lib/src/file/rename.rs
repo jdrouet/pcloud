@@ -9,12 +9,12 @@ use crate::folder::FolderIdentifier;
 ///
 /// [More about it on the documentation](https://docs.pcloud.com/methods/file/renamefile.html).
 ///
-/// # Example using the [`HttpClient`](crate::http::HttpClient)
+/// # Example using the [`HttpClient`](crate::client::HttpClient)
 ///
 /// To use this, the `client-http` feature should be enabled.
 ///
 /// ```
-/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::client::HttpClientBuilder;
 /// use pcloud::prelude::HttpCommand;
 /// use pcloud::file::rename::FileRenameCommand;
 ///
@@ -53,11 +53,11 @@ impl FileRenameCommand {
 #[cfg(feature = "client-http")]
 mod http {
     use super::{FileMoveCommand, FileRenameCommand};
+    use crate::client::HttpClient;
     use crate::entry::File;
     use crate::error::Error;
     use crate::file::{FileIdentifierParam, FileResponse};
     use crate::folder::FolderIdentifier;
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::request::Response;
 

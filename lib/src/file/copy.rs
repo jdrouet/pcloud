@@ -6,12 +6,12 @@
 ///
 /// [More about it on the documentation](https://docs.pcloud.com/methods/file/copyfile.html).
 ///
-/// # Example using the [`HttpClient`](crate::http::HttpClient)
+/// # Example using the [`HttpClient`](crate::client::HttpClient)
 ///
 /// To use this, the `client-http` feature should be enabled.
 ///
 /// ```
-/// use pcloud::http::HttpClientBuilder;
+/// use pcloud::client::HttpClientBuilder;
 /// use pcloud::prelude::HttpCommand;
 /// use pcloud::file::copy::FileCopyCommand;
 ///
@@ -42,10 +42,10 @@ impl FileCopyCommand {
 #[cfg(feature = "client-http")]
 mod http {
     use super::FileCopyCommand;
+    use crate::client::HttpClient;
     use crate::entry::File;
     use crate::error::Error;
     use crate::file::FileResponse;
-    use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::request::Response;
 

@@ -6,7 +6,7 @@ pub mod prelude;
 pub mod request;
 
 #[cfg(feature = "client-http")]
-pub mod http;
+pub mod client;
 
 pub mod credentials;
 pub mod region;

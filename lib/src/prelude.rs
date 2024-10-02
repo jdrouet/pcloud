@@ -1,7 +1,7 @@
 #[cfg(feature = "client-http")]
-use crate::error::Error;
+use crate::client::HttpClient;
 #[cfg(feature = "client-http")]
-use crate::http::HttpClient;
+use crate::error::Error;
 
 #[cfg(feature = "client-http")]
 #[async_trait::async_trait]

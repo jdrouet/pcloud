@@ -24,23 +24,6 @@
 /// }
 /// # })
 /// ```
-///
-/// # Example using the [`BinaryClient`](crate::binary::BinaryClient)
-///
-/// To use this, the `client-binary` feature should be enabled.
-///
-/// ```
-/// use pcloud::binary::BinaryClientBuilder;
-/// use pcloud::prelude::BinaryCommand;
-/// use pcloud::folder::rename::FolderRenameCommand;
-///
-/// let mut client = BinaryClientBuilder::from_env().build().unwrap();
-/// let cmd = FolderRenameCommand::new(12, "foo".into());
-/// match cmd.execute(&mut client) {
-///   Ok(res) => println!("success"),
-///   Err(err) => eprintln!("error: {:?}", err),
-/// }
-/// ```
 #[derive(Debug)]
 pub struct FolderRenameCommand {
     pub identifier: u64,
@@ -77,23 +60,6 @@ impl FolderRenameCommand {
 /// }
 /// # })
 /// ```
-///
-/// # Example using the [`BinaryClient`](crate::binary::BinaryClient)
-///
-/// To use this, the `client-binary` feature should be enabled.
-///
-/// ```
-/// use pcloud::binary::BinaryClientBuilder;
-/// use pcloud::prelude::BinaryCommand;
-/// use pcloud::folder::rename::FolderMoveCommand;
-///
-/// let mut client = BinaryClientBuilder::from_env().build().unwrap();
-/// let cmd = FolderMoveCommand::new(12, 42);
-/// match cmd.execute(&mut client) {
-///   Ok(res) => println!("success"),
-///   Err(err) => eprintln!("error: {:?}", err),
-/// }
-/// ```
 #[derive(Debug)]
 pub struct FolderMoveCommand {
     pub folder: u64,
@@ -116,18 +82,49 @@ mod http {
     use crate::prelude::HttpCommand;
     use crate::request::Response;
 
+    #[derive(serde::Serialize)]
+    struct FolderRenameParams {
+        #[serde(rename = "folderid")]
+        folder_id: u64,
+        #[serde(rename = "toname")]
+        to_name: String,
+    }
+
+    impl From<FolderRenameCommand> for FolderRenameParams {
+        fn from(value: FolderRenameCommand) -> Self {
+            Self {
+                folder_id: value.identifier,
+                to_name: value.name,
+            }
+        }
+    }
+
     #[async_trait::async_trait]
     impl HttpCommand for FolderRenameCommand {
         type Output = Folder;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-            let params = vec![
-                ("folderid", self.identifier.to_string()),
-                ("toname", self.name),
-            ];
+            let params = FolderRenameParams::from(self);
             let result: Response<FolderResponse> =
                 client.get_request("renamefolder", &params).await?;
             result.payload().map(|item| item.metadata)
+        }
+    }
+
+    #[derive(serde::Serialize)]
+    struct FolderMoveParams {
+        #[serde(rename = "folderid")]
+        folder_id: u64,
+        #[serde(rename = "tofolderid")]
+        to_folder_id: u64,
+    }
+
+    impl From<FolderMoveCommand> for FolderMoveParams {
+        fn from(value: FolderMoveCommand) -> Self {
+            Self {
+                folder_id: value.folder,
+                to_folder_id: value.to_folder,
+            }
         }
     }
 
@@ -136,10 +133,7 @@ mod http {
         type Output = Folder;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-            let params = vec![
-                ("folderid", self.folder.to_string()),
-                ("tofolderid", self.to_folder.to_string()),
-            ];
+            let params = FolderMoveParams::from(self);
             let result: Response<FolderResponse> =
                 client.get_request("renamefolder", &params).await?;
             result.payload().map(|item| item.metadata)

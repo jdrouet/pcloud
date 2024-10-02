@@ -27,23 +27,6 @@ use crate::entry::File;
 /// }
 /// # })
 /// ```
-///
-/// # Example using the [`BinaryClient`](crate::binary::BinaryClient)
-///
-/// To use this, the `client-binary` feature should be enabled.
-///
-/// ```
-/// use pcloud::binary::BinaryClientBuilder;
-/// use pcloud::prelude::BinaryCommand;
-/// use pcloud::file::checksum::FileCheckSumCommand;
-///
-/// let mut client = BinaryClientBuilder::from_env().build().unwrap();
-/// let cmd = FileCheckSumCommand::new("/foo/bar.txt".into());
-/// match cmd.execute(&mut client) {
-///   Ok(res) => println!("success"),
-///   Err(err) => eprintln!("error: {:?}", err),
-/// }
-/// ```
 #[derive(Debug)]
 pub struct FileCheckSumCommand {
     pub identifier: FileIdentifier,
@@ -66,6 +49,7 @@ pub struct CheckSumFile {
 mod http {
     use super::{CheckSumFile, FileCheckSumCommand};
     use crate::error::Error;
+    use crate::file::FileIdentifierParam;
     use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::request::Response;
@@ -75,9 +59,9 @@ mod http {
         type Output = CheckSumFile;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-            let result: Response<CheckSumFile> = client
-                .get_request("checksumfile", &self.identifier.to_http_params())
-                .await?;
+            let params = FileIdentifierParam::from(self.identifier);
+            let result: Response<CheckSumFile> =
+                client.get_request("checksumfile", &params).await?;
             result.payload()
         }
     }
@@ -129,7 +113,7 @@ mod http_tests {
 }"#,
             )
             .create();
-        let creds = Credentials::AccessToken("access-token".into());
+        let creds = Credentials::access_token("access-token");
         let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
         let result = FileCheckSumCommand::new(42.into())

@@ -48,23 +48,19 @@ impl From<u64> for FileIdentifier {
 }
 
 #[cfg(feature = "client-http")]
-impl FileIdentifier {
-    pub fn to_named_http_param(
-        &self,
-        path: &'static str,
-        file_id: &'static str,
-    ) -> (&'static str, String) {
-        match self {
-            Self::Path(value) => (path, value.clone()),
-            Self::FileId(value) => (file_id, value.to_string()),
+#[derive(serde::Serialize)]
+#[serde(untagged)]
+pub(crate) enum FileIdentifierParam {
+    Path { path: String },
+    FileId { fileid: u64 },
+}
+
+#[cfg(feature = "client-http")]
+impl From<FileIdentifier> for FileIdentifierParam {
+    fn from(value: FileIdentifier) -> Self {
+        match value {
+            FileIdentifier::FileId(fileid) => Self::FileId { fileid },
+            FileIdentifier::Path(path) => Self::Path { path },
         }
-    }
-
-    pub fn to_http_param(&self) -> (&str, String) {
-        self.to_named_http_param("path", "fileid")
-    }
-
-    pub fn to_http_params(&self) -> Vec<(&str, String)> {
-        vec![self.to_http_param()]
     }
 }

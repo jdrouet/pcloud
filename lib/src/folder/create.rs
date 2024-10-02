@@ -24,23 +24,6 @@
 /// }
 /// # })
 /// ```
-///
-/// # Example using the [`BinaryClient`](crate::binary::BinaryClient)
-///
-/// To use this, the `client-binary` feature should be enabled.
-///
-/// ```
-/// use pcloud::binary::BinaryClientBuilder;
-/// use pcloud::prelude::BinaryCommand;
-/// use pcloud::folder::create::FolderCreateCommand;
-///
-/// let mut client = BinaryClientBuilder::from_env().build().unwrap();
-/// let cmd = FolderCreateCommand::new("foo".to_string(), 42);
-/// match cmd.execute(&mut client) {
-///   Ok(res) => println!("success"),
-///   Err(err) => eprintln!("error: {:?}", err),
-/// }
-/// ```
 #[derive(Debug)]
 pub struct FolderCreateCommand {
     pub name: String,
@@ -63,7 +46,7 @@ impl FolderCreateCommand {
     }
 
     #[cfg(feature = "client-http")]
-    fn method(&self) -> &str {
+    fn method(&self) -> &'static str {
         if self.ignore_exists {
             "createfolderifnotexists"
         } else {
@@ -82,12 +65,19 @@ mod http {
     use crate::prelude::HttpCommand;
     use crate::request::Response;
 
-    impl FolderCreateCommand {
-        pub fn to_http_params(&self) -> Vec<(&str, String)> {
-            vec![
-                ("name", self.name.clone()),
-                ("folderid", self.parent_id.to_string()),
-            ]
+    #[derive(serde::Serialize)]
+    struct FolderCreateParams {
+        name: String,
+        #[serde(rename = "folderid")]
+        folder_id: u64,
+    }
+
+    impl From<FolderCreateCommand> for FolderCreateParams {
+        fn from(value: FolderCreateCommand) -> Self {
+            Self {
+                name: value.name,
+                folder_id: value.parent_id,
+            }
         }
     }
 
@@ -96,9 +86,9 @@ mod http {
         type Output = Folder;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-            let result: Response<FolderResponse> = client
-                .get_request(self.method(), &self.to_http_params())
-                .await?;
+            let method = self.method();
+            let params = FolderCreateParams::from(self);
+            let result: Response<FolderResponse> = client.get_request(method, &params).await?;
             result.payload().map(|item| item.metadata)
         }
     }
@@ -145,7 +135,7 @@ mod http_tests {
 }"#,
             )
             .create();
-        let creds = Credentials::AccessToken("access-token".into());
+        let creds = Credentials::access_token("access-token");
         let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
         let result = FolderCreateCommand::new("testing".into(), 0)
@@ -170,7 +160,7 @@ mod http_tests {
             .with_status(200)
             .with_body(r#"{ "result": 1020, "error": "something went wrong" }"#)
             .create();
-        let creds = Credentials::AccessToken("access-token".into());
+        let creds = Credentials::access_token("access-token");
         let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
         let error = FolderCreateCommand::new("testing".into(), 0)

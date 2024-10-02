@@ -24,23 +24,6 @@
 /// }
 /// # })
 /// ```
-///
-/// # Example using the [`BinaryClient`](crate::binary::BinaryClient)
-///
-/// To use this, the `client-binary` feature should be enabled.
-///
-/// ```
-/// use pcloud::binary::BinaryClientBuilder;
-/// use pcloud::prelude::BinaryCommand;
-/// use pcloud::file::copy::FileCopyCommand;
-///
-/// let mut client = BinaryClientBuilder::from_env().build().unwrap();
-/// let cmd = FileCopyCommand::new(12, 42);
-/// match cmd.execute(&mut client) {
-///   Ok(res) => println!("success"),
-///   Err(err) => eprintln!("error: {:?}", err),
-/// }
-/// ```
 #[derive(Debug)]
 pub struct FileCopyCommand {
     pub file_id: u64,
@@ -66,12 +49,20 @@ mod http {
     use crate::prelude::HttpCommand;
     use crate::request::Response;
 
-    impl FileCopyCommand {
-        fn to_http_params(&self) -> Vec<(&str, String)> {
-            vec![
-                ("fileid", self.file_id.to_string()),
-                ("tofolderid", self.to_folder_id.to_string()),
-            ]
+    #[derive(serde::Serialize)]
+    struct FileCopyParams {
+        #[serde(rename = "fileid")]
+        file_id: u64,
+        #[serde(rename = "tofolderid")]
+        to_folder_id: u64,
+    }
+
+    impl From<FileCopyCommand> for FileCopyParams {
+        fn from(value: FileCopyCommand) -> Self {
+            Self {
+                file_id: value.file_id,
+                to_folder_id: value.to_folder_id,
+            }
         }
     }
 
@@ -80,9 +71,8 @@ mod http {
         type Output = File;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-            let result: Response<FileResponse> = client
-                .get_request("copyfile", &self.to_http_params())
-                .await?;
+            let params = FileCopyParams::from(self);
+            let result: Response<FileResponse> = client.get_request("copyfile", &params).await?;
             result.payload().map(|item| item.metadata)
         }
     }

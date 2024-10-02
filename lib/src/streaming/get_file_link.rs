@@ -41,6 +41,7 @@ impl GetFileLinkCommand {
 mod http {
     use super::GetFileLinkCommand;
     use crate::error::Error;
+    use crate::file::FileIdentifierParam;
     use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::request::Response;
@@ -51,9 +52,8 @@ mod http {
         type Output = String;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-            let result: Response<Payload> = client
-                .get_request("getfilelink", &self.identifier.to_http_params())
-                .await?;
+            let params = FileIdentifierParam::from(self.identifier);
+            let result: Response<Payload> = client.get_request("getfilelink", &params).await?;
             result.payload().map(|res| res.to_url())
         }
     }
@@ -74,8 +74,8 @@ mod http_tests {
         let mut server = mockito::Server::new_async().await;
         let m = server.mock("GET", "/getfilelink")
             .match_query(Matcher::AllOf(vec![
-                                        Matcher::UrlEncoded("access_token".into(), "access-token".into()),
-                                        Matcher::UrlEncoded("fileid".into(), "42".into()),
+                Matcher::UrlEncoded("access_token".into(), "access-token".into()),
+                Matcher::UrlEncoded("fileid".into(), "42".into()),
             ]))
             .with_status(200)
             .with_body(r#"{
@@ -91,7 +91,7 @@ mod http_tests {
         ]
 }"#)
 .create();
-        let creds = Credentials::AccessToken("access-token".into());
+        let creds = Credentials::access_token("access-token");
         let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
         let result = GetFileLinkCommand::new(42.into())

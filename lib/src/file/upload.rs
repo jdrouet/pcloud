@@ -152,6 +152,7 @@ mod http {
     use crate::entry::File;
     use crate::error::Error;
     use crate::file::FileResponse;
+    use crate::folder::FolderIdentifierParam;
     use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::request::Response;
@@ -175,7 +176,9 @@ mod http {
                 form = form.part(part_name, part);
             }
 
-            let params = vec![("folderid", self.folder_id.to_string())];
+            let params = FolderIdentifierParam::FolderId {
+                folderid: self.folder_id,
+            };
             let result: Response<MultipartFileUploadResponse> = client
                 .post_request_multipart("uploadfile", &params, form)
                 .await?;
@@ -184,42 +187,71 @@ mod http {
         }
     }
 
+    #[derive(serde::Serialize)]
+    struct CreateUploadParams {
+        #[serde(
+            rename = "nopartial",
+            skip_serializing_if = "crate::http::is_false",
+            serialize_with = "crate::http::serialize_bool"
+        )]
+        no_partial: bool,
+    }
+
+    #[derive(serde::Serialize)]
+    struct UploadWriteParams {
+        #[serde(rename = "uploadid")]
+        upload_id: u64,
+        #[serde(rename = "uploadoffset")]
+        offset: usize,
+    }
+
+    #[derive(serde::Serialize)]
+    struct UploadSaveParams<'a> {
+        #[serde(rename = "uploadid")]
+        upload_id: u64,
+        name: &'a str,
+        #[serde(rename = "folderid")]
+        folder_id: u64,
+    }
+
     #[async_trait::async_trait]
     impl<'a, R: Read + Send> HttpCommand for FileUploadCommand<'a, R> {
         type Output = File;
 
         async fn execute(self, client: &HttpClient) -> Result<File, Error> {
-            let params = if self.no_partial {
-                vec![("nopartial", 1.to_string())]
-            } else {
-                Vec::new()
-            };
-            let result: Response<CreateUploadPayload> =
-                client.get_request("upload_create", &params).await?;
+            let result: Response<CreateUploadPayload> = client
+                .get_request(
+                    "upload_create",
+                    &CreateUploadParams {
+                        no_partial: self.no_partial,
+                    },
+                )
+                .await?;
             let upload_id = result.payload().map(|item| item.upload_id)?;
 
             let mut reader = ChunkReader::new(self.reader, self.part_size);
 
-            let upload_id_str = upload_id.to_string();
-
             while let (offset, Some(chunk)) = reader.next_chunk()? {
-                let offset = offset.to_string();
-                let params = vec![
-                    ("uploadid", upload_id_str.to_string()),
-                    ("uploadoffset", offset.to_string()),
-                ];
                 let response: Response<()> = client
-                    .put_request_data("upload_write", &params, chunk)
+                    .put_request_data(
+                        "upload_write",
+                        &UploadWriteParams { upload_id, offset },
+                        chunk,
+                    )
                     .await?;
                 response.payload()?;
             }
 
-            let params = vec![
-                ("uploadid", upload_id.to_string()),
-                ("name", self.filename.to_string()),
-                ("folderid", self.folder_id.to_string()),
-            ];
-            let result: Response<FileResponse> = client.get_request("upload_save", &params).await?;
+            let result: Response<FileResponse> = client
+                .get_request(
+                    "upload_save",
+                    &UploadSaveParams {
+                        upload_id,
+                        name: self.filename,
+                        folder_id: self.folder_id,
+                    },
+                )
+                .await?;
             result.payload().map(|item| item.metadata)
         }
     }
@@ -330,7 +362,7 @@ mod http_tests {
 }"#,
             )
             .create();
-        let creds = Credentials::AccessToken("access-token".into());
+        let creds = Credentials::access_token("access-token");
         let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
         //
@@ -401,7 +433,7 @@ mod http_tests {
             )
             .create();
 
-        let creds = Credentials::AccessToken("access-token".into());
+        let creds = Credentials::access_token("access-token");
         let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
         //

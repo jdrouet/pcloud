@@ -34,23 +34,6 @@ pub struct RecursivePayload {
 /// }
 /// # })
 /// ```
-///
-/// # Example using the [`BinaryClient`](crate::binary::BinaryClient)
-///
-/// To use this, the `client-binary` feature should be enabled.
-///
-/// ```
-/// use pcloud::binary::BinaryClientBuilder;
-/// use pcloud::prelude::BinaryCommand;
-/// use pcloud::folder::delete::FolderDeleteCommand;
-///
-/// let mut client = BinaryClientBuilder::from_env().build().unwrap();
-/// let cmd = FolderDeleteCommand::new("/foo/bar".into()).recursive(true);
-/// match cmd.execute(&mut client) {
-///   Ok(res) => println!("success"),
-///   Err(err) => eprintln!("error: {:?}", err),
-/// }
-/// ```
 #[derive(Debug)]
 pub struct FolderDeleteCommand {
     pub identifier: FolderIdentifier,
@@ -75,26 +58,26 @@ impl FolderDeleteCommand {
 mod http {
     use super::{FolderDeleteCommand, RecursivePayload};
     use crate::error::Error;
-    use crate::folder::FolderResponse;
+    use crate::folder::{FolderIdentifierParam, FolderResponse};
     use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::request::Response;
 
     impl FolderDeleteCommand {
-        async fn http_normal(&self, client: &HttpClient) -> Result<RecursivePayload, Error> {
-            let result: Response<FolderResponse> = client
-                .get_request("deletefolder", &self.identifier.to_http_params())
-                .await?;
+        async fn http_normal(self, client: &HttpClient) -> Result<RecursivePayload, Error> {
+            let params = FolderIdentifierParam::from(self.identifier);
+            let result: Response<FolderResponse> =
+                client.get_request("deletefolder", &params).await?;
             result.payload().map(|_| RecursivePayload {
                 deleted_files: 0,
                 deleted_folders: 1,
             })
         }
 
-        async fn http_recursive(&self, client: &HttpClient) -> Result<RecursivePayload, Error> {
-            let result: Response<RecursivePayload> = client
-                .get_request("deletefolderrecursive", &self.identifier.to_http_params())
-                .await?;
+        async fn http_recursive(self, client: &HttpClient) -> Result<RecursivePayload, Error> {
+            let params = FolderIdentifierParam::from(self.identifier);
+            let result: Response<RecursivePayload> =
+                client.get_request("deletefolderrecursive", &params).await?;
             result.payload()
         }
     }
@@ -154,7 +137,7 @@ mod http_tests {
 }"#,
             )
             .create();
-        let creds = Credentials::AccessToken("access-token".into());
+        let creds = Credentials::access_token("access-token");
         let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
         let result = FolderDeleteCommand::new(42.into())

@@ -43,21 +43,33 @@ impl GetAudioLinkCommand {
 mod http {
     use super::GetAudioLinkCommand;
     use crate::error::Error;
+    use crate::file::FileIdentifierParam;
     use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::request::Response;
     use crate::streaming::Payload;
 
-    impl GetAudioLinkCommand {
-        fn to_http_params(&self) -> Vec<(&str, String)> {
-            let mut res = self.identifier.to_http_params();
-            if let Some(abitrate) = self.audio_bit_rate {
-                res.push(("abitrate", abitrate.to_string()));
+    #[derive(serde::Serialize)]
+    struct GetAudioLinkParams {
+        #[serde(flatten)]
+        identifier: FileIdentifierParam,
+        #[serde(rename = "abitrate", skip_serializing_if = "Option::is_none")]
+        audio_bit_rate: Option<u16>,
+        #[serde(
+            rename = "forcedownload",
+            skip_serializing_if = "crate::http::is_false",
+            serialize_with = "crate::http::serialize_bool"
+        )]
+        force_download: bool,
+    }
+
+    impl From<GetAudioLinkCommand> for GetAudioLinkParams {
+        fn from(value: GetAudioLinkCommand) -> Self {
+            Self {
+                identifier: FileIdentifierParam::from(value.identifier),
+                audio_bit_rate: value.audio_bit_rate,
+                force_download: value.force_download,
             }
-            if self.force_download {
-                res.push(("forcedownload", 1.to_string()));
-            }
-            res
         }
     }
 
@@ -66,9 +78,8 @@ mod http {
         type Output = String;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-            let result: Response<Payload> = client
-                .get_request("getaudiolink", &self.to_http_params())
-                .await?;
+            let params = GetAudioLinkParams::from(self);
+            let result: Response<Payload> = client.get_request("getaudiolink", &params).await?;
             result.payload().map(|item| item.to_url())
         }
     }

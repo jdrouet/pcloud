@@ -38,16 +38,28 @@ mod http {
     use crate::prelude::HttpCommand;
     use crate::request::Response;
 
-    impl UserInfoCommand {
-        fn to_http_params(&self) -> Vec<(&str, String)> {
-            let mut res = Vec::new();
-            if self.get_auth {
-                res.push(("getauth", 1.to_string()));
+    #[derive(serde::Serialize)]
+    struct UserInfoParams {
+        #[serde(
+            rename = "getauth",
+            skip_serializing_if = "crate::http::is_false",
+            serialize_with = "crate::http::serialize_bool"
+        )]
+        get_auth: bool,
+        #[serde(
+            rename = "getauth",
+            skip_serializing_if = "crate::http::is_false",
+            serialize_with = "crate::http::serialize_bool"
+        )]
+        logout: bool,
+    }
+
+    impl From<UserInfoCommand> for UserInfoParams {
+        fn from(value: UserInfoCommand) -> Self {
+            Self {
+                get_auth: value.get_auth,
+                logout: value.logout,
             }
-            if self.logout {
-                res.push(("logout", 1.to_string()));
-            }
-            res
         }
     }
 
@@ -55,10 +67,9 @@ mod http {
     impl HttpCommand for UserInfoCommand {
         type Output = UserInfo;
 
-        async fn execute(mut self, client: &HttpClient) -> Result<Self::Output, Error> {
-            let result: Response<UserInfo> = client
-                .get_request("userinfo", &self.to_http_params())
-                .await?;
+        async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
+            let params = UserInfoParams::from(self);
+            let result: Response<UserInfo> = client.get_request("userinfo", &params).await?;
             result.payload()
         }
     }

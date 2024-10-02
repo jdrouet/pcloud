@@ -2,22 +2,11 @@
 
 /// The different kind of credentials used for authentication
 #[derive(Clone, Debug)]
+#[cfg_attr(feature = "client-http", derive(serde::Serialize))]
+#[cfg_attr(feature = "client-http", serde(untagged))]
 pub enum Credentials {
-    AccessToken(String),
+    AccessToken { access_token: String },
     UserPassword { username: String, password: String },
-}
-
-impl Credentials {
-    #[cfg(feature = "client-http")]
-    pub(crate) fn to_http_params(&self) -> Vec<(&str, String)> {
-        match self {
-            Self::AccessToken(value) => vec![("access_token", value.clone())],
-            Self::UserPassword { username, password } => vec![
-                ("username", username.clone()),
-                ("password", password.clone()),
-            ],
-        }
-    }
 }
 
 impl Credentials {
@@ -33,14 +22,14 @@ impl Credentials {
     /// use pcloud::credentials::Credentials;
     ///
     /// match Credentials::from_env() {
-    ///     Some(Credentials::AccessToken(_)) => println!("uses an access token"),
+    ///     Some(Credentials::AccessToken { .. }) => println!("uses an access token"),
     ///     Some(Credentials::UserPassword { .. }) => println!("uses a username and a password"),
     ///     None => eprintln!("no credentials provided"),
     /// }
     /// ```
     pub fn from_env() -> Option<Self> {
         if let Ok(access_token) = std::env::var("PCLOUD_ACCESS_TOKEN") {
-            Some(Self::AccessToken(access_token))
+            Some(Self::AccessToken { access_token })
         } else if let (Ok(username), Ok(password)) = (
             std::env::var("PCLOUD_USERNAME"),
             std::env::var("PCLOUD_PASSWORD"),
@@ -48,6 +37,21 @@ impl Credentials {
             Some(Self::UserPassword { username, password })
         } else {
             None
+        }
+    }
+}
+
+impl Credentials {
+    pub fn access_token<S: Into<String>>(access_token: S) -> Self {
+        Self::AccessToken {
+            access_token: access_token.into(),
+        }
+    }
+
+    pub fn user_password<U: Into<String>, P: Into<String>>(username: U, password: P) -> Self {
+        Self::UserPassword {
+            username: username.into(),
+            password: password.into(),
         }
     }
 }

@@ -27,23 +27,6 @@ use crate::folder::FolderIdentifier;
 /// }
 /// # })
 /// ```
-///
-/// # Example using the [`BinaryClient`](crate::binary::BinaryClient)
-///
-/// To use this, the `client-binary` feature should be enabled.
-///
-/// ```
-/// use pcloud::binary::BinaryClientBuilder;
-/// use pcloud::prelude::BinaryCommand;
-/// use pcloud::file::rename::FileRenameCommand;
-///
-/// let mut client = BinaryClientBuilder::from_env().build().unwrap();
-/// let cmd = FileRenameCommand::new(12.into(), "/foo/baz.txt".into());
-/// match cmd.execute(&mut client) {
-///   Ok(res) => println!("success"),
-///   Err(err) => eprintln!("error: {:?}", err),
-/// }
-/// ```
 #[derive(Debug)]
 pub struct FileMoveCommand {
     pub from: FileIdentifier,
@@ -72,17 +55,48 @@ mod http {
     use super::{FileMoveCommand, FileRenameCommand};
     use crate::entry::File;
     use crate::error::Error;
-    use crate::file::FileResponse;
+    use crate::file::{FileIdentifierParam, FileResponse};
+    use crate::folder::FolderIdentifier;
     use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::request::Response;
 
-    impl FileMoveCommand {
-        fn to_http_params(&self) -> Vec<(&str, String)> {
-            vec![
-                self.from.to_http_param(),
-                self.to.to_named_http_param("topath", "tofolderid"),
-            ]
+    #[derive(serde::Serialize)]
+    #[serde(untagged)]
+    enum ToFolderIdentifierParam {
+        Path {
+            #[serde(rename = "topath")]
+            to_path: String,
+        },
+        FolderId {
+            #[serde(rename = "tofolderid")]
+            to_folder_id: u64,
+        },
+    }
+
+    impl From<FolderIdentifier> for ToFolderIdentifierParam {
+        fn from(value: FolderIdentifier) -> Self {
+            match value {
+                FolderIdentifier::Path(to_path) => Self::Path { to_path },
+                FolderIdentifier::FolderId(to_folder_id) => Self::FolderId { to_folder_id },
+            }
+        }
+    }
+
+    #[derive(serde::Serialize)]
+    struct FileMoveParams {
+        #[serde(flatten)]
+        from: FileIdentifierParam,
+        #[serde(flatten)]
+        to: ToFolderIdentifierParam,
+    }
+
+    impl From<FileMoveCommand> for FileMoveParams {
+        fn from(value: FileMoveCommand) -> Self {
+            Self {
+                from: FileIdentifierParam::from(value.from),
+                to: ToFolderIdentifierParam::from(value.to),
+            }
         }
     }
 
@@ -91,19 +105,26 @@ mod http {
         type Output = File;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-            let result: Response<FileResponse> = client
-                .get_request("renamefile", &self.to_http_params())
-                .await?;
+            let params = FileMoveParams::from(self);
+            let result: Response<FileResponse> = client.get_request("renamefile", &params).await?;
             result.payload().map(|item| item.metadata)
         }
     }
 
-    impl FileRenameCommand {
-        fn to_http_params(&self) -> Vec<(&str, String)> {
-            vec![
-                self.identifier.to_http_param(),
-                ("toname", self.name.to_string()),
-            ]
+    #[derive(serde::Serialize)]
+    struct FileRenameParams {
+        #[serde(flatten)]
+        identifier: FileIdentifierParam,
+        #[serde(rename = "toname")]
+        to_name: String,
+    }
+
+    impl From<FileRenameCommand> for FileRenameParams {
+        fn from(value: FileRenameCommand) -> Self {
+            Self {
+                identifier: FileIdentifierParam::from(value.identifier),
+                to_name: value.name,
+            }
         }
     }
 
@@ -112,9 +133,8 @@ mod http {
         type Output = File;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-            let result: Response<FileResponse> = client
-                .get_request("renamefile", &self.to_http_params())
-                .await?;
+            let params = FileRenameParams::from(self);
+            let result: Response<FileResponse> = client.get_request("renamefile", &params).await?;
             result.payload().map(|item| item.metadata)
         }
     }

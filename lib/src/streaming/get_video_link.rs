@@ -67,27 +67,40 @@ impl GetVideoLinkCommand {
 mod http {
     use super::GetVideoLinkCommand;
     use crate::error::Error;
+    use crate::file::FileIdentifierParam;
     use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::request::Response;
     use crate::streaming::Payload;
 
-    impl GetVideoLinkCommand {
-        fn to_http_params(&self) -> Vec<(&str, String)> {
-            let mut res = self.identifier.to_http_params();
-            if let Some(abitrate) = self.audio_bit_rate {
-                res.push(("abitrate", abitrate.to_string()));
+    #[derive(serde::Serialize)]
+    /// Command to get video link for streaming
+    struct GetVideoLinkParams {
+        #[serde(flatten)]
+        identifier: FileIdentifierParam,
+        #[serde(rename = "abitrate", skip_serializing_if = "Option::is_none")]
+        audio_bit_rate: Option<u16>,
+        #[serde(rename = "vbitrate", skip_serializing_if = "Option::is_none")]
+        video_bit_rate: Option<u32>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        resolution: Option<String>,
+        #[serde(
+            rename = "fixedbitrate",
+            skip_serializing_if = "crate::http::is_false",
+            serialize_with = "crate::http::serialize_bool"
+        )]
+        fixed_bit_rate: bool,
+    }
+
+    impl From<GetVideoLinkCommand> for GetVideoLinkParams {
+        fn from(value: GetVideoLinkCommand) -> Self {
+            Self {
+                identifier: value.identifier.into(),
+                audio_bit_rate: value.audio_bit_rate,
+                video_bit_rate: value.video_bit_rate,
+                resolution: value.resolution,
+                fixed_bit_rate: value.fixed_bit_rate,
             }
-            if let Some(vbitrate) = self.video_bit_rate {
-                res.push(("vbitrate", vbitrate.to_string()));
-            }
-            if let Some(ref resolution) = self.resolution {
-                res.push(("resolution", resolution.to_string()));
-            }
-            if self.fixed_bit_rate {
-                res.push(("fixedbitrate", 1.to_string()));
-            }
-            res
         }
     }
 
@@ -96,9 +109,8 @@ mod http {
         type Output = String;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-            let result: Response<Payload> = client
-                .get_request("getvideolink", &self.to_http_params())
-                .await?;
+            let params = GetVideoLinkParams::from(self);
+            let result: Response<Payload> = client.get_request("getvideolink", &params).await?;
             result.payload().map(|item| item.to_url())
         }
     }

@@ -26,23 +26,6 @@ use super::FolderIdentifier;
 /// }
 /// # })
 /// ```
-///
-/// # Example using the [`BinaryClient`](crate::binary::BinaryClient)
-///
-/// To use this, the `client-binary` feature should be enabled.
-///
-/// ```
-/// use pcloud::binary::BinaryClientBuilder;
-/// use pcloud::prelude::BinaryCommand;
-/// use pcloud::folder::list::FolderListCommand;
-///
-/// let mut client = BinaryClientBuilder::from_env().build().unwrap();
-/// let cmd = FolderListCommand::new("/".into());
-/// match cmd.execute(&mut client) {
-///   Ok(res) => println!("success"),
-///   Err(err) => eprintln!("error: {:?}", err),
-/// }
-/// ```
 #[derive(Debug)]
 pub struct FolderListCommand {
     pub identifier: FolderIdentifier,
@@ -93,27 +76,47 @@ mod http {
     use super::FolderListCommand;
     use crate::entry::Folder;
     use crate::error::Error;
-    use crate::folder::FolderResponse;
+    use crate::folder::{FolderIdentifierParam, FolderResponse};
     use crate::http::HttpClient;
     use crate::prelude::HttpCommand;
     use crate::request::Response;
 
-    impl FolderListCommand {
-        fn to_http_params(&self) -> Vec<(&str, String)> {
-            let mut res = self.identifier.to_http_params();
-            if self.recursive {
-                res.push(("recursive", "1".to_string()));
+    #[derive(serde::Serialize)]
+    struct FolderListParams {
+        #[serde(flatten)]
+        identifier: FolderIdentifierParam,
+        #[serde(
+            skip_serializing_if = "crate::http::is_false",
+            serialize_with = "crate::http::serialize_bool"
+        )]
+        recursive: bool,
+        #[serde(
+            rename = "showdeleted",
+            skip_serializing_if = "crate::http::is_false",
+            serialize_with = "crate::http::serialize_bool"
+        )]
+        show_deleted: bool,
+        #[serde(
+            skip_serializing_if = "crate::http::is_false",
+            serialize_with = "crate::http::serialize_bool"
+        )]
+        no_files: bool,
+        #[serde(
+            skip_serializing_if = "crate::http::is_false",
+            serialize_with = "crate::http::serialize_bool"
+        )]
+        no_shares: bool,
+    }
+
+    impl From<FolderListCommand> for FolderListParams {
+        fn from(value: FolderListCommand) -> Self {
+            Self {
+                identifier: value.identifier.into(),
+                recursive: value.recursive,
+                show_deleted: value.show_deleted,
+                no_files: value.no_files,
+                no_shares: value.no_shares,
             }
-            if self.show_deleted {
-                res.push(("showdeleted", "1".to_string()));
-            }
-            if self.no_files {
-                res.push(("no_files", "1".to_string()));
-            }
-            if self.no_shares {
-                res.push(("no_shares", "1".to_string()));
-            }
-            res
         }
     }
 
@@ -122,9 +125,9 @@ mod http {
         type Output = Folder;
 
         async fn execute(self, client: &HttpClient) -> Result<Self::Output, Error> {
-            let result: Response<FolderResponse> = client
-                .get_request("listfolder", &self.to_http_params())
-                .await?;
+            let params = FolderListParams::from(self);
+            let result: Response<FolderResponse> =
+                client.get_request("listfolder", &params).await?;
             result.payload().map(|item| item.metadata)
         }
     }
@@ -170,7 +173,7 @@ mod http_tests {
 }"#,
             )
             .create();
-        let creds = Credentials::AccessToken("access-token".into());
+        let creds = Credentials::access_token("access-token");
         let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
         let payload = FolderListCommand::new(0.into())
@@ -194,7 +197,7 @@ mod http_tests {
             .with_status(200)
             .with_body(r#"{ "result": 1020, "error": "something went wrong" }"#)
             .create();
-        let creds = Credentials::AccessToken("access-token".into());
+        let creds = Credentials::access_token("access-token");
         let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
         let error = FolderListCommand::new(0.into())

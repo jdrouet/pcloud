@@ -25,8 +25,8 @@ pub enum HttpClientBuilderError {
 /// use pcloud::region::Region;
 ///
 /// let _client = HttpClientBuilder::default()
-///    .credentials(Credentials::access_token("my-token"))
-///    .region(Region::eu())
+///    .with_credentials(Credentials::access_token("my-token"))
+///    .with_region(Region::eu())
 ///    .build()
 ///    .expect("unable to builder http client");
 /// ```
@@ -64,22 +64,38 @@ impl HttpClientBuilder {
         }
     }
 
-    pub fn client_builder(mut self, value: reqwest::ClientBuilder) -> Self {
+    pub fn set_client_builder(&mut self, value: reqwest::ClientBuilder) {
+        self.client_builder = value;
+    }
+
+    pub fn with_client_builder(mut self, value: reqwest::ClientBuilder) -> Self {
         self.client_builder = value;
         self
     }
 
-    pub fn credentials(mut self, value: Credentials) -> Self {
+    pub fn set_credentials(&mut self, value: Credentials) {
+        self.credentials = Some(value);
+    }
+
+    pub fn with_credentials(mut self, value: Credentials) -> Self {
         self.credentials = Some(value);
         self
     }
 
-    pub fn region(mut self, value: Region) -> Self {
+    pub fn set_region(&mut self, value: Region) {
+        self.region = Some(value);
+    }
+
+    pub fn with_region(mut self, value: Region) -> Self {
         self.region = Some(value);
         self
     }
 
-    pub fn timeout(mut self, value: Duration) -> Self {
+    pub fn set_timeout(&mut self, value: Duration) {
+        self.timeout = Some(value);
+    }
+
+    pub fn with_timeout(mut self, value: Duration) -> Self {
         self.timeout = Some(value);
         self
     }

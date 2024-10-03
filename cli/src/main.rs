@@ -1,6 +1,5 @@
+mod cmd;
 mod config;
-mod file;
-mod folder;
 
 #[cfg(all(test, feature = "protected"))]
 mod tests;
@@ -15,10 +14,11 @@ struct Command {
     /// Path to load the configuration file. Default to ~/.config/pcloud.json. If not found, loading from environment.
     #[clap(short, long)]
     config: Option<PathBuf>,
-    // #[clap(flatten)]
-    // verbose: Verbosity<InfoLevel>,
+    /// Turns on debug information
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    verbose: u8,
     #[clap(subcommand)]
-    subcmd: SubCommand,
+    subcmd: cmd::Command,
 }
 
 impl Command {
@@ -31,40 +31,36 @@ impl Command {
             PathBuf::from(".pcloud.json")
         }
     }
-}
 
-#[derive(Parser)]
-enum SubCommand {
-    /// Folder related sub command
-    #[clap()]
-    Folder(folder::Command),
-    /// File related sub command
-    #[clap()]
-    File(file::Command),
+    fn log_level(&self) -> &str {
+        match self.verbose {
+            0 => "danger",
+            1 => "warn",
+            2 => "info",
+            3 => "debug",
+            _ => "trace",
+        }
+    }
 }
 
 impl Command {
-    async fn execute(&self, pcloud: HttpClient) {
-        match &self.subcmd {
-            SubCommand::Folder(sub) => sub.execute(pcloud).await,
-            SubCommand::File(sub) => sub.execute(pcloud).await,
-        }
+    async fn execute(self, client: HttpClient) -> anyhow::Result<()> {
+        self.subcmd.execute(&client).await
     }
 
     fn set_log_level(&self) {
         tracing_subscriber::fmt()
-            // .with_env_filter(self.verbose.log_level_filter().as_str())
-            .with_env_filter("DEBUG")
+            .with_env_filter(self.log_level())
             .try_init()
             .expect("couldn't init logger");
     }
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     let cmd = Command::parse();
     cmd.set_log_level();
     let cfg = config::Config::from_path(&cmd.config()).unwrap_or_default();
     let pcloud = cfg.build().expect("couldn't build client");
-    cmd.execute(pcloud).await;
+    cmd.execute(pcloud).await
 }

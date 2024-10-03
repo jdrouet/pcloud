@@ -2,13 +2,15 @@
 
 use std::{borrow::Cow, io::Read};
 
+use reqwest::header::HeaderMap;
+
 /// Default size for splitting into chunks
 pub const DEFAULT_PART_SIZE: usize = 10485760;
 
 #[derive(Debug)]
 #[cfg(feature = "client-http")]
 pub struct MultipartFileUploadCommand {
-    pub entries: Vec<(String, reqwest::Body)>,
+    pub entries: Vec<reqwest::multipart::Part>,
     pub folder_id: u64,
 }
 
@@ -21,36 +23,53 @@ impl MultipartFileUploadCommand {
         }
     }
 
-    /// This method doesn't work because the file size is not known and therefore
-    /// the content-length is not populated.
-    // pub fn add_tokio_file_entry(self, filename: String, file: tokio::fs::File) -> Self {
-    //     tracing::warn!(
-    //         "handle tokio file does not work, the content-length header will not be set."
-    //     );
-    //     self.add_entry(filename, Body::from(file))
-    // }
-
-    pub fn add_sync_file_entry(
-        self,
-        filename: String,
-        file: std::fs::File,
-    ) -> Result<Self, std::io::Error> {
-        self.add_sync_read_entry(filename, std::io::BufReader::new(file))
-    }
-
-    pub fn add_sync_read_entry<R: Read>(
-        self,
-        filename: String,
-        mut reader: R,
-    ) -> Result<Self, std::io::Error> {
-        let mut buffer = Vec::new();
-        reader.read_to_end(&mut buffer)?;
-        Ok(self.add_entry(filename, reqwest::Body::from(buffer)))
-    }
-
-    pub fn add_entry(mut self, filename: String, body: reqwest::Body) -> Self {
-        self.entries.push((filename, body));
+    pub fn with_stream_entry<F, S>(mut self, filename: F, length: u64, stream: S) -> Self
+    where
+        F: Into<String>,
+        S: futures_core::stream::TryStream + Send + Sync + 'static,
+        S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+        bytes::Bytes: From<S::Ok>,
+    {
+        self.add_stream_entry(filename, length, stream);
         self
+    }
+
+    pub fn add_stream_entry<F, S>(&mut self, filename: F, length: u64, stream: S)
+    where
+        F: Into<String>,
+        S: futures_core::stream::TryStream + Send + Sync + 'static,
+        S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+        bytes::Bytes: From<S::Ok>,
+    {
+        let body = reqwest::Body::wrap_stream(stream);
+        self.add_body_entry(filename, length, body);
+    }
+
+    pub fn with_body_entry<F, B>(mut self, filename: F, length: u64, body: B) -> Self
+    where
+        F: Into<String>,
+        B: Into<reqwest::Body>,
+    {
+        self.add_body_entry(filename, length, body);
+        self
+    }
+
+    pub fn add_body_entry<F, B>(&mut self, filename: F, length: u64, body: B)
+    where
+        F: Into<String>,
+        B: Into<reqwest::Body>,
+    {
+        let mut headers = HeaderMap::with_capacity(1);
+        let content_length = length.to_string();
+        headers.append(
+            reqwest::header::CONTENT_LENGTH,
+            reqwest::header::HeaderValue::from_str(content_length.as_str())
+                .expect("content-length to be a valid number"),
+        );
+        let part = reqwest::multipart::Part::stream_with_length(body, length)
+            .file_name(filename.into())
+            .headers(headers);
+        self.entries.push(part);
     }
 }
 
@@ -68,14 +87,15 @@ impl MultipartFileUploadCommand {
 /// use pcloud::client::HttpClientBuilder;
 /// use pcloud::prelude::HttpCommand;
 /// use pcloud::file::upload::MultipartFileUploadCommand;
-/// use std::fs::File;
+/// use tokio::fs::File;
 ///
 /// # tokio_test::block_on(async {
-/// let file = File::open("Cargo.toml").unwrap();
+/// let fname = "Cargo.toml";
+/// let fsize = std::fs::metadata(fname).unwrap().len();
+/// let file = File::open(fname).await.unwrap();
 /// let client = HttpClientBuilder::from_env().build().unwrap();
 /// let cmd = MultipartFileUploadCommand::new(12)
-///     .add_sync_file_entry("Cargo.toml".into(), file)
-///     .unwrap();
+///     .with_body_entry(fname, fsize, file);
 /// match cmd.execute(&client).await {
 ///   Ok(res) => println!("success"),
 ///   Err(err) => eprintln!("error: {:?}", err),
@@ -177,9 +197,8 @@ mod http {
 
             let mut form = multipart::Form::new();
 
-            for (index, (filename, body)) in self.entries.into_iter().enumerate() {
+            for (index, part) in self.entries.into_iter().enumerate() {
                 let part_name = format!("f{index}");
-                let part = multipart::Part::stream(body).file_name(filename);
                 form = form.part(part_name, part);
             }
 
@@ -316,7 +335,6 @@ mod http_tests {
     use crate::prelude::HttpCommand;
     use crate::region::Region;
     use mockito::Matcher;
-    use std::fs::File;
 
     #[tokio::test]
     async fn multipart_success() {
@@ -374,10 +392,9 @@ mod http_tests {
         let dc = Region::new(server.url());
         let api = HttpClient::new(creds, dc);
         //
-        let file = File::open("./readme.md").unwrap();
-        let cmd = MultipartFileUploadCommand::new(0)
-            .add_sync_file_entry("big-file.bin".to_string(), file)
-            .unwrap();
+        let file = tokio::fs::File::open("./readme.md").await.unwrap();
+        let length = std::fs::metadata("./readme.md").unwrap().len();
+        let cmd = MultipartFileUploadCommand::new(0).with_body_entry("big-file.bin", length, file);
         let result = cmd.execute(&api).await.unwrap();
         //
         assert_eq!(result.len(), 1);

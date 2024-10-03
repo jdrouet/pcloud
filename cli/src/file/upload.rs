@@ -2,8 +2,8 @@ use clap::Parser;
 use pcloud::client::HttpClient;
 use pcloud::file::upload::MultipartFileUploadCommand;
 use pcloud::prelude::HttpCommand;
-use std::fs::File;
 use std::path::PathBuf;
+use tokio::fs::File;
 
 #[derive(Parser)]
 pub struct Command {
@@ -34,16 +34,11 @@ impl Command {
 
     #[tracing::instrument(skip_all)]
     pub async fn execute(&self, pcloud: HttpClient) {
-        let file = File::open(&self.path).expect("unable to open file");
+        let fsize = std::fs::metadata(&self.path).expect("unable to read file size");
+        let file = File::open(&self.path).await.expect("unable to open file");
         let filename = self.filename();
-        let cmd = MultipartFileUploadCommand::new(self.folder_id);
-        let cmd = match cmd.add_sync_file_entry(filename, file) {
-            Ok(cmd) => cmd,
-            Err(err) => {
-                tracing::error!("unable to read file: {:?}", err);
-                std::process::exit(exitcode::DATAERR);
-            }
-        };
+        let mut cmd = MultipartFileUploadCommand::new(self.folder_id);
+        cmd.add_body_entry(filename, fsize.len(), file);
         match cmd.execute(&pcloud).await {
             Ok(res) => {
                 tracing::info!(

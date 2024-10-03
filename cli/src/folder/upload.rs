@@ -61,9 +61,10 @@ async fn try_upload_file(
     retries: usize,
 ) -> Result<(), Error> {
     tracing::info!("uploading, {} retries left", retries);
-    let reader = std::fs::File::open(local_path).unwrap();
-    let cmd = pcloud::file::upload::MultipartFileUploadCommand::new(folder_id);
-    let cmd = cmd.add_sync_file_entry(fname.to_string(), reader)?;
+    let fsize = std::fs::metadata(local_path).unwrap().len();
+    let file = tokio::fs::File::open(local_path).await.unwrap();
+    let mut cmd = pcloud::file::upload::MultipartFileUploadCommand::new(folder_id);
+    cmd.add_body_entry(fname, fsize, file);
     match cmd.execute(pcloud).await {
         Err(err) if retries > 0 => {
             tracing::warn!("unable to upload file: {:?}", err);

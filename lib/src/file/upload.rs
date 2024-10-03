@@ -2,8 +2,6 @@
 
 use std::{borrow::Cow, io::Read};
 
-use reqwest::header::HeaderMap;
-
 /// Default size for splitting into chunks
 pub const DEFAULT_PART_SIZE: usize = 10485760;
 
@@ -59,7 +57,7 @@ impl MultipartFileUploadCommand {
         F: Into<String>,
         B: Into<reqwest::Body>,
     {
-        let mut headers = HeaderMap::with_capacity(1);
+        let mut headers = reqwest::header::HeaderMap::with_capacity(1);
         let content_length = length.to_string();
         headers.append(
             reqwest::header::CONTENT_LENGTH,

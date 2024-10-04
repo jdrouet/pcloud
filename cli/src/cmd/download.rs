@@ -1,10 +1,25 @@
 use std::collections::VecDeque;
+use std::io::Read;
 use std::path::PathBuf;
 
 use pcloud::client::HttpClient;
 use pcloud::entry::{Entry, File, Folder};
 use pcloud::file::FileIdentifier;
 use pcloud::prelude::HttpCommand;
+
+fn compute_sha1(path: &PathBuf) -> std::io::Result<String> {
+    let mut file = std::fs::OpenOptions::new().read(true).open(path)?;
+    let mut buffer = [0u8; 4096];
+    let mut hasher = sha1_smol::Sha1::new();
+    loop {
+        let size = file.read(&mut buffer)?;
+        if size == 0 {
+            break;
+        }
+        hasher.update(&buffer[..size]);
+    }
+    Ok(hasher.digest().to_string())
+}
 
 struct DownloadManager<'a> {
     client: &'a HttpClient,
@@ -23,13 +38,27 @@ impl<'a> DownloadManager<'a> {
         }
     }
 
-    async fn process_file(&mut self, file: File, target: PathBuf) -> anyhow::Result<()> {
+    async fn process_file(&mut self, file: File, target: PathBuf) -> anyhow::Result<usize> {
         tracing::info!("downloading file {:?} to {target:?}", file.base.name);
         if self.dry_run {
-            return Ok(());
+            return Ok(0);
         }
-        if target.exists() && self.skip_existing {
-            return Ok(());
+        if target.exists() {
+            if self.skip_existing {
+                tracing::info!("file already exists, skipping...");
+                return Ok(0);
+            }
+            tracing::info!("computing existing file hash...");
+            let fhash = compute_sha1(&target)?;
+            let ident = FileIdentifier::file_id(file.file_id);
+            let checksum = pcloud::file::checksum::FileCheckSumCommand::new(ident)
+                .execute(&self.client)
+                .await?;
+            if fhash == checksum.sha1 {
+                tracing::info!("file already exists with same hash, skipping...");
+                return Ok(0);
+            }
+            tracing::info!("file hashes differ {fhash} != {}", checksum.sha1);
         }
         if let Some(parent) = target.parent() {
             if !parent.exists() {
@@ -41,10 +70,10 @@ impl<'a> DownloadManager<'a> {
             .create(true)
             .open(target)?;
         let ident = FileIdentifier::file_id(file.file_id);
-        pcloud::file::download::FileDownloadCommand::new(ident, writer)
+        let count = pcloud::file::download::FileDownloadCommand::new(ident, writer)
             .execute(self.client)
             .await?;
-        Ok(())
+        Ok(count)
     }
 
     async fn process_folder(&mut self, folder: Folder, target: PathBuf) -> anyhow::Result<()> {
@@ -67,14 +96,24 @@ impl<'a> DownloadManager<'a> {
     }
 
     async fn run(mut self, entry: Entry, target: PathBuf) -> anyhow::Result<()> {
+        let mut count = 0;
         self.queue.push_front((entry, target));
         while let Some((entry, target)) = self.queue.pop_front() {
             match entry {
-                Entry::File(file) => self.process_file(file, target).await?,
-                Entry::Folder(folder) => self.process_folder(folder, target).await?,
+                Entry::File(file) => {
+                    count += self.process_file(file, target).await?;
+                }
+                Entry::Folder(folder) => {
+                    self.process_folder(folder, target).await?;
+                }
             }
             tracing::info!("{} elements left in the queue", self.queue.len());
         }
+        let formatter = human_number::Formatter::binary()
+            .with_decimals(2)
+            .with_unit("B");
+        let value = formatter.format(count as f64);
+        tracing::info!("downloaded {value}");
         Ok(())
     }
 }

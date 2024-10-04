@@ -40,7 +40,8 @@ impl<'a> FileCheckSumCommand<'a> {
 
 #[derive(Debug, serde::Deserialize)]
 pub struct CheckSumFile {
-    pub sha256: String,
+    pub md5: Option<String>,
+    pub sha256: Option<String>,
     pub sha1: String,
     pub metadata: File,
 }

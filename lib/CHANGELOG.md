@@ -6,6 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0](https://github.com/jdrouet/pcloud/compare/pcloud-v2.0.0...pcloud-v3.0.0) - 2024-10-05
+
+### Added
+
+- add tracing
+
+### Fixed
+
+- *(lib)* only import when feature enabled
+
+### Other
+
+- *(cli)* rewrite to simplify command ([#96](https://github.com/jdrouet/pcloud/pull/96))
+- *(lib)* allow to stream uploads
+- *(lib)* use serder to serialize params ([#94](https://github.com/jdrouet/pcloud/pull/94))
+
 ## [2.0.0](https://github.com/jdrouet/pcloud/compare/pcloud-v1.1.0...pcloud-v2.0.0) - 2024-08-11
 
 ### Added

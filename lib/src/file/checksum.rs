@@ -119,7 +119,7 @@ mod http_tests {
             .await
             .unwrap();
         assert_eq!(
-            result.sha256,
+            result.sha256.unwrap(),
             "d535d3354f9d36741e311ac0855c5cde1e8e90eae947f320469f17514d182e19"
         );
         m.assert();

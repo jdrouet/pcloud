@@ -1,15 +1,11 @@
-use std::{
-    collections::{HashMap, VecDeque},
-    path::PathBuf,
-};
+use std::{collections::VecDeque, path::PathBuf};
 
-use pcloud::{
-    client::HttpClient,
-    entry::{Entry, File},
-    prelude::HttpCommand,
-};
+use pcloud::{client::HttpClient, prelude::HttpCommand};
 
-use crate::helper::file::compute_sha1;
+use crate::helper::{
+    file::compute_sha1,
+    remote::{get_folder, maybe_get_file, maybe_get_folder},
+};
 
 enum Action {
     File {
@@ -28,25 +24,9 @@ enum Action {
 struct UploadManager<'a> {
     client: &'a HttpClient,
     queue: VecDeque<Action>,
-    folder_cache: HashMap<u64, Vec<Entry>>,
 }
 
 impl<'a> UploadManager<'a> {
-    async fn maybe_get_file(
-        &self,
-        path: &str,
-    ) -> Result<Option<(File, String)>, pcloud::error::Error> {
-        let file_id = pcloud::file::FileIdentifier::path(path);
-        let result = pcloud::file::checksum::FileCheckSumCommand::new(file_id)
-            .execute(self.client)
-            .await;
-        match result {
-            Ok(inner) => Ok(Some((inner.metadata, inner.sha1))),
-            Err(pcloud::error::Error::Protocol(2009, _)) => Ok(None),
-            Err(inner) => Err(inner),
-        }
-    }
-
     async fn upload_file(
         &mut self,
         local: PathBuf,
@@ -56,7 +36,7 @@ impl<'a> UploadManager<'a> {
     ) -> anyhow::Result<()> {
         tracing::info!("uploading {local:?} to {parent_path}/{fname}");
         let rpath = format!("{parent_path}/{fname}");
-        if let Some((_, rsha)) = self.maybe_get_file(&rpath).await? {
+        if let Some((_, rsha)) = maybe_get_file(self.client, &rpath).await? {
             let lsha = compute_sha1(&local)?;
             if rsha == lsha {
                 tracing::info!("{local:?} already exist online with the same hash, skipping...");
@@ -131,6 +111,27 @@ impl<'a> UploadManager<'a> {
     }
 }
 
+async fn find_or_create_with_parent(
+    client: &HttpClient,
+    path: &str,
+) -> Result<u64, pcloud::error::Error> {
+    if let Some(folder) = maybe_get_folder(client, path).await? {
+        return Ok(folder.folder_id);
+    }
+    tracing::info!("provided folder not found, creating...");
+    // this should always happend, considering we make sure it starts with '/'
+    let (parent, name) = path.rsplit_once('/').unwrap();
+    let parent_id = if parent.is_empty() {
+        pcloud::folder::ROOT
+    } else {
+        get_folder(client, parent).await.map(|f| f.folder_id)?
+    };
+    pcloud::folder::create::FolderCreateCommand::new(name, parent_id)
+        .execute(client)
+        .await
+        .map(|f| f.folder_id)
+}
+
 #[derive(clap::Parser)]
 pub(crate) struct Command {
     /// When enabled, nothing will be really created on disk
@@ -160,7 +161,6 @@ impl Command {
         let mut manager = UploadManager {
             client,
             queue: Default::default(),
-            folder_cache: Default::default(),
         };
 
         if self.local_path.is_file() {
@@ -200,17 +200,12 @@ impl Command {
                     Some(inner) => inner,
                     None => self.remote_path.as_str(),
                 };
-                let folder = pcloud::folder::list::FolderListCommand::new(remote_path.into())
-                    .execute(client)
-                    .await?;
+                let folder_id = find_or_create_with_parent(client, remote_path).await?;
                 manager.queue.push_back(Action::Folder {
                     local: self.local_path,
                     remote_path: String::from(remote_path),
-                    folder_id: folder.folder_id,
+                    folder_id,
                 });
-                manager
-                    .folder_cache
-                    .insert(folder.folder_id, folder.contents.unwrap_or_default());
             }
         }
 

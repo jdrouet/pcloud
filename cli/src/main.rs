@@ -1,5 +1,6 @@
 mod cmd;
 mod config;
+mod helper;
 
 #[cfg(all(test, feature = "protected"))]
 mod tests;

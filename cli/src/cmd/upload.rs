@@ -1,15 +1,26 @@
-use std::{collections::VecDeque, path::PathBuf};
+use std::{
+    collections::{HashMap, VecDeque},
+    path::PathBuf,
+};
 
-use pcloud::{client::HttpClient, prelude::HttpCommand};
+use pcloud::{
+    client::HttpClient,
+    entry::{Entry, File},
+    prelude::HttpCommand,
+};
+
+use crate::helper::file::compute_sha1;
 
 enum Action {
     File {
         local: PathBuf,
+        parent_path: String,
         parent_id: u64,
         name: String,
     },
     Folder {
         local: PathBuf,
+        remote_path: String,
         folder_id: u64,
     },
 }
@@ -17,16 +28,41 @@ enum Action {
 struct UploadManager<'a> {
     client: &'a HttpClient,
     queue: VecDeque<Action>,
+    folder_cache: HashMap<u64, Vec<Entry>>,
 }
 
 impl<'a> UploadManager<'a> {
+    async fn maybe_get_file(
+        &self,
+        path: &str,
+    ) -> Result<Option<(File, String)>, pcloud::error::Error> {
+        let file_id = pcloud::file::FileIdentifier::path(path);
+        let result = pcloud::file::checksum::FileCheckSumCommand::new(file_id)
+            .execute(self.client)
+            .await;
+        match result {
+            Ok(inner) => Ok(Some((inner.metadata, inner.sha1))),
+            Err(pcloud::error::Error::Protocol(2009, _)) => Ok(None),
+            Err(inner) => Err(inner),
+        }
+    }
+
     async fn upload_file(
         &mut self,
         local: PathBuf,
+        parent_path: String,
         parent_id: u64,
         fname: String,
     ) -> anyhow::Result<()> {
-        tracing::info!("uploading {local:?} to {parent_id}");
+        tracing::info!("uploading {local:?} to {parent_path}/{fname}");
+        let rpath = format!("{parent_path}/{fname}");
+        if let Some((_, rsha)) = self.maybe_get_file(&rpath).await? {
+            let lsha = compute_sha1(&local)?;
+            if rsha == lsha {
+                tracing::info!("{local:?} already exist online with the same hash, skipping...");
+                return Ok(());
+            }
+        }
         let reader = std::fs::OpenOptions::new().read(true).open(local)?;
         pcloud::file::upload::FileUploadCommand::new(fname, parent_id, reader)
             .execute(self.client)
@@ -34,7 +70,13 @@ impl<'a> UploadManager<'a> {
         Ok(())
     }
 
-    async fn upload_folder(&mut self, local: PathBuf, folder_id: u64) -> anyhow::Result<()> {
+    async fn upload_folder(
+        &mut self,
+        local: PathBuf,
+        remote_path: String,
+        folder_id: u64,
+    ) -> anyhow::Result<()> {
+        tracing::info!("uploading {local:?} content to {remote_path}");
         for entry in std::fs::read_dir(local)? {
             let entry = entry?;
             let name = entry.file_name().to_string_lossy().to_string();
@@ -42,16 +84,19 @@ impl<'a> UploadManager<'a> {
             if path.is_file() {
                 self.queue.push_back(Action::File {
                     local: path,
+                    parent_path: remote_path.clone(),
                     parent_id: folder_id,
                     name,
                 });
             } else if path.is_dir() {
-                let folder = pcloud::folder::create::FolderCreateCommand::new(name, folder_id)
-                    .with_ignore_exists(true)
-                    .execute(self.client)
-                    .await?;
+                let folder =
+                    pcloud::folder::create::FolderCreateCommand::new(name.as_str(), folder_id)
+                        .with_ignore_exists(true)
+                        .execute(self.client)
+                        .await?;
                 self.queue.push_back(Action::Folder {
                     local: path,
+                    remote_path: format!("{remote_path}/{name}"),
                     folder_id: folder.folder_id,
                 });
             }
@@ -65,14 +110,20 @@ impl<'a> UploadManager<'a> {
             match action {
                 Action::File {
                     local,
+                    parent_path,
                     parent_id,
                     name,
                 } => {
-                    self.upload_file(local, parent_id, name).await?;
+                    self.upload_file(local, parent_path, parent_id, name)
+                        .await?;
                     count += 1;
                 }
-                Action::Folder { local, folder_id } => {
-                    self.upload_folder(local, folder_id).await?;
+                Action::Folder {
+                    local,
+                    remote_path,
+                    folder_id,
+                } => {
+                    self.upload_folder(local, remote_path, folder_id).await?;
                 }
             }
         }
@@ -109,6 +160,7 @@ impl Command {
         let mut manager = UploadManager {
             client,
             queue: Default::default(),
+            folder_cache: Default::default(),
         };
 
         if self.local_path.is_file() {
@@ -131,6 +183,7 @@ impl Command {
                 .await?;
             manager.queue.push_back(Action::File {
                 local: self.local_path.clone(),
+                parent_path: String::from(parent),
                 parent_id: folder.folder_id,
                 name: fname.to_string(),
             });
@@ -139,6 +192,7 @@ impl Command {
             if self.remote_path == "/" {
                 manager.queue.push_back(Action::Folder {
                     local: self.local_path,
+                    remote_path: String::from("/"),
                     folder_id: pcloud::folder::ROOT,
                 });
             } else {
@@ -151,8 +205,12 @@ impl Command {
                     .await?;
                 manager.queue.push_back(Action::Folder {
                     local: self.local_path,
+                    remote_path: String::from(remote_path),
                     folder_id: folder.folder_id,
                 });
+                manager
+                    .folder_cache
+                    .insert(folder.folder_id, folder.contents.unwrap_or_default());
             }
         }
 

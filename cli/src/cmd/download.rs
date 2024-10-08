@@ -1,5 +1,4 @@
 use std::collections::VecDeque;
-use std::io::Read;
 use std::path::PathBuf;
 
 use pcloud::client::HttpClient;
@@ -7,19 +6,7 @@ use pcloud::entry::{Entry, File, Folder};
 use pcloud::file::FileIdentifier;
 use pcloud::prelude::HttpCommand;
 
-fn compute_sha1(path: &PathBuf) -> std::io::Result<String> {
-    let mut file = std::fs::OpenOptions::new().read(true).open(path)?;
-    let mut buffer = [0u8; 4096];
-    let mut hasher = sha1_smol::Sha1::new();
-    loop {
-        let size = file.read(&mut buffer)?;
-        if size == 0 {
-            break;
-        }
-        hasher.update(&buffer[..size]);
-    }
-    Ok(hasher.digest().to_string())
-}
+use crate::helper::file::compute_sha1;
 
 struct DownloadManager<'a> {
     client: &'a HttpClient,

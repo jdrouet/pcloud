@@ -49,14 +49,40 @@ impl CloudPath {
     fn is_root(&self) -> bool {
         self.inner.is_empty()
     }
+
+    pub fn encoded(&self) -> EncodedCloudPath<'_> {
+        EncodedCloudPath(self)
+    }
+
+    pub fn raw(&self) -> RawCloudPath<'_> {
+        RawCloudPath(self)
+    }
 }
 
-impl std::fmt::Display for CloudPath {
+pub struct RawCloudPath<'a>(&'a CloudPath);
+
+impl<'a> std::fmt::Display for RawCloudPath<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.is_root() {
+        if self.0.is_root() {
             f.write_str("/")
         } else {
-            for item in self.inner.iter() {
+            for item in self.0.inner.iter() {
+                f.write_char('/')?;
+                f.write_str(item.as_ref())?;
+            }
+            Ok(())
+        }
+    }
+}
+
+struct EncodedCloudPath<'a>(&'a CloudPath);
+
+impl<'a> std::fmt::Display for EncodedCloudPath<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.0.is_root() {
+            f.write_str("/")
+        } else {
+            for item in self.0.inner.iter() {
                 f.write_char('/')?;
                 urlencoding::encode(item.as_ref()).fmt(f)?;
             }
@@ -78,23 +104,37 @@ impl FromStr for FolderCloudPath {
     }
 }
 
-impl std::fmt::Display for FolderCloudPath {
+struct RawFolderCloudPath<'a>(&'a FolderCloudPath);
+
+impl<'a> std::fmt::Display for RawFolderCloudPath<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.inner.is_root() {
-            self.inner.fmt(f)
+        if self.0.inner.is_root() {
+            f.write_str("/")
         } else {
-            write!(f, "{}/", self.inner)
+            write!(f, "{}/", self.0.inner.raw())
+        }
+    }
+}
+
+struct EncodedFolderCloudPath<'a>(&'a FolderCloudPath);
+
+impl<'a> std::fmt::Display for EncodedFolderCloudPath<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.0.inner.is_root() {
+            f.write_str("/")
+        } else {
+            write!(f, "{}/", self.0.inner.encoded())
         }
     }
 }
 
 impl FolderCloudPath {
-    pub fn with_file(&self, filename: &str) -> String {
-        format!("{}{}", self, urlencoding::encode(filename))
+    pub fn with_encoded_file(&self, filename: &str) -> String {
+        format!("{}{}", self.inner.encoded(), filename)
     }
 
-    pub fn with_folder(&self, name: &str) -> String {
-        format!("{}{}/", self, urlencoding::encode(name))
+    pub fn with_encoded_folder(&self, name: &str) -> String {
+        format!("{}{}/", self.inner.encoded(), name)
     }
 
     pub fn join_folder(&self, other: FolderCloudPath) -> Self {
@@ -113,6 +153,14 @@ impl FolderCloudPath {
 
     pub fn into_inner(self) -> CloudPath {
         self.inner
+    }
+
+    pub fn raw(&self) -> RawFolderCloudPath {
+        RawFolderCloudPath(self)
+    }
+
+    pub fn encoded(&self) -> EncodedFolderCloudPath {
+        EncodedFolderCloudPath(self)
     }
 }
 

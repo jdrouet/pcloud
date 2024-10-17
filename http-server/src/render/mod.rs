@@ -111,7 +111,9 @@ impl<'a> IndexPage<'a> {
             self.ctx.prefix,
             self.ctx.path.raw()
         )?;
-        f.write_str("<style>table { width: 100%; }</style>")
+        f.write_str("<style>")?;
+        f.write_str(include_str!("style.css"))?;
+        f.write_str("</style>")
     }
 
     #[inline(always)]
@@ -151,7 +153,9 @@ impl<'a> IndexPage<'a> {
 
     #[inline(always)]
     fn render_rows(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for entry in self.folder.contents.iter().flatten() {
+        let mut rows = self.folder.contents.iter().flatten().collect::<Vec<_>>();
+        rows.sort();
+        for entry in rows {
             render_entry(f, &self.ctx, entry)?;
         }
         Ok(())

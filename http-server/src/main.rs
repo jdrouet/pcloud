@@ -130,11 +130,11 @@ impl<'a> std::fmt::Display for EncodedFolderCloudPath<'a> {
 
 impl FolderCloudPath {
     pub fn with_encoded_file(&self, filename: &str) -> String {
-        format!("{}{}", self.inner.encoded(), filename)
+        format!("{}{}", self.encoded(), urlencoding::encode(filename))
     }
 
     pub fn with_encoded_folder(&self, name: &str) -> String {
-        format!("{}{}/", self.inner.encoded(), name)
+        format!("{}{}/", self.encoded(), urlencoding::encode(name))
     }
 
     pub fn join_folder(&self, other: FolderCloudPath) -> Self {

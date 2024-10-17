@@ -140,10 +140,11 @@ async fn handle(
         let local_path = crate::FolderCloudPath::from_str(path).map_err(Error::InvalidPath)?;
         let remote_path = root_prefix.root_path().join_folder(local_path.clone());
         // FolderListCommand shouldn't get '/' at the end of path
-        let folder_content = FolderListCommand::new(remote_path.into_inner().to_string().into())
-            .execute(engine.as_ref())
-            .await
-            .map_err(Error::UnableListFolder)?;
+        let folder_content =
+            FolderListCommand::new(remote_path.into_inner().raw().to_string().into())
+                .execute(engine.as_ref())
+                .await
+                .map_err(Error::UnableListFolder)?;
         Ok(Success::Directory(
             crate::render::IndexPage::from_folder_list(PREFIX, &local_path, &folder_content)
                 .to_string(),
@@ -151,8 +152,7 @@ async fn handle(
     } else {
         let local_path = crate::CloudPath::from_str(path).map_err(Error::InvalidPath)?;
         let remote_path = root_prefix.root_path().join_file(local_path);
-
-        let identifier: FileIdentifier = remote_path.to_string().into();
+        let identifier: FileIdentifier = remote_path.raw().to_string().into();
         let list = if params.stream {
             let file = pcloud::file::checksum::FileCheckSumCommand::new(identifier.clone())
                 .execute(engine.as_ref())

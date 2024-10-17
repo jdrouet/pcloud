@@ -1,0 +1,21 @@
+html {
+    font-family: Arial, Helvetica, sans-serif;
+}
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+table td,
+table th {
+    border: 1px solid #cacaca;
+    padding: 4px 8px;
+}
+table td.i,
+table th.i {
+    width: 1rem;
+}
+table .m,
+table .s,
+table .t {
+    width: 12rem;
+}

@@ -1,19 +1,10 @@
-pub mod checksum;
-pub mod copy;
-pub mod delete;
-pub mod download;
-pub mod rename;
-pub mod upload;
-
 use std::borrow::Cow;
 
-use crate::entry::File;
+use serde::ser::SerializeStruct;
 
-/// Structure returned when moving or copying a file
-#[derive(Debug, serde::Deserialize)]
-pub struct FileResponse {
-    pub metadata: File,
-}
+use crate::entry::EntryBase;
+
+mod checksum;
 
 /// Representation of a file identifier.
 ///
@@ -61,20 +52,33 @@ impl<'a> From<u64> for FileIdentifier<'a> {
     }
 }
 
-#[cfg(feature = "client-http")]
-#[derive(serde::Serialize)]
-#[serde(untagged)]
-pub(crate) enum FileIdentifierParam<'a> {
-    Path { path: Cow<'a, str> },
-    FileId { fileid: u64 },
+impl<'a> serde::Serialize for FileIdentifier<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut builder = serializer.serialize_struct(stringify!(FileIdentifier), 1)?;
+        match self {
+            Self::FileId(file_id) => {
+                builder.serialize_field("fileid", file_id)?;
+            }
+            Self::Path(path) => {
+                builder.serialize_field("path", path)?;
+            }
+        }
+        builder.end()
+    }
 }
 
-#[cfg(feature = "client-http")]
-impl<'a> From<FileIdentifier<'a>> for FileIdentifierParam<'a> {
-    fn from(value: FileIdentifier<'a>) -> Self {
-        match value {
-            FileIdentifier::FileId(fileid) => Self::FileId { fileid },
-            FileIdentifier::Path(path) => Self::Path { path },
-        }
-    }
+/// A structure representing a file on PCloud
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+pub struct File {
+    #[serde(flatten)]
+    pub base: EntryBase,
+    #[serde(rename = "fileid")]
+    pub file_id: u64,
+    pub size: Option<usize>,
+    pub hash: Option<usize>,
+    #[serde(rename = "contenttype")]
+    pub content_type: Option<String>,
 }

@@ -1,43 +1,82 @@
-/// Utilities for parsing dates
+use std::borrow::Cow;
+
 mod date;
-/// The traits for implementing the commands
-pub mod prelude;
+mod entry;
+mod file;
+mod request;
 
-#[cfg(feature = "client-http")]
-pub mod client;
+#[derive(serde::Serialize)]
+#[serde(untagged)]
+pub enum Credentials {
+    AccessToken { access_token: String },
+    UsernamePassword { username: String, password: String },
+}
 
-pub mod credentials;
-pub mod region;
-
-pub mod entry;
-pub mod error;
-
-/// The [file commands](https://docs.pcloud.com/methods/file/) from the PCloud documentation
-pub mod file;
-/// The [folder commands](https://docs.pcloud.com/methods/folder/) from the PCloud documentation
-pub mod folder;
-/// The [general commands](https://docs.pcloud.com/methods/general/) from the PCloud documentation
-pub mod general;
-/// The [streaming commands](https://docs.pcloud.com/methods/streaming/) from the PCloud documentation
-pub mod streaming;
-
-#[cfg(test)]
-mod tests {
-    use rand::distributions::Alphanumeric;
-    use rand::Rng;
-
-    #[allow(dead_code)]
-    pub fn init() {
-        let filter = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".into());
-        let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
+impl Credentials {
+    pub fn access_token(value: impl Into<String>) -> Self {
+        Self::AccessToken {
+            access_token: value.into(),
+        }
     }
 
-    #[allow(dead_code)]
-    pub fn random_name() -> String {
-        rand::thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(16)
-            .map(char::from)
-            .collect()
+    pub fn username_password(username: impl Into<String>, password: impl Into<String>) -> Self {
+        Self::UsernamePassword {
+            username: username.into(),
+            password: password.into(),
+        }
     }
+}
+
+impl std::fmt::Debug for Credentials {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct(stringify!(Credentials))
+            .finish_non_exhaustive()
+    }
+}
+
+#[derive(Debug)]
+pub struct Client {
+    base_url: Cow<'static, str>,
+    credentials: Credentials,
+    inner: reqwest::Client,
+}
+
+impl Client {
+    pub fn new(base_url: impl Into<Cow<'static, str>>, credentials: Credentials) -> Self {
+        Self {
+            base_url: base_url.into(),
+            credentials,
+            inner: reqwest::Client::new(),
+        }
+    }
+}
+
+pub type Result<V> = std::result::Result<V, Error>;
+
+/// All the possible errors returned by the clients and the API
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    /// Server side error, properly handled, returning a code and a message
+    #[error("protocol error status {0}: {1}")]
+    Protocol(u16, String),
+    /// Error specific to the [`Client`](crate::Client)
+    #[error("network error")]
+    Reqwest(
+        #[from]
+        #[source]
+        reqwest::Error,
+    ),
+    /// Unable to parse a JSON response
+    #[error("unable to decode pcloud response")]
+    SerdeJson(
+        #[from]
+        #[source]
+        serde_json::Error,
+    ),
+    /// Error while downloading a file
+    #[error("unable to download file")]
+    Download(#[source] std::io::Error),
+    /// Error while uploading a file
+    #[error("unable to upload file")]
+    Upload(#[source] std::io::Error),
 }

@@ -41,8 +41,8 @@ impl crate::Client {
     }
 }
 
-#[cfg(all(test, feature = "client-http"))]
-mod http_tests {
+#[cfg(test)]
+mod tests {
     use crate::{Client, Credentials};
     use mockito::Matcher;
 

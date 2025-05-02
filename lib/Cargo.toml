@@ -17,7 +17,6 @@ client-http = ["reqwest"]
 protected = []
 
 [dependencies]
-async-trait = { version = "0.1" }
 bytes = "1.7"
 chrono = { version = "0.4", features = ["serde"] }
 futures-core = "0.3"

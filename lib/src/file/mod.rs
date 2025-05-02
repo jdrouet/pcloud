@@ -1,10 +1,10 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, cmp::Ordering};
 
 use serde::ser::SerializeStruct;
 
 use crate::entry::EntryBase;
 
-mod checksum;
+pub mod checksum;
 
 /// Representation of a file identifier.
 ///
@@ -81,4 +81,24 @@ pub struct File {
     pub hash: Option<usize>,
     #[serde(rename = "contenttype")]
     pub content_type: Option<String>,
+}
+
+impl Eq for File {}
+
+impl PartialEq for File {
+    fn eq(&self, other: &Self) -> bool {
+        self.base.id.eq(&other.base.id)
+    }
+}
+
+impl Ord for File {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.base.name.cmp(&other.base.name)
+    }
+}
+
+impl PartialOrd for File {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }

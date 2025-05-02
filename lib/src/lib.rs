@@ -2,7 +2,8 @@ use std::borrow::Cow;
 
 mod date;
 mod entry;
-mod file;
+pub mod file;
+mod folder;
 mod request;
 
 #[derive(serde::Serialize)]

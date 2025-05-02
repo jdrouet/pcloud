@@ -1,7 +1,7 @@
 use super::{File, FileIdentifier};
 
 #[derive(Debug, serde::Deserialize)]
-pub struct CheckSumFile {
+pub struct FileChecksum {
     pub md5: Option<String>,
     pub sha256: Option<String>,
     pub sha1: String,
@@ -12,7 +12,7 @@ impl crate::Client {
     pub async fn get_file_checksum(
         &self,
         identifier: impl Into<FileIdentifier<'_>>,
-    ) -> crate::Result<CheckSumFile> {
+    ) -> crate::Result<FileChecksum> {
         self.get_request("checksumfile", identifier.into()).await
     }
 }

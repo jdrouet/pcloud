@@ -1,10 +1,18 @@
 use std::borrow::Cow;
 
-mod date;
-mod entry;
+pub mod builder;
+pub mod entry;
 pub mod file;
-mod folder;
+pub mod folder;
+
+mod date;
 mod request;
+
+/// The default user agent for the http client
+const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
+
+pub const EU_REGION: &str = "https://eapi.pcloud.com";
+pub const US_REGION: &str = "https://api.pcloud.com";
 
 #[derive(serde::Serialize)]
 #[serde(untagged)]
@@ -43,12 +51,22 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(base_url: impl Into<Cow<'static, str>>, credentials: Credentials) -> Self {
-        Self {
+    #[inline]
+    pub fn builder() -> crate::builder::ClientBuilder {
+        Default::default()
+    }
+
+    pub fn new(
+        base_url: impl Into<Cow<'static, str>>,
+        credentials: Credentials,
+    ) -> reqwest::Result<Self> {
+        Ok(Self {
             base_url: base_url.into(),
             credentials,
-            inner: reqwest::Client::new(),
-        }
+            inner: reqwest::ClientBuilder::new()
+                .user_agent(USER_AGENT)
+                .build()?,
+        })
     }
 }
 

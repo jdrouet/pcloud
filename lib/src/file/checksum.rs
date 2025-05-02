@@ -58,7 +58,7 @@ mod http_tests {
 }"#,
             )
             .create();
-        let client = Client::new(server.url(), Credentials::access_token("access-token"));
+        let client = Client::new(server.url(), Credentials::access_token("access-token")).unwrap();
         let result = client.get_file_checksum(42).await.unwrap();
         assert_eq!(
             result.sha256.unwrap(),

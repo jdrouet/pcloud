@@ -77,7 +77,7 @@ mod tests {
 }"#,
             )
             .create();
-        let client = Client::new(server.url(), Credentials::access_token("access-token"));
+        let client = Client::new(server.url(), Credentials::access_token("access-token")).unwrap();
         let result = client.create_folder(0, "testing").await.unwrap();
         assert_eq!(result.base.name, "testing");
         m.assert();
@@ -96,7 +96,7 @@ mod tests {
             .with_status(200)
             .with_body(r#"{ "result": 1020, "error": "something went wrong" }"#)
             .create();
-        let client = Client::new(server.url(), Credentials::access_token("access-token"));
+        let client = Client::new(server.url(), Credentials::access_token("access-token")).unwrap();
         let error = client.create_folder(0, "testing").await.unwrap_err();
         assert!(matches!(error, crate::Error::Protocol(_, _)));
         m.assert();

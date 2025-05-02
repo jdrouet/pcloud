@@ -2,8 +2,6 @@
 
 use crate::{Credentials, Error};
 
-/// The default user agent for the http client
-pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 /// The default part size when uploading files
 pub const DEFAULT_PART_SIZE: usize = 10485760;
 

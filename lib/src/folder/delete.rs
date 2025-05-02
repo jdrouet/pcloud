@@ -64,7 +64,7 @@ mod http_tests {
 }"#,
             )
             .create();
-        let client = Client::new(server.url(), Credentials::access_token("access-token"));
+        let client = Client::new(server.url(), Credentials::access_token("access-token")).unwrap();
         let result = client.delete_folder(42).await.unwrap();
         assert_eq!(result.base.name, "testing");
         m.assert();

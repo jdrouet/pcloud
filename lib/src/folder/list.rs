@@ -116,7 +116,7 @@ mod tests {
 }"#,
             )
             .create();
-        let client = Client::new(server.url(), Credentials::access_token("access-token"));
+        let client = Client::new(server.url(), Credentials::access_token("access-token")).unwrap();
         let payload = client
             .list_folder_with_options(
                 0,
@@ -160,7 +160,7 @@ mod tests {
 }"#,
             )
             .create();
-        let client = Client::new(server.url(), Credentials::access_token("access-token"));
+        let client = Client::new(server.url(), Credentials::access_token("access-token")).unwrap();
         let payload = client.list_folder(0).await.unwrap();
         assert_eq!(payload.base.parent_folder_id, Some(0));
         m.assert();
@@ -178,7 +178,7 @@ mod tests {
             .with_status(200)
             .with_body(r#"{ "result": 1020, "error": "something went wrong" }"#)
             .create();
-        let client = Client::new(server.url(), Credentials::access_token("access-token"));
+        let client = Client::new(server.url(), Credentials::access_token("access-token")).unwrap();
         let error = client.list_folder(0).await.unwrap_err();
         assert!(matches!(error, crate::Error::Protocol(_, _)));
         m.assert();

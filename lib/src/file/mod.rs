@@ -5,6 +5,13 @@ use serde::ser::SerializeStruct;
 use crate::entry::EntryBase;
 
 pub mod checksum;
+pub mod delete;
+
+/// Structure returned when moving or copying a file
+#[derive(Debug, serde::Deserialize)]
+pub struct FileResponse {
+    pub metadata: File,
+}
 
 /// Representation of a file identifier.
 ///

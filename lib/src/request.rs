@@ -102,7 +102,7 @@ pub(crate) fn serialize_bool<S>(value: &bool, serializer: S) -> Result<S::Ok, S:
 where
     S: serde::Serializer,
 {
-    serializer.serialize_i8(if *value { 1 } else { 0 })
+    serializer.serialize_str(if *value { "1" } else { "0" })
 }
 
 #[derive(Debug, serde::Deserialize)]

@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 
 pub mod file;
+pub mod video;
 
 #[derive(Debug, serde::Deserialize)]
 pub struct StreamingLinkList {

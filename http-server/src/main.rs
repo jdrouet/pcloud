@@ -2,7 +2,7 @@ mod render;
 mod router;
 
 use clap::Parser;
-use pcloud::client::{HttpClient, HttpClientBuilder};
+use pcloud::Client;
 use std::{fmt::Write, net::IpAddr, str::FromStr, string::FromUtf8Error, sync::Arc};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -165,16 +165,16 @@ impl FolderCloudPath {
 }
 
 #[derive(Clone)]
-struct Storage(Arc<HttpClient>);
+struct Storage(Arc<Client>);
 
 impl Storage {
-    fn new(client: HttpClient) -> Self {
+    fn new(client: Client) -> Self {
         Self(Arc::new(client))
     }
 }
 
-impl AsRef<HttpClient> for Storage {
-    fn as_ref(&self) -> &HttpClient {
+impl AsRef<Client> for Storage {
+    fn as_ref(&self) -> &Client {
         &self.0
     }
 }
@@ -214,7 +214,7 @@ async fn main() -> std::io::Result<()> {
         .init();
 
     let args = Config::parse();
-    let client = HttpClientBuilder::from_env()
+    let client = pcloud::builder::ClientBuilder::from_env()
         .build()
         .expect("couldn't build client");
 

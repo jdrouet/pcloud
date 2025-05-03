@@ -1,7 +1,9 @@
 use std::fmt::Display;
 
 use human_bytes::human_bytes;
-use pcloud::entry::{Entry, File, Folder};
+use pcloud::entry::Entry;
+use pcloud::file::File;
+use pcloud::folder::Folder;
 
 use crate::FolderCloudPath;
 

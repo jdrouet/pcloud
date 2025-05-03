@@ -6,6 +6,7 @@ use crate::entry::EntryBase;
 
 pub mod checksum;
 pub mod delete;
+pub mod rename;
 pub mod upload;
 
 /// Structure returned when moving or copying a file

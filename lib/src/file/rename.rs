@@ -1,18 +1,35 @@
+use std::borrow::Cow;
+
 use super::{File, FileIdentifier, FileResponse};
 
+#[derive(serde::Serialize)]
+struct FileRenameParams<'a> {
+    #[serde(flatten)]
+    identifier: FileIdentifier<'a>,
+    #[serde(rename = "toname")]
+    to_name: Cow<'a, str>,
+}
+
 impl crate::Client {
-    pub async fn delete_file(
+    pub async fn rename_file<'a>(
         &self,
-        identifier: impl Into<FileIdentifier<'_>>,
+        identifier: impl Into<FileIdentifier<'a>>,
+        name: impl Into<Cow<'a, str>>,
     ) -> crate::Result<File> {
-        self.get_request::<FileResponse, _>("deletefile", identifier.into())
-            .await
-            .map(|res| res.metadata)
+        self.get_request::<FileResponse, _>(
+            "renamefile",
+            FileRenameParams {
+                identifier: identifier.into(),
+                to_name: name.into(),
+            },
+        )
+        .await
+        .map(|res| res.metadata)
     }
 }
 
 #[cfg(test)]
-mod http_tests {
+mod tests {
     use crate::{Client, Credentials};
     use mockito::Matcher;
 
@@ -20,17 +37,18 @@ mod http_tests {
     async fn success() {
         let mut server = mockito::Server::new_async().await;
         let m = server
-            .mock("GET", "/deletefile")
+            .mock("GET", "/renamefile")
             .match_query(Matcher::AllOf(vec![
                 Matcher::UrlEncoded("access_token".into(), "access-token".into()),
                 Matcher::UrlEncoded("fileid".into(), "42".into()),
+                Matcher::UrlEncoded("toname".into(), "yolo.bin".into()),
             ]))
             .with_status(200)
             .with_body(
                 r#"{
     "result": 0,
     "metadata": {
-        "name": "C61EWBrr2sU16GM4.bin",
+        "name": "yolo.bin",
         "created": "Sat, 24 Jul 2021 07:38:41 +0000",
         "thumb": false,
         "modified": "Sat, 24 Jul 2021 07:38:41 +0000",
@@ -52,7 +70,7 @@ mod http_tests {
             )
             .create();
         let client = Client::new(server.url(), Credentials::access_token("access-token")).unwrap();
-        let result = client.delete_file(42).await.unwrap();
+        let result = client.rename_file(42, "yolo.bin").await.unwrap();
         assert_eq!(result.file_id, 42);
         m.assert();
     }

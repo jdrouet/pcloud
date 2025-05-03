@@ -2,9 +2,6 @@
 
 use crate::{Credentials, Error};
 
-/// The default part size when uploading files
-pub const DEFAULT_PART_SIZE: usize = 10485760;
-
 async fn read_response<T: serde::de::DeserializeOwned>(res: reqwest::Response) -> Result<T, Error> {
     let status = res.status();
     tracing::debug!("responded with status {status:?}");

@@ -39,6 +39,7 @@ anyhow = "1.0"
 clap = { version = "4.5", features = ["derive"] }
 # clap-verbosity-flag = { version = "1.0.1" }
 dirs = { version = "5.0" }
+futures = { version = "0.3" }
 human-number = "0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }

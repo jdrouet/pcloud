@@ -9,13 +9,33 @@ pub mod stream;
 mod date;
 mod request;
 
+// re exporting dependencies
+pub use reqwest;
+
 /// The default user agent for the http client
 const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 
 pub const EU_REGION: &str = "https://eapi.pcloud.com";
 pub const US_REGION: &str = "https://api.pcloud.com";
 
-#[derive(serde::Serialize)]
+#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
+pub enum Region {
+    #[serde(alias = "EU")]
+    Eu,
+    #[serde(alias = "US")]
+    Us,
+}
+
+impl Region {
+    const fn base_url(&self) -> &'static str {
+        match self {
+            Self::Eu => EU_REGION,
+            Self::Us => US_REGION,
+        }
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
 #[serde(untagged)]
 pub enum Credentials {
     AccessToken { access_token: String },

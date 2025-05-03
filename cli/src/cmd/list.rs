@@ -1,7 +1,5 @@
-use pcloud::{
-    entry::{Entry, File},
-    prelude::HttpCommand,
-};
+use pcloud::entry::Entry;
+use pcloud::file::File;
 
 #[derive(Default)]
 struct ColumnWidths {
@@ -108,22 +106,15 @@ pub(crate) struct Command {
 }
 
 impl Command {
-    async fn fetch(
-        &self,
-        client: &pcloud::client::HttpClient,
-    ) -> Result<Vec<Entry>, pcloud::error::Error> {
+    async fn fetch(&self, client: &pcloud::Client) -> Result<Vec<Entry>, pcloud::Error> {
         // assuming it's doing a `ls` on a folder at first
-        let folder_id = pcloud::folder::FolderIdentifier::path(&self.path);
-        let folder_res = pcloud::folder::list::FolderListCommand::new(folder_id)
-            .execute(client)
-            .await;
+        let folder_res = client.list_folder(&self.path).await;
         match folder_res {
             Ok(folder) => Ok(folder.contents.unwrap_or_default()),
-            Err(pcloud::error::Error::Protocol(2005, _)) => {
+            Err(pcloud::Error::Protocol(2005, _)) => {
                 // try with a file if a folder is not found
-                let file_id = pcloud::file::FileIdentifier::path(&self.path);
-                pcloud::file::checksum::FileCheckSumCommand::new(file_id)
-                    .execute(client)
+                client
+                    .get_file_checksum(&self.path)
                     .await
                     .map(|res| vec![Entry::File(res.metadata)])
             }
@@ -142,7 +133,7 @@ impl Command {
         }
     }
 
-    pub(crate) async fn execute(self, client: &pcloud::client::HttpClient) -> anyhow::Result<()> {
+    pub(crate) async fn execute(self, client: &pcloud::Client) -> anyhow::Result<()> {
         let result = self.fetch(client).await?;
         self.formatter().write(result);
         Ok(())

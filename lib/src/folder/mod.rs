@@ -43,6 +43,12 @@ impl<'a> From<&'a str> for FolderIdentifier<'a> {
     }
 }
 
+impl<'a> From<&'a String> for FolderIdentifier<'a> {
+    fn from(value: &'a String) -> Self {
+        Self::Path(Cow::Borrowed(value.as_str()))
+    }
+}
+
 impl From<String> for FolderIdentifier<'_> {
     fn from(value: String) -> Self {
         Self::Path(Cow::Owned(value))

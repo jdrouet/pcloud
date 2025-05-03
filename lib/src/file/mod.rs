@@ -50,6 +50,12 @@ impl<'a> From<&'a str> for FileIdentifier<'a> {
     }
 }
 
+impl<'a> From<&'a String> for FileIdentifier<'a> {
+    fn from(value: &'a String) -> Self {
+        Self::Path(Cow::Borrowed(value))
+    }
+}
+
 impl From<String> for FileIdentifier<'_> {
     fn from(value: String) -> Self {
         Self::Path(Cow::Owned(value))

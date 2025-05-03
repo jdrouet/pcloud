@@ -5,7 +5,6 @@ mod config;
 mod tests;
 
 use clap::Parser;
-use pcloud::client::HttpClient;
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -44,10 +43,6 @@ impl Command {
 }
 
 impl Command {
-    async fn execute(self, client: HttpClient) -> anyhow::Result<()> {
-        self.subcmd.execute(&client).await
-    }
-
     fn set_log_level(&self) {
         tracing_subscriber::fmt()
             .with_env_filter(self.log_level())
@@ -62,5 +57,5 @@ async fn main() -> anyhow::Result<()> {
     cmd.set_log_level();
     let cfg = config::Config::from_path(&cmd.config()).unwrap_or_default();
     let pcloud = cfg.build().expect("couldn't build client");
-    cmd.execute(pcloud).await
+    cmd.subcmd.execute(&pcloud).await
 }

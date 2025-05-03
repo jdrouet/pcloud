@@ -1,6 +1,7 @@
-use pcloud::client::{HttpClient, HttpClientBuilder, HttpClientBuilderError};
-use pcloud::credentials::Credentials;
-use pcloud::region::Region;
+use pcloud::builder::Error as ClientBuilderError;
+use pcloud::Client;
+use pcloud::Credentials;
+use pcloud::Region;
 use serde::Deserialize;
 use std::path::Path;
 use std::time::Duration;
@@ -13,28 +14,14 @@ pub struct CredentialsConfig {
 
 impl CredentialsConfig {
     fn build(self) -> Credentials {
-        Credentials::UserPassword {
-            username: self.username,
-            password: self.password,
-        }
-    }
-}
-
-#[derive(Deserialize)]
-pub struct RegionConfig {
-    name: String,
-}
-
-impl RegionConfig {
-    fn build(self) -> Region {
-        Region::from_name(self.name.as_str()).unwrap_or_default()
+        Credentials::username_password(self.username, self.password)
     }
 }
 
 #[derive(Default, Deserialize)]
 pub struct Config {
     credentials: Option<CredentialsConfig>,
-    region: Option<RegionConfig>,
+    region: Option<Region>,
     timeout: Option<u64>,
 }
 
@@ -45,17 +32,20 @@ impl Config {
         Ok(result)
     }
 
-    pub fn build(self) -> Result<HttpClient, HttpClientBuilderError> {
-        let mut builder = HttpClientBuilder::from_env();
+    pub fn build(self) -> Result<Client, ClientBuilderError> {
+        let mut reqwest_builder = pcloud::reqwest::Client::builder();
+
+        let mut builder = Client::builder();
         if let Some(timeout) = self.timeout.map(Duration::from_secs) {
-            builder.timeout = Some(timeout);
+            reqwest_builder = reqwest_builder.timeout(timeout);
         }
         if let Some(creds) = self.credentials.map(|c| c.build()) {
-            builder.credentials = Some(creds);
+            builder.set_credentials(creds);
         }
-        if let Some(region) = self.region.map(|c| c.build()) {
-            builder.region = Some(region);
+        if let Some(region) = self.region {
+            builder.set_region(region);
         }
+        builder.set_client_builder(reqwest_builder);
         builder.build()
     }
 }

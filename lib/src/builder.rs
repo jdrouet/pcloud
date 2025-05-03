@@ -26,6 +26,15 @@ impl Default for ClientBuilder {
 }
 
 impl ClientBuilder {
+    pub fn set_region(&mut self, region: crate::Region) {
+        self.base_url = region.base_url().into();
+    }
+
+    pub fn with_region(mut self, region: crate::Region) -> Self {
+        self.set_region(region);
+        self
+    }
+
     pub fn set_base_url(&mut self, base_url: impl Into<Cow<'static, str>>) {
         self.base_url = base_url.into();
     }

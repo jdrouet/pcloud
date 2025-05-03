@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 
+pub mod audio;
 pub mod file;
 pub mod video;
 

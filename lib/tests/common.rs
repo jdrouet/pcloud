@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use rand::distributions::Alphanumeric;
+use rand::distr::Alphanumeric;
 use rand::Rng;
 
 pub fn init() {
@@ -9,7 +9,7 @@ pub fn init() {
 }
 
 pub fn random_name() -> String {
-    rand::thread_rng()
+    rand::rng()
         .sample_iter(&Alphanumeric)
         .take(16)
         .map(char::from)

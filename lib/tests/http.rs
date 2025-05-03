@@ -3,7 +3,7 @@
 use pcloud::builder::ClientBuilder;
 use pcloud::file::upload::MultiFileUpload;
 use pcloud::folder::ROOT;
-use rand::distributions::Alphanumeric;
+use rand::distr::Alphanumeric;
 use rand::Rng;
 
 mod common;
@@ -13,10 +13,7 @@ fn create_folder() -> String {
 }
 
 fn create_file(size: usize) -> Vec<u8> {
-    rand::thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(size)
-        .collect()
+    rand::rng().sample_iter(&Alphanumeric).take(size).collect()
 }
 
 fn create_filename(ext: &str) -> String {

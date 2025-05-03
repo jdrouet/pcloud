@@ -35,6 +35,17 @@ impl Region {
     }
 }
 
+impl Region {
+    pub fn from_env() -> Option<Self> {
+        let name = std::env::var("PCLOUD_REGION").ok()?;
+        match name.as_str() {
+            "eu" | "EU" => Some(Self::Eu),
+            "us" | "US" => Some(Self::Us),
+            _ => None,
+        }
+    }
+}
+
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(untagged)]
 pub enum Credentials {
@@ -53,6 +64,38 @@ impl Credentials {
         Self::UsernamePassword {
             username: username.into(),
             password: password.into(),
+        }
+    }
+}
+
+impl Credentials {
+    /// Creates a credential based on the environment variables
+    ///
+    /// When `PCLOUD_ACCESS_TOKEN` is set, a `Some(Credentials::AccessToken)` will be created.
+    ///
+    /// When `PCLOUD_USERNAME` and `PCLOUD_PASSWORD` are set, a `Some(Credentials::UsernamePassword)` will be created.
+    ///
+    /// If none are set, `None` is returned.
+    ///
+    /// ```rust
+    /// use pcloud::Credentials;
+    ///
+    /// match Credentials::from_env() {
+    ///     Some(Credentials::AccessToken { .. }) => println!("uses an access token"),
+    ///     Some(Credentials::UsernamePassword { .. }) => println!("uses a username and a password"),
+    ///     None => eprintln!("no credentials provided"),
+    /// }
+    /// ```
+    pub fn from_env() -> Option<Self> {
+        if let Ok(access_token) = std::env::var("PCLOUD_ACCESS_TOKEN") {
+            Some(Self::AccessToken { access_token })
+        } else if let (Ok(username), Ok(password)) = (
+            std::env::var("PCLOUD_USERNAME"),
+            std::env::var("PCLOUD_PASSWORD"),
+        ) {
+            Some(Self::UsernamePassword { username, password })
+        } else {
+            None
         }
     }
 }

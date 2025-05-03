@@ -26,6 +26,22 @@ impl Default for ClientBuilder {
 }
 
 impl ClientBuilder {
+    pub fn from_env() -> Self {
+        let base_url = crate::Region::from_env()
+            .map(|region| Cow::Borrowed(region.base_url()))
+            .or_else(|| std::env::var("PCLOUD_BASE_URL").ok().map(Cow::Owned))
+            .unwrap_or_else(|| Cow::Borrowed(crate::EU_REGION));
+        let credentials = crate::Credentials::from_env();
+
+        Self {
+            base_url,
+            client_builder: None,
+            credentials,
+        }
+    }
+}
+
+impl ClientBuilder {
     pub fn set_region(&mut self, region: crate::Region) {
         self.base_url = region.base_url().into();
     }

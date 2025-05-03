@@ -50,6 +50,7 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+      - uses: taiki-e/install-action@nextest
       - uses: actions-rs/cargo@v1
         env:
           PCLOUD_USERNAME: "${{secrets.PCLOUD_USERNAME}}"
@@ -57,8 +58,8 @@ jobs:
           PCLOUD_REGION: "${{secrets.PCLOUD_REGION}}"
           PCLOUD_TIMEOUT: "30000" # timeout to 30s
         with:
-          command: test
-          args: --features protected
+          command: nextest
+          args: run --features protected --retries 5
 
   dependencies:
     name: Check dependencies

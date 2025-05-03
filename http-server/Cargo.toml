@@ -12,7 +12,7 @@ repository = "https://github.com/jdrouet/pcloud"
 [dependencies]
 pcloud = { path = "../lib", version = "2.0" }
 #
-axum = { version = "0.7" }
+axum = { version = "0.8" }
 clap = { version = "4.5", features = ["derive", "env"] }
 human_bytes = { version = "0.4" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
@@ -21,4 +21,4 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 urlencoding = { version = "2.1" }
 serde = { version = "1.0", features = ["derive"] }
-thiserror = "1.0"
+thiserror = "2.0"

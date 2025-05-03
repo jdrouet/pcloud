@@ -61,7 +61,7 @@ impl CloudPath {
 
 pub struct RawCloudPath<'a>(&'a CloudPath);
 
-impl<'a> std::fmt::Display for RawCloudPath<'a> {
+impl std::fmt::Display for RawCloudPath<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.0.is_root() {
             f.write_str("/")
@@ -77,7 +77,7 @@ impl<'a> std::fmt::Display for RawCloudPath<'a> {
 
 struct EncodedCloudPath<'a>(&'a CloudPath);
 
-impl<'a> std::fmt::Display for EncodedCloudPath<'a> {
+impl std::fmt::Display for EncodedCloudPath<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.0.is_root() {
             f.write_str("/")
@@ -106,7 +106,7 @@ impl FromStr for FolderCloudPath {
 
 struct RawFolderCloudPath<'a>(&'a FolderCloudPath);
 
-impl<'a> std::fmt::Display for RawFolderCloudPath<'a> {
+impl std::fmt::Display for RawFolderCloudPath<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.0.inner.is_root() {
             f.write_str("/")
@@ -118,7 +118,7 @@ impl<'a> std::fmt::Display for RawFolderCloudPath<'a> {
 
 struct EncodedFolderCloudPath<'a>(&'a FolderCloudPath);
 
-impl<'a> std::fmt::Display for EncodedFolderCloudPath<'a> {
+impl std::fmt::Display for EncodedFolderCloudPath<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.0.inner.is_root() {
             f.write_str("/")

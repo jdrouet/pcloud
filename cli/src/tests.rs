@@ -1,6 +1,6 @@
-use pcloud::client::{HttpClient, HttpClientBuilder};
-use pcloud::error::Error;
-use pcloud::prelude::HttpCommand;
+use pcloud::file::upload::MultiFileUpload;
+use pcloud::folder::list::ListFolderOptions;
+use pcloud::{Client, Error};
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use std::collections::HashSet;
@@ -37,8 +37,8 @@ pub(crate) fn create_root() -> TempDir {
     TempDir::new().unwrap()
 }
 
-pub(crate) fn create_client() -> HttpClient {
-    HttpClientBuilder::from_env().build().unwrap()
+pub(crate) fn create_client() -> Client {
+    pcloud::builder::ClientBuilder::from_env().build().unwrap()
 }
 
 pub(crate) fn create_local_dir(parent: &Path, name: &str) -> PathBuf {
@@ -54,7 +54,7 @@ pub(crate) fn create_local_file(parent: &Path, name: &str) -> PathBuf {
     child
 }
 
-fn flatten_remote(res: &mut HashSet<String>, path: &Path, folder: &pcloud::entry::Folder) {
+fn flatten_remote(res: &mut HashSet<String>, path: &Path, folder: &pcloud::folder::Folder) {
     if let Some(ref children) = folder.contents {
         for child in children.iter() {
             match child {
@@ -73,12 +73,11 @@ fn flatten_remote(res: &mut HashSet<String>, path: &Path, folder: &pcloud::entry
 }
 
 pub(crate) async fn scan_remote_dir(
-    client: &HttpClient,
+    client: &Client,
     folder_id: u64,
 ) -> Result<HashSet<String>, Error> {
-    let folder = pcloud::folder::list::FolderListCommand::new(folder_id.into())
-        .with_recursive(true)
-        .execute(client)
+    let folder = client
+        .list_folder_with_options(folder_id, ListFolderOptions::default().with_recursive())
         .await?;
     let root = PathBuf::from("/");
     let mut result = HashSet::new();
@@ -87,29 +86,30 @@ pub(crate) async fn scan_remote_dir(
 }
 
 pub(crate) async fn create_remote_dir(
-    client: &HttpClient,
+    client: &Client,
     parent_id: u64,
-) -> Result<pcloud::entry::Folder, Error> {
-    pcloud::folder::create::FolderCreateCommand::new(crate::tests::random_name(), parent_id)
-        .execute(client)
+) -> Result<pcloud::folder::Folder, Error> {
+    client
+        .create_folder(parent_id, crate::tests::random_name())
         .await
 }
 
 pub(crate) async fn create_remote_file(
-    client: &HttpClient,
+    client: &Client,
     folder_id: u64,
-) -> Result<pcloud::entry::File, Error> {
+) -> Result<pcloud::file::File, Error> {
     let filename = format!("{}.bin", random_name());
     let binary = random_binary();
-    pcloud::file::upload::FileUploadCommand::new(filename.as_str(), folder_id, binary.as_slice())
-        .execute(client)
+    client
+        .upload_files(
+            folder_id,
+            MultiFileUpload::default().with_body_entry(filename, binary.len() as u64, binary),
+        )
         .await
+        .map(|mut list| list.pop().unwrap())
 }
 
-pub(crate) async fn delete_remote_dir(client: &HttpClient, folder_id: u64) -> Result<(), Error> {
-    let _ = pcloud::folder::delete::FolderDeleteCommand::new(folder_id.into())
-        .with_recursive(true)
-        .execute(client)
-        .await?;
+pub(crate) async fn delete_remote_dir(client: &Client, folder_id: u64) -> Result<(), Error> {
+    client.delete_folder_recursive(folder_id).await?;
     Ok(())
 }

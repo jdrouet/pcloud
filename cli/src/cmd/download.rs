@@ -1,11 +1,13 @@
 use std::collections::VecDeque;
 use std::io::Read;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use pcloud::client::HttpClient;
-use pcloud::entry::{Entry, File, Folder};
-use pcloud::file::FileIdentifier;
-use pcloud::prelude::HttpCommand;
+use futures::StreamExt;
+use pcloud::entry::Entry;
+use pcloud::file::File;
+use pcloud::folder::Folder;
+use pcloud::Client;
+use tokio::io::{AsyncWriteExt, BufWriter};
 
 fn compute_sha1(path: &PathBuf) -> std::io::Result<String> {
     let mut file = std::fs::OpenOptions::new().read(true).open(path)?;
@@ -22,14 +24,37 @@ fn compute_sha1(path: &PathBuf) -> std::io::Result<String> {
 }
 
 struct DownloadManager<'a> {
-    client: &'a HttpClient,
+    client: &'a Client,
     dry_run: bool,
     skip_existing: bool,
     queue: VecDeque<(Entry, PathBuf)>,
 }
 
+async fn download_file(url: String, path: impl AsRef<Path>) -> anyhow::Result<usize> {
+    let writer = tokio::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(path)
+        .await?;
+    let mut writer = BufWriter::new(writer);
+
+    let res = pcloud::reqwest::get(&url).await?;
+    res.error_for_status_ref()?;
+    let mut stream = res.bytes_stream();
+
+    let mut size: usize = 0;
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk?;
+        size += chunk.len();
+        writer.write_all(&chunk).await?;
+    }
+
+    Ok(size)
+}
+
 impl<'a> DownloadManager<'a> {
-    fn new(client: &'a HttpClient, dry_run: bool, skip_existing: bool) -> Self {
+    fn new(client: &'a Client, dry_run: bool, skip_existing: bool) -> Self {
         Self {
             client,
             dry_run,
@@ -50,10 +75,7 @@ impl<'a> DownloadManager<'a> {
             }
             tracing::info!("computing existing file hash...");
             let fhash = compute_sha1(&target)?;
-            let ident = FileIdentifier::file_id(file.file_id);
-            let checksum = pcloud::file::checksum::FileCheckSumCommand::new(ident)
-                .execute(&self.client)
-                .await?;
+            let checksum = self.client.get_file_checksum(file.file_id).await?;
             if fhash == checksum.sha1 {
                 tracing::info!("file already exists with same hash, skipping...");
                 return Ok(0);
@@ -62,18 +84,19 @@ impl<'a> DownloadManager<'a> {
         }
         if let Some(parent) = target.parent() {
             if !parent.exists() {
-                std::fs::create_dir_all(&parent)?;
+                std::fs::create_dir_all(parent)?;
             }
         }
-        let writer = std::fs::OpenOptions::new()
-            .write(true)
-            .create(true)
-            .open(target)?;
-        let ident = FileIdentifier::file_id(file.file_id);
-        let count = pcloud::file::download::FileDownloadCommand::new(ident, writer)
-            .execute(self.client)
-            .await?;
-        Ok(count)
+        let file_links = self.client.get_file_link(file.file_id).await?;
+        for link in file_links.links() {
+            match download_file(link.to_string(), &target).await {
+                Ok(size) => return Ok(size),
+                Err(err) => {
+                    tracing::error!(message = "download failed", cause = %err);
+                }
+            }
+        }
+        anyhow::bail!("unable to download file")
     }
 
     async fn process_folder(&mut self, folder: Folder, target: PathBuf) -> anyhow::Result<()> {
@@ -84,9 +107,7 @@ impl<'a> DownloadManager<'a> {
                 self.queue.push_back((child, new_target));
             }
         } else {
-            let res = pcloud::folder::list::FolderListCommand::new(folder.folder_id.into())
-                .execute(self.client)
-                .await?;
+            let res = self.client.list_folder(folder.folder_id).await?;
             for child in res.contents.into_iter().flatten() {
                 let new_target = target.join(child.base().name.as_str());
                 self.queue.push_back((child, new_target));
@@ -134,19 +155,14 @@ pub(crate) struct Command {
 }
 
 impl Command {
-    async fn fetch_entry(&self, client: &HttpClient) -> Result<Entry, pcloud::error::Error> {
+    async fn fetch_entry(&self, client: &Client) -> Result<Entry, pcloud::Error> {
         // assuming it's doing a `ls` on a folder at first
-        let folder_id = pcloud::folder::FolderIdentifier::path(&self.remote_path);
-        let folder_res = pcloud::folder::list::FolderListCommand::new(folder_id)
-            .execute(client)
-            .await;
-        match folder_res {
+        match client.list_folder(&self.remote_path).await {
             Ok(folder) => Ok(Entry::Folder(folder)),
-            Err(pcloud::error::Error::Protocol(2005, _)) => {
+            Err(pcloud::Error::Protocol(2005, _)) => {
                 // try with a file if a folder is not found
-                let file_id = pcloud::file::FileIdentifier::path(&self.remote_path);
-                pcloud::file::checksum::FileCheckSumCommand::new(file_id)
-                    .execute(client)
+                client
+                    .get_file_checksum(&self.remote_path)
                     .await
                     .map(|res| Entry::File(res.metadata))
             }
@@ -154,7 +170,7 @@ impl Command {
         }
     }
 
-    pub(crate) async fn execute(self, client: &HttpClient) -> anyhow::Result<()> {
+    pub(crate) async fn execute(self, client: &Client) -> anyhow::Result<()> {
         let result = self.fetch_entry(client).await?;
         let manager = DownloadManager::new(client, self.dry_run, self.skip_existing);
         match result {

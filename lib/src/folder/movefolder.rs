@@ -1,36 +1,33 @@
-use super::{Folder, FolderIdentifier, FolderResponse};
+use super::{Folder, FolderIdentifier, FolderResponse, ToFolderIdentifier};
 
-#[derive(Debug, serde::Deserialize)]
-pub struct RecursivePayload {
-    #[serde(rename = "deletedfiles")]
-    pub deleted_files: usize,
-    #[serde(rename = "deletedfolders")]
-    pub deleted_folders: usize,
+#[derive(serde::Serialize)]
+struct FolderMoveParams<'a> {
+    #[serde(flatten)]
+    from: FolderIdentifier<'a>,
+    #[serde(flatten)]
+    to: ToFolderIdentifier<'a>,
 }
 
 impl crate::Client {
-    pub async fn delete_folder<'a>(
+    pub async fn move_folder(
         &self,
-        identifier: impl Into<FolderIdentifier<'a>>,
+        folder: impl Into<FolderIdentifier<'_>>,
+        to_folder: impl Into<FolderIdentifier<'_>>,
     ) -> crate::Result<Folder> {
-        self.get_request::<FolderResponse, _>("deletefolder", identifier.into())
-            .await
-            .map(|res| res.metadata)
-    }
-}
-
-impl crate::Client {
-    pub async fn delete_folder_recursive<'a>(
-        &self,
-        identifier: impl Into<FolderIdentifier<'a>>,
-    ) -> crate::Result<RecursivePayload> {
-        self.get_request("deletefolderrecursive", identifier.into())
-            .await
+        self.get_request::<FolderResponse, _>(
+            "renamefolder",
+            FolderMoveParams {
+                from: folder.into(),
+                to: ToFolderIdentifier(to_folder.into()),
+            },
+        )
+        .await
+        .map(|res| res.metadata)
     }
 }
 
 #[cfg(test)]
-mod http_tests {
+mod tests {
     use crate::{Client, Credentials};
     use mockito::Matcher;
 
@@ -38,10 +35,11 @@ mod http_tests {
     async fn success() {
         let mut server = mockito::Server::new_async().await;
         let m = server
-            .mock("GET", "/deletefolder")
+            .mock("GET", "/renamefolder")
             .match_query(Matcher::AllOf(vec![
                 Matcher::UrlEncoded("access_token".into(), "access-token".into()),
                 Matcher::UrlEncoded("folderid".into(), "42".into()),
+                Matcher::UrlEncoded("topath".into(), "/this/dir/".into()),
             ]))
             .with_status(200)
             .with_body(
@@ -59,14 +57,14 @@ mod http_tests {
         "icon": "folder",
         "isfolder": true,
         "parentfolderid": 0,
-        "folderid": 10
+        "folderid": 42
     }
 }"#,
             )
             .create();
         let client = Client::new(server.url(), Credentials::access_token("access-token")).unwrap();
-        let result = client.delete_folder(42).await.unwrap();
-        assert_eq!(result.base.name, "testing");
+        let result = client.move_folder(42, "/this/dir/").await.unwrap();
+        assert_eq!(result.folder_id, 42);
         m.assert();
     }
 }

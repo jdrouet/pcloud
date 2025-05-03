@@ -1,10 +1,9 @@
-//! The different structures to manipulate the files and folders
-
-use chrono::prelude::{DateTime, Utc};
 use std::cmp::Ordering;
 
+use chrono::{DateTime, Utc};
+
 /// A set of shared fields between [`File`](File) and [`Folder`](Folder).
-#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct EntryBase {
     #[serde(with = "crate::date")]
     pub created: DateTime<Utc>,
@@ -23,102 +22,14 @@ pub struct EntryBase {
     pub is_mine: bool,
 }
 
-/// A structure representing a file on PCloud
-#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
-pub struct File {
-    #[serde(flatten)]
-    pub base: EntryBase,
-    #[serde(rename = "fileid")]
-    pub file_id: u64,
-    pub size: Option<usize>,
-    pub hash: Option<usize>,
-    #[serde(rename = "contenttype")]
-    pub content_type: Option<String>,
-}
-
-impl Eq for File {}
-
-impl PartialEq for File {
-    fn eq(&self, other: &Self) -> bool {
-        self.base.id.eq(&other.base.id)
-    }
-}
-
-impl Ord for File {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.base.name.cmp(&other.base.name)
-    }
-}
-
-impl PartialOrd for File {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-/// A structure reprensenting a folder on PCloud
-#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
-pub struct Folder {
-    #[serde(flatten)]
-    pub base: EntryBase,
-    #[serde(rename = "folderid")]
-    pub folder_id: u64,
-    pub contents: Option<Vec<Entry>>,
-}
-
-impl Eq for Folder {}
-
-impl PartialEq for Folder {
-    fn eq(&self, other: &Self) -> bool {
-        self.base.id.eq(&other.base.id)
-    }
-}
-
-impl Ord for Folder {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.base.name.cmp(&other.base.name)
-    }
-}
-
-impl PartialOrd for Folder {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Folder {
-    pub fn find_entry(&self, name: &str) -> Option<&Entry> {
-        self.contents
-            .as_ref()
-            .and_then(|list| list.iter().find(|item| item.base().name == name))
-    }
-
-    pub fn find_file(&self, name: &str) -> Option<&File> {
-        self.contents.as_ref().and_then(|list| {
-            list.iter()
-                .filter_map(|item| item.as_file())
-                .find(|item| item.base.name == name)
-        })
-    }
-
-    pub fn find_folder(&self, name: &str) -> Option<&Folder> {
-        self.contents.as_ref().and_then(|list| {
-            list.iter()
-                .filter_map(|item| item.as_folder())
-                .find(|item| item.base.name == name)
-        })
-    }
-}
-
 /// The representation of what can be returned by the PCloud API, a file or a folder.
 #[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(untagged)]
 #[allow(clippy::large_enum_variant)]
 pub enum Entry {
-    File(File),
-    Folder(Folder),
+    File(crate::file::File),
+    Folder(crate::folder::Folder),
 }
-
 impl PartialOrd for Entry {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -138,14 +49,14 @@ impl Ord for Entry {
     }
 }
 
-impl From<File> for Entry {
-    fn from(value: File) -> Self {
+impl From<crate::file::File> for Entry {
+    fn from(value: crate::file::File) -> Self {
         Self::File(value)
     }
 }
 
-impl From<Folder> for Entry {
-    fn from(value: Folder) -> Self {
+impl From<crate::folder::Folder> for Entry {
+    fn from(value: crate::folder::Folder) -> Self {
         Self::Folder(value)
     }
 }
@@ -169,14 +80,14 @@ impl Entry {
         matches!(self, Self::File(_))
     }
 
-    pub fn into_file(self) -> Option<File> {
+    pub fn into_file(self) -> Option<crate::file::File> {
         match self {
             Self::File(value) => Some(value),
             _ => None,
         }
     }
 
-    pub fn as_file(&self) -> Option<&File> {
+    pub fn as_file(&self) -> Option<&crate::file::File> {
         match self {
             Self::File(value) => Some(value),
             _ => None,
@@ -194,75 +105,17 @@ impl Entry {
         matches!(self, Self::Folder(_))
     }
 
-    pub fn into_folder(self) -> Option<Folder> {
+    pub fn into_folder(self) -> Option<crate::folder::Folder> {
         match self {
             Self::Folder(value) => Some(value),
             _ => None,
         }
     }
 
-    pub fn as_folder(&self) -> Option<&Folder> {
+    pub fn as_folder(&self) -> Option<&crate::folder::Folder> {
         match self {
             Self::Folder(value) => Some(value),
             _ => None,
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn create_file(id: u64, name: &str) -> File {
-        File {
-            base: EntryBase {
-                created: Utc::now(),
-                modified: Utc::now(),
-                parent_folder_id: None,
-                icon: "".into(),
-                id: format!("f{}", id),
-                name: name.into(),
-                path: None,
-                thumb: false,
-                is_shared: false,
-                is_mine: false,
-            },
-            file_id: id,
-            size: Some(42),
-            hash: Some(42),
-            content_type: None,
-        }
-    }
-
-    fn create_folder(id: u64, name: &str) -> Folder {
-        Folder {
-            base: EntryBase {
-                created: Utc::now(),
-                modified: Utc::now(),
-                parent_folder_id: None,
-                icon: "".into(),
-                id: format!("d{}", id),
-                name: name.into(),
-                path: None,
-                thumb: false,
-                is_shared: false,
-                is_mine: false,
-            },
-            folder_id: id,
-            contents: None,
-        }
-    }
-
-    #[test]
-    fn sorting() {
-        let mut data: Vec<Entry> = vec![
-            create_file(1, "cccc").into(),
-            create_folder(2, "dddd").into(),
-            create_file(3, "aaaa").into(),
-            create_folder(4, "eeee").into(),
-        ];
-        data.sort();
-        let ids: Vec<_> = data.iter().map(|item| item.base().id.clone()).collect();
-        assert_eq!(ids, vec!["d2", "d4", "f3", "f1"]);
     }
 }

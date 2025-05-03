@@ -11,13 +11,10 @@ repository = "https://github.com/jdrouet/pcloud"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["client-http"]
-client-http = ["reqwest"]
 # used to remove tests using credentials from environment variables
 protected = []
 
 [dependencies]
-async-trait = { version = "0.1" }
 bytes = "1.7"
 chrono = { version = "0.4", features = ["serde"] }
 futures-core = "0.3"
@@ -26,7 +23,7 @@ reqwest = { default-features = false, features = [
     "multipart",
     "rustls-tls",
     "stream",
-], version = "0.12", optional = true }
+], version = "0.12" }
 serde = { features = ["derive"], version = "1.0" }
 serde_json = { version = "1.0" }
 thiserror = "1.0"

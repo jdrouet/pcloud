@@ -2,7 +2,7 @@ mod render;
 mod router;
 
 use clap::Parser;
-use pcloud::client::{HttpClient, HttpClientBuilder};
+use pcloud::Client;
 use std::{fmt::Write, net::IpAddr, str::FromStr, string::FromUtf8Error, sync::Arc};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -61,7 +61,7 @@ impl CloudPath {
 
 pub struct RawCloudPath<'a>(&'a CloudPath);
 
-impl<'a> std::fmt::Display for RawCloudPath<'a> {
+impl std::fmt::Display for RawCloudPath<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.0.is_root() {
             f.write_str("/")
@@ -77,7 +77,7 @@ impl<'a> std::fmt::Display for RawCloudPath<'a> {
 
 struct EncodedCloudPath<'a>(&'a CloudPath);
 
-impl<'a> std::fmt::Display for EncodedCloudPath<'a> {
+impl std::fmt::Display for EncodedCloudPath<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.0.is_root() {
             f.write_str("/")
@@ -106,7 +106,7 @@ impl FromStr for FolderCloudPath {
 
 struct RawFolderCloudPath<'a>(&'a FolderCloudPath);
 
-impl<'a> std::fmt::Display for RawFolderCloudPath<'a> {
+impl std::fmt::Display for RawFolderCloudPath<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.0.inner.is_root() {
             f.write_str("/")
@@ -118,7 +118,7 @@ impl<'a> std::fmt::Display for RawFolderCloudPath<'a> {
 
 struct EncodedFolderCloudPath<'a>(&'a FolderCloudPath);
 
-impl<'a> std::fmt::Display for EncodedFolderCloudPath<'a> {
+impl std::fmt::Display for EncodedFolderCloudPath<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.0.inner.is_root() {
             f.write_str("/")
@@ -165,16 +165,16 @@ impl FolderCloudPath {
 }
 
 #[derive(Clone)]
-struct Storage(Arc<HttpClient>);
+struct Storage(Arc<Client>);
 
 impl Storage {
-    fn new(client: HttpClient) -> Self {
+    fn new(client: Client) -> Self {
         Self(Arc::new(client))
     }
 }
 
-impl AsRef<HttpClient> for Storage {
-    fn as_ref(&self) -> &HttpClient {
+impl AsRef<Client> for Storage {
+    fn as_ref(&self) -> &Client {
         &self.0
     }
 }
@@ -214,7 +214,7 @@ async fn main() -> std::io::Result<()> {
         .init();
 
     let args = Config::parse();
-    let client = HttpClientBuilder::from_env()
+    let client = pcloud::builder::ClientBuilder::from_env()
         .build()
         .expect("couldn't build client");
 

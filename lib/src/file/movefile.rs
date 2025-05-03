@@ -1,18 +1,35 @@
+use crate::folder::{FolderIdentifier, ToFolderIdentifier};
+
 use super::{File, FileIdentifier, FileResponse};
 
+#[derive(serde::Serialize)]
+struct FileMoveParams<'a> {
+    #[serde(flatten)]
+    from: FileIdentifier<'a>,
+    #[serde(flatten)]
+    to: ToFolderIdentifier<'a>,
+}
+
 impl crate::Client {
-    pub async fn delete_file(
+    pub async fn move_file(
         &self,
-        identifier: impl Into<FileIdentifier<'_>>,
+        file: impl Into<FileIdentifier<'_>>,
+        to_folder: impl Into<FolderIdentifier<'_>>,
     ) -> crate::Result<File> {
-        self.get_request::<FileResponse, _>("deletefile", identifier.into())
-            .await
-            .map(|res| res.metadata)
+        self.get_request::<FileResponse, _>(
+            "renamefile",
+            FileMoveParams {
+                from: file.into(),
+                to: ToFolderIdentifier(to_folder.into()),
+            },
+        )
+        .await
+        .map(|res| res.metadata)
     }
 }
 
 #[cfg(test)]
-mod http_tests {
+mod tests {
     use crate::{Client, Credentials};
     use mockito::Matcher;
 
@@ -20,17 +37,18 @@ mod http_tests {
     async fn success() {
         let mut server = mockito::Server::new_async().await;
         let m = server
-            .mock("GET", "/deletefile")
+            .mock("GET", "/renamefile")
             .match_query(Matcher::AllOf(vec![
                 Matcher::UrlEncoded("access_token".into(), "access-token".into()),
                 Matcher::UrlEncoded("fileid".into(), "42".into()),
+                Matcher::UrlEncoded("topath".into(), "/this/dir/".into()),
             ]))
             .with_status(200)
             .with_body(
                 r#"{
     "result": 0,
     "metadata": {
-        "name": "C61EWBrr2sU16GM4.bin",
+        "name": "yolo.bin",
         "created": "Sat, 24 Jul 2021 07:38:41 +0000",
         "thumb": false,
         "modified": "Sat, 24 Jul 2021 07:38:41 +0000",
@@ -52,7 +70,7 @@ mod http_tests {
             )
             .create();
         let client = Client::new(server.url(), Credentials::access_token("access-token")).unwrap();
-        let result = client.delete_file(42).await.unwrap();
+        let result = client.move_file(42, "/this/dir/").await.unwrap();
         assert_eq!(result.file_id, 42);
         m.assert();
     }

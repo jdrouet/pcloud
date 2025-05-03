@@ -1,7 +1,9 @@
 use std::fmt::Display;
 
 use human_bytes::human_bytes;
-use pcloud::entry::{Entry, File, Folder};
+use pcloud::entry::Entry;
+use pcloud::file::File;
+use pcloud::folder::Folder;
 
 use crate::FolderCloudPath;
 
@@ -102,7 +104,7 @@ impl<'a> IndexPage<'a> {
     }
 }
 
-impl<'a> IndexPage<'a> {
+impl IndexPage<'_> {
     #[inline(always)]
     fn render_head(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -162,7 +164,7 @@ impl<'a> IndexPage<'a> {
     }
 }
 
-impl<'a> std::fmt::Display for IndexPage<'a> {
+impl std::fmt::Display for IndexPage<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("<!DOCTYPE html>")?;
         crate::node!(f, "html", {

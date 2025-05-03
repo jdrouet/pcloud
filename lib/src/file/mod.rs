@@ -38,7 +38,7 @@ impl<'a> FileIdentifier<'a> {
     }
 }
 
-impl<'a> Default for FileIdentifier<'a> {
+impl Default for FileIdentifier<'_> {
     fn default() -> Self {
         Self::FileId(0)
     }
@@ -50,19 +50,19 @@ impl<'a> From<&'a str> for FileIdentifier<'a> {
     }
 }
 
-impl<'a> From<String> for FileIdentifier<'a> {
+impl From<String> for FileIdentifier<'_> {
     fn from(value: String) -> Self {
         Self::Path(Cow::Owned(value))
     }
 }
 
-impl<'a> From<u64> for FileIdentifier<'a> {
+impl From<u64> for FileIdentifier<'_> {
     fn from(value: u64) -> Self {
         Self::FileId(value)
     }
 }
 
-impl<'a> serde::Serialize for FileIdentifier<'a> {
+impl serde::Serialize for FileIdentifier<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,

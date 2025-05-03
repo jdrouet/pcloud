@@ -14,7 +14,7 @@ struct FileMoveParams<'a> {
 
 struct ToFolderIdentifier<'a>(FolderIdentifier<'a>);
 
-impl<'a> serde::Serialize for ToFolderIdentifier<'a> {
+impl serde::Serialize for ToFolderIdentifier<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,

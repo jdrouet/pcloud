@@ -31,7 +31,7 @@ impl<'a> FolderIdentifier<'a> {
     }
 }
 
-impl<'a> Default for FolderIdentifier<'a> {
+impl Default for FolderIdentifier<'_> {
     fn default() -> Self {
         Self::FolderId(0)
     }
@@ -43,19 +43,19 @@ impl<'a> From<&'a str> for FolderIdentifier<'a> {
     }
 }
 
-impl<'a> From<String> for FolderIdentifier<'a> {
+impl From<String> for FolderIdentifier<'_> {
     fn from(value: String) -> Self {
         Self::Path(Cow::Owned(value))
     }
 }
 
-impl<'a> From<u64> for FolderIdentifier<'a> {
+impl From<u64> for FolderIdentifier<'_> {
     fn from(value: u64) -> Self {
         Self::FolderId(value)
     }
 }
 
-impl<'a> serde::Serialize for FolderIdentifier<'a> {
+impl serde::Serialize for FolderIdentifier<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,

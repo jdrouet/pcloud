@@ -6,6 +6,7 @@ use crate::entry::EntryBase;
 
 pub mod checksum;
 pub mod delete;
+pub mod movefile; // can't name it move
 pub mod rename;
 pub mod upload;
 

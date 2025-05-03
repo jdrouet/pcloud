@@ -1,9 +1,6 @@
 mod cmd;
 mod config;
 
-#[cfg(all(test, feature = "protected"))]
-mod tests;
-
 use clap::Parser;
 use std::path::PathBuf;
 

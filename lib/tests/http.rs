@@ -1,12 +1,10 @@
-#![cfg(all(feature = "protected", feature = "client-http"))]
+#![cfg(feature = "protected")]
 
 use pcloud::builder::ClientBuilder;
 use pcloud::file::upload::MultiFileUpload;
-use pcloud::file::FileIdentifier;
 use pcloud::folder::ROOT;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
-use std::io::Cursor;
 
 mod common;
 

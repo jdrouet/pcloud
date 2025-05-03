@@ -5,6 +5,8 @@ use serde::ser::SerializeStruct;
 pub mod create;
 pub mod delete;
 pub mod list;
+pub mod movefolder;
+pub mod rename;
 
 pub const ROOT: u64 = 0;
 
@@ -130,5 +132,25 @@ impl Folder {
                 .filter_map(|item| item.as_folder())
                 .find(|item| item.base.name == name)
         })
+    }
+}
+
+pub(crate) struct ToFolderIdentifier<'a>(pub FolderIdentifier<'a>);
+
+impl serde::Serialize for ToFolderIdentifier<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut builder = serializer.serialize_struct(stringify!(FolderIdentifier), 1)?;
+        match self.0 {
+            FolderIdentifier::FolderId(ref folder_id) => {
+                builder.serialize_field("tofolderid", folder_id)?;
+            }
+            FolderIdentifier::Path(ref path) => {
+                builder.serialize_field("topath", path)?;
+            }
+        }
+        builder.end()
     }
 }

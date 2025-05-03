@@ -1,7 +1,7 @@
 use super::{Folder, FolderIdentifier, FolderResponse};
 
 #[derive(Default, serde::Serialize)]
-pub struct Options {
+pub struct ListFolderOptions {
     #[serde(
         skip_serializing_if = "crate::request::is_false",
         serialize_with = "crate::request::serialize_bool"
@@ -25,7 +25,7 @@ pub struct Options {
     no_shares: bool,
 }
 
-impl Options {
+impl ListFolderOptions {
     pub fn with_recursive(mut self) -> Self {
         self.recursive = true;
         self
@@ -52,7 +52,7 @@ struct Params<'a> {
     #[serde(flatten)]
     identifier: FolderIdentifier<'a>,
     #[serde(flatten)]
-    options: Options,
+    options: ListFolderOptions,
 }
 
 impl crate::Client {
@@ -67,7 +67,7 @@ impl crate::Client {
     pub async fn list_folder_with_options(
         &self,
         identifier: impl Into<FolderIdentifier<'_>>,
-        options: Options,
+        options: ListFolderOptions,
     ) -> crate::Result<Folder> {
         let params = Params {
             identifier: identifier.into(),
@@ -120,7 +120,7 @@ mod tests {
         let payload = client
             .list_folder_with_options(
                 0,
-                super::Options::default()
+                super::ListFolderOptions::default()
                     .with_recursive()
                     .with_show_deleted(),
             )

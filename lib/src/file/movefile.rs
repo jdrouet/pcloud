@@ -1,6 +1,4 @@
-use serde::ser::SerializeStruct;
-
-use crate::folder::FolderIdentifier;
+use crate::folder::{FolderIdentifier, ToFolderIdentifier};
 
 use super::{File, FileIdentifier, FileResponse};
 
@@ -10,26 +8,6 @@ struct FileMoveParams<'a> {
     from: FileIdentifier<'a>,
     #[serde(flatten)]
     to: ToFolderIdentifier<'a>,
-}
-
-struct ToFolderIdentifier<'a>(FolderIdentifier<'a>);
-
-impl serde::Serialize for ToFolderIdentifier<'_> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut builder = serializer.serialize_struct(stringify!(FolderIdentifier), 1)?;
-        match self.0 {
-            FolderIdentifier::FolderId(ref folder_id) => {
-                builder.serialize_field("tofolderid", folder_id)?;
-            }
-            FolderIdentifier::Path(ref path) => {
-                builder.serialize_field("topath", path)?;
-            }
-        }
-        builder.end()
-    }
 }
 
 impl crate::Client {

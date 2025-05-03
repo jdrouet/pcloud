@@ -4,6 +4,7 @@ pub mod builder;
 pub mod entry;
 pub mod file;
 pub mod folder;
+pub mod stream;
 
 mod date;
 mod request;

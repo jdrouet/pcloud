@@ -31,6 +31,7 @@ WORKDIR /code
 COPY cli/src /code/cli/src
 COPY http-server/src /code/http-server/src
 COPY lib/src /code/lib/src
+COPY lib/readme.md /code/lib/
 
 RUN cargo build --offline --release
 

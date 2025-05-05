@@ -25,9 +25,10 @@ RUN --mount=type=cache,sharing=locked,id=cargo-git,target=/usr/local/cargo/git \
   --mount=type=cache,sharing=locked,id=cargo-registry,target=/usr/local/cargo/registry \
   mkdir -p /code/.cargo \
   && cargo vendor > /code/.cargo/config.toml
-  
+
 COPY cli/src /code/cli/src
 COPY lib/src /code/lib/src
+COPY lib/readme.md /code/lib/
 
 # Cli related stages
 
@@ -75,7 +76,7 @@ FROM deb-builder AS cli-deb-builder
 RUN --mount=type=cache,sharing=locked,id=cargo-git,target=/usr/local/cargo/git \
   --mount=type=cache,sharing=locked,id=cargo-registry,target=/usr/local/cargo/registry \
   cargo deb --package pcloud-cli
-  
+
 FROM scratch AS cli-deb-package
 
 COPY --from=cli-deb-builder /code/target/debian/*.deb /

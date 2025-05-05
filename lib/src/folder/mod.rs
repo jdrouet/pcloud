@@ -10,23 +10,31 @@ pub mod rename;
 
 pub const ROOT: u64 = 0;
 
+/// Internal response structure for folder-related API calls.
 #[derive(Debug, serde::Deserialize)]
 pub(crate) struct FolderResponse {
+    /// Metadata of the folder being returned.
     pub metadata: Folder,
 }
 
+/// Enumeration for identifying a folder by either its path or folder ID.
 #[derive(Debug)]
 pub enum FolderIdentifier<'a> {
+    /// A folder is identified by its path.
     Path(Cow<'a, str>),
+
+    /// A folder is identified by its unique folder ID.
     FolderId(u64),
 }
 
 impl<'a> FolderIdentifier<'a> {
+    /// Create a folder identifier using a path.
     #[inline]
     pub fn path<P: Into<Cow<'a, str>>>(value: P) -> Self {
         Self::Path(value.into())
     }
 
+    /// Create a folder identifier using a folder ID.
     #[inline]
     pub fn folder_id(value: u64) -> Self {
         Self::FolderId(value)
@@ -87,13 +95,18 @@ impl serde::Serialize for FolderIdentifier<'_> {
     }
 }
 
-/// A structure reprensenting a folder on PCloud
+/// A structure representing a folder in pCloud.
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct Folder {
+    /// Metadata common to all entries in pCloud.
     #[serde(flatten)]
     pub base: crate::entry::EntryBase,
+
+    /// The unique folder ID.
     #[serde(rename = "folderid")]
     pub folder_id: u64,
+
+    /// A list of contents inside the folder (files and subfolders).
     pub contents: Option<Vec<crate::entry::Entry>>,
 }
 
@@ -118,12 +131,40 @@ impl PartialOrd for Folder {
 }
 
 impl Folder {
+    /// Finds an entry (file or folder) by its name inside the folder.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the entry to search for.
+    ///
+    /// # Returns
+    ///
+    /// An optional reference to the entry if it exists in the folder.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # async fn example(folder: &pcloud::folder::Folder) {
+    /// if let Some(entry) = folder.find_entry("example.txt") {
+    ///     println!("Found entry: {:?}", entry.base().name);
+    /// }
+    /// # }
+    /// ```
     pub fn find_entry(&self, name: &str) -> Option<&crate::entry::Entry> {
         self.contents
             .as_ref()
             .and_then(|list| list.iter().find(|item| item.base().name == name))
     }
 
+    /// Finds a file by its name inside the folder.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the file to search for.
+    ///
+    /// # Returns
+    ///
+    /// An optional reference to the file if it exists in the folder.
     pub fn find_file(&self, name: &str) -> Option<&crate::file::File> {
         self.contents.as_ref().and_then(|list| {
             list.iter()
@@ -132,6 +173,15 @@ impl Folder {
         })
     }
 
+    /// Finds a subfolder by its name inside the folder.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the subfolder to search for.
+    ///
+    /// # Returns
+    ///
+    /// An optional reference to the subfolder if it exists in the folder.
     pub fn find_folder(&self, name: &str) -> Option<&Folder> {
         self.contents.as_ref().and_then(|list| {
             list.iter()
@@ -141,6 +191,7 @@ impl Folder {
     }
 }
 
+/// Internal wrapper for a folder identifier used in API requests.
 pub(crate) struct ToFolderIdentifier<'a>(pub FolderIdentifier<'a>);
 
 impl serde::Serialize for ToFolderIdentifier<'_> {

@@ -6,32 +6,43 @@ use crate::entry::EntryBase;
 
 pub mod checksum;
 pub mod delete;
-pub mod movefile; // can't name it move
+pub mod movefile; // Can't name it "move" as it's a reserved keyword
 pub mod rename;
 pub mod upload;
 
-/// Structure returned when moving or copying a file
+/// Response returned when moving or copying a file.
+///
+/// This struct wraps file metadata after an operation that results
+/// in a file being created or relocated (e.g., move, copy).
 #[derive(Debug, serde::Deserialize)]
 pub struct FileResponse {
+    /// Metadata of the resulting file after the operation.
     pub metadata: File,
 }
 
-/// Representation of a file identifier.
+/// A file identifier used in API calls.
 ///
-/// In most commands, a file can be identifier by it's path,
-/// although it's not recommended, or by it id
+/// Files on pCloud can be referenced either by their **file ID** or by their **path**.
+/// File IDs are preferred for reliability and performance.
+///
+/// This enum allows you to pass either type of identifier interchangeably.
 #[derive(Clone, Debug)]
 pub enum FileIdentifier<'a> {
+    /// A file path (e.g., `"folder/subfolder/file.txt"`).
     Path(Cow<'a, str>),
+
+    /// A file ID assigned by pCloud.
     FileId(u64),
 }
 
 impl<'a> FileIdentifier<'a> {
+    /// Creates a [`FileIdentifier`] from a path.
     #[inline]
     pub fn path<P: Into<Cow<'a, str>>>(path: P) -> Self {
         Self::Path(path.into())
     }
 
+    /// Creates a [`FileIdentifier`] from a file ID.
     #[inline]
     pub fn file_id(fileid: u64) -> Self {
         Self::FileId(fileid)
@@ -92,15 +103,28 @@ impl serde::Serialize for FileIdentifier<'_> {
     }
 }
 
-/// A structure representing a file on PCloud
+/// A structure representing a file stored on pCloud.
+///
+/// Includes metadata such as the file's unique ID, size, content type, and other attributes.
+///
+/// This struct implements comparison traits so files can be sorted or compared by name.
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct File {
+    /// Base metadata common to all entries (files and folders).
     #[serde(flatten)]
     pub base: EntryBase,
+
+    /// The unique file ID assigned by pCloud.
     #[serde(rename = "fileid")]
     pub file_id: u64,
+
+    /// The size of the file in bytes.
     pub size: Option<usize>,
+
+    /// A hash of the file content (may be used for caching or deduplication).
     pub hash: Option<usize>,
+
+    /// The MIME type of the file (e.g., `"image/jpeg"`, `"application/pdf"`).
     #[serde(rename = "contenttype")]
     pub content_type: Option<String>,
 }

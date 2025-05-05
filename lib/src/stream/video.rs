@@ -3,18 +3,23 @@ use std::borrow::Cow;
 use super::StreamingLinkList;
 use crate::file::FileIdentifier;
 
+/// Parameters for retrieving a video file link, including options for controlling the audio bit rate,
+/// video bit rate, resolution, and fixed bitrate streaming.
 #[derive(Debug, Default, serde::Serialize)]
 pub struct GetVideoLinkParams<'a> {
-    /// int audio bit rate in kilobits, from 16 to 320
+    /// Audio bit rate in kilobits per second (from 16 to 320).
     #[serde(rename = "abitrate", skip_serializing_if = "Option::is_none")]
     pub audio_bit_rate: Option<u16>,
-    /// int video bitrate in kilobits, from 16 to 4000
+
+    /// Video bit rate in kilobits per second (from 16 to 4000).
     #[serde(rename = "vbitrate", skip_serializing_if = "Option::is_none")]
     pub video_bit_rate: Option<u32>,
-    /// string in pixels, from 64x64 to 1280x960, WIDTHxHEIGHT
+
+    /// Resolution of the video in the format WIDTHxHEIGHT (e.g., 1280x960), with a range of 64x64 to 1280x960.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub resolution: Option<Cow<'a, str>>,
-    /// if set, turns off adaptive streaming and the stream will be with a constant bitrate.
+
+    /// If set to true, disables adaptive streaming and forces the video stream to have a constant bitrate.
     #[serde(
         rename = "fixedbitrate",
         skip_serializing_if = "crate::request::is_false",
@@ -24,52 +29,105 @@ pub struct GetVideoLinkParams<'a> {
 }
 
 impl<'a> GetVideoLinkParams<'a> {
+    /// Sets the audio bit rate for the video link.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - Audio bit rate in kilobits per second (from 16 to 320).
     pub fn set_audio_bit_rate(&mut self, value: u16) {
         self.audio_bit_rate = Some(value);
     }
 
+    /// Sets the audio bit rate and returns the updated `GetVideoLinkParams` object.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - Audio bit rate in kilobits per second (from 16 to 320).
     pub fn with_audio_bit_rate(mut self, value: u16) -> Self {
         self.set_audio_bit_rate(value);
         self
     }
 
+    /// Sets the video bit rate for the video link.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - Video bit rate in kilobits per second (from 16 to 4000).
     pub fn set_video_bit_rate(&mut self, value: u32) {
         self.video_bit_rate = Some(value);
     }
 
+    /// Sets the video bit rate and returns the updated `GetVideoLinkParams` object.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - Video bit rate in kilobits per second (from 16 to 4000).
     pub fn with_video_bit_rate(mut self, value: u32) -> Self {
         self.set_video_bit_rate(value);
         self
     }
 
+    /// Sets the resolution for the video link.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The resolution in the format WIDTHxHEIGHT (e.g., 1280x960).
     pub fn set_resolution(&mut self, value: impl Into<Cow<'a, str>>) {
         self.resolution = Some(value.into());
     }
 
+    /// Sets the resolution and returns the updated `GetVideoLinkParams` object.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The resolution in the format WIDTHxHEIGHT (e.g., 1280x960).
     pub fn with_resolution(mut self, value: impl Into<Cow<'a, str>>) -> Self {
         self.set_resolution(value);
         self
     }
 
+    /// Sets the `fixed_bit_rate` flag.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - A boolean indicating whether the video should have a fixed bitrate.
     pub fn set_fixed_bit_rate(&mut self, value: bool) {
         self.fixed_bit_rate = value;
     }
 
+    /// Sets the `fixed_bit_rate` flag and returns the updated `GetVideoLinkParams` object.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - A boolean indicating whether the video should have a fixed bitrate.
     pub fn with_fixed_bit_rate(mut self, value: bool) -> Self {
         self.set_fixed_bit_rate(value);
         self
     }
 }
 
+/// Struct representing the parameters used when making a request to get a video link.
 #[derive(serde::Serialize)]
 struct Params<'a> {
+    /// The identifier for the file being requested.
     #[serde(flatten)]
     identifier: FileIdentifier<'a>,
+
+    /// The parameters controlling how the video link should be generated.
     #[serde(flatten)]
     params: GetVideoLinkParams<'a>,
 }
 
 impl crate::Client {
+    /// Gets a video link using only the file identifier, without additional parameters.
+    ///
+    /// # Arguments
+    ///
+    /// * `identifier` - The identifier of the file.
+    ///
+    /// # Returns
+    ///
+    /// A result containing the `StreamingLinkList` with the generated video links.
     pub async fn get_video_link(
         &self,
         identifier: impl Into<FileIdentifier<'_>>,
@@ -78,6 +136,16 @@ impl crate::Client {
             .await
     }
 
+    /// Gets a video link using both the file identifier and additional parameters.
+    ///
+    /// # Arguments
+    ///
+    /// * `identifier` - The identifier of the file.
+    /// * `params` - The parameters to customize the video link (e.g., audio bit rate, video bit rate, resolution).
+    ///
+    /// # Returns
+    ///
+    /// A result containing the `StreamingLinkList` with the generated video links.
     pub async fn get_video_link_with_params(
         &self,
         identifier: impl Into<FileIdentifier<'_>>,

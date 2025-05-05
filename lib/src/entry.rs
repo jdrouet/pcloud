@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use chrono::{DateTime, Utc};
 
-/// A set of shared fields between [`File`](File) and [`Folder`](Folder).
+/// A set of shared fields between [`File`](crate::file::File) and [`Folder`](crate::folder::Folder).
 #[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct EntryBase {
     #[serde(with = "crate::date")]

@@ -1,6 +1,33 @@
 use super::{File, FileIdentifier, FileResponse};
 
 impl crate::Client {
+    /// Deletes a file from pCloud.
+    ///
+    /// This function calls the `deletefile` endpoint to remove the specified file from the user's pCloud storage.
+    /// It returns the metadata of the deleted file upon success.
+    ///
+    /// # Arguments
+    ///
+    /// * `identifier` - A type convertible into a [`FileIdentifier`] that identifies the file to delete
+    /// (e.g., by file ID or path).
+    ///
+    /// # Returns
+    ///
+    /// A [`File`] struct containing metadata about the deleted file.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`crate::Error`] if the file does not exist or the API request fails.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// # async fn example(client: &pcloud::Client) -> Result<(), pcloud::Error> {
+    /// let deleted_file = client.delete_file("myfolder/myfile.txt").await?;
+    /// println!("Deleted file ID: {}", deleted_file.file_id);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn delete_file(
         &self,
         identifier: impl Into<FileIdentifier<'_>>,

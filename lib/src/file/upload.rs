@@ -2,19 +2,38 @@ use crate::folder::FolderIdentifier;
 
 use super::File;
 
+/// Response returned by the `uploadfile` endpoint when uploading multiple files.
+///
+/// Contains the list of uploaded file IDs and their corresponding metadata.
 #[derive(Debug, serde::Deserialize)]
 pub struct MultipartFileUploadResponse {
+    /// The IDs of the uploaded files.
     #[serde(rename = "fileids")]
     pub file_ids: Vec<u64>,
+
+    /// Metadata for each uploaded file.
     pub metadata: Vec<File>,
 }
 
+/// Builder for uploading multiple files to pCloud.
+///
+/// This struct provides a convenient way to assemble a multipart form upload,
+/// either from in-memory data, raw bodies, or asynchronous streams.
 #[derive(Debug, Default)]
 pub struct MultiFileUpload {
     parts: Vec<reqwest::multipart::Part>,
 }
 
 impl MultiFileUpload {
+    /// Adds a file stream to the upload and returns the updated builder.
+    ///
+    /// This is a chainable version of [`MultiFileUpload::add_stream_entry`].
+    ///
+    /// # Arguments
+    ///
+    /// * `filename` - The name to assign to the uploaded file.
+    /// * `length` - The size of the file in bytes.
+    /// * `stream` - A `TryStream` of bytes representing the file content.
     pub fn with_stream_entry<F, S>(mut self, filename: F, length: u64, stream: S) -> Self
     where
         F: Into<String>,
@@ -26,6 +45,13 @@ impl MultiFileUpload {
         self
     }
 
+    /// Adds a file stream to the upload.
+    ///
+    /// # Arguments
+    ///
+    /// * `filename` - The name to assign to the uploaded file.
+    /// * `length` - The size of the file in bytes.
+    /// * `stream` - A `TryStream` of bytes representing the file content.
     pub fn add_stream_entry<F, S>(&mut self, filename: F, length: u64, stream: S)
     where
         F: Into<String>,
@@ -37,6 +63,15 @@ impl MultiFileUpload {
         self.add_body_entry(filename, length, body);
     }
 
+    /// Adds a file from a raw body and returns the updated builder.
+    ///
+    /// This is a chainable version of [`MultiFileUpload::add_body_entry`].
+    ///
+    /// # Arguments
+    ///
+    /// * `filename` - The name to assign to the uploaded file.
+    /// * `length` - The size of the file in bytes.
+    /// * `body` - A `reqwest::Body` representing the file data.
     pub fn with_body_entry<F, B>(mut self, filename: F, length: u64, body: B) -> Self
     where
         F: Into<String>,
@@ -46,6 +81,13 @@ impl MultiFileUpload {
         self
     }
 
+    /// Adds a file from a raw body to the upload.
+    ///
+    /// # Arguments
+    ///
+    /// * `filename` - The name to assign to the uploaded file.
+    /// * `length` - The size of the file in bytes.
+    /// * `body` - A `reqwest::Body` containing the file content.
     pub fn add_body_entry<F, B>(&mut self, filename: F, length: u64, body: B)
     where
         F: Into<String>,
@@ -55,9 +97,10 @@ impl MultiFileUpload {
         let content_length = length.to_string();
         headers.append(
             reqwest::header::CONTENT_LENGTH,
-            reqwest::header::HeaderValue::from_str(content_length.as_str())
-                .expect("content-length to be a valid number"),
+            reqwest::header::HeaderValue::from_str(&content_length)
+                .expect("content-length must be a valid number"),
         );
+
         let part = reqwest::multipart::Part::stream_with_length(body, length)
             .file_name(filename.into())
             .headers(headers);
@@ -65,6 +108,9 @@ impl MultiFileUpload {
         self.parts.push(part);
     }
 
+    /// Converts the upload builder into a multipart form.
+    ///
+    /// This method is used internally before sending the request.
     fn into_form(self) -> reqwest::multipart::Form {
         self.parts.into_iter().enumerate().fold(
             reqwest::multipart::Form::default(),
@@ -74,6 +120,42 @@ impl MultiFileUpload {
 }
 
 impl crate::Client {
+    /// Uploads multiple files to a specified folder on pCloud.
+    ///
+    /// This method uses multipart form submission to upload several files in a single request.
+    ///
+    /// # Arguments
+    ///
+    /// * `parent` - A value convertible into a [`FolderIdentifier`] representing the destination folder.
+    /// * `files` - A [`MultiFileUpload`] builder containing the files to upload.
+    ///
+    /// # Returns
+    ///
+    /// On success, returns a list of [`File`] metadata for each uploaded file.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`crate::Error`] if the upload fails due to network issues,
+    /// invalid input, or server-side errors.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// use bytes::Bytes;
+    /// use futures_util::stream;
+    ///
+    /// # async fn example(client: &pcloud::Client) -> Result<(), pcloud::Error> {
+    /// let data = vec![Ok(Bytes::from_static(b"hello world"))];
+    /// let stream = stream::iter(data);
+    ///
+    /// let upload = pcloud::file::upload::MultiFileUpload::default()
+    ///     .with_stream_entry("hello.txt", 11, stream);
+    ///
+    /// let uploaded = client.upload_files("/my-folder", upload).await?;
+    /// println!("Uploaded {} file(s)", uploaded.len());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn upload_files(
         &self,
         parent: impl Into<FolderIdentifier<'_>>,

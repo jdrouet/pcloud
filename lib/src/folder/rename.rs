@@ -2,15 +2,49 @@ use std::borrow::Cow;
 
 use super::{Folder, FolderIdentifier, FolderResponse};
 
+/// Internal parameter structure for renaming a folder.
 #[derive(serde::Serialize)]
 struct FolderRenameParams<'a> {
+    /// The folder identifier (either folder ID or path).
     #[serde(flatten)]
     identifier: FolderIdentifier<'a>,
+
+    /// The new name for the folder.
     #[serde(rename = "toname")]
     to_name: Cow<'a, str>,
 }
 
 impl crate::Client {
+    /// Renames an existing folder in pCloud.
+    ///
+    /// This function calls the `renamefolder` API endpoint to rename the specified folder.
+    /// The folder is identified either by its folder ID or its path, and the new name is provided
+    /// as a string.
+    ///
+    /// # Arguments
+    ///
+    /// * `identifier` - The identifier for the folder to be renamed, which can be provided either
+    ///                  by folder ID or path.
+    /// * `name` - The new name for the folder.
+    ///
+    /// # Returns
+    ///
+    /// A [`Folder`] struct containing the metadata of the renamed folder.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`crate::Error`] if the rename operation fails, for example, if the folder does
+    /// not exist or the API request encounters an issue.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// # async fn example(client: &pcloud::Client) -> Result<(), pcloud::Error> {
+    /// let renamed_folder = client.rename_folder("/OldFolder", "NewFolderName").await?;
+    /// println!("Renamed folder: {:?}", renamed_folder.base.name);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn rename_folder<'a>(
         &self,
         identifier: impl Into<FolderIdentifier<'a>>,

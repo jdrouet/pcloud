@@ -1,11 +1,14 @@
 use super::StreamingLinkList;
 use crate::file::FileIdentifier;
 
+/// Parameters for retrieving an audio file link, including options for controlling the audio bit rate and download behavior.
 #[derive(Debug, Default, serde::Serialize)]
 pub struct GetAudioLinkParams {
-    /// int audio bit rate in kilobits, from 16 to 320
+    /// Audio bit rate in kilobits per second (from 16 to 320).
     #[serde(rename = "abitrate", skip_serializing_if = "Option::is_none")]
     pub audio_bit_rate: Option<u16>,
+
+    /// Flag to force the audio file to be downloaded rather than streamed.
     #[serde(
         rename = "forcedownload",
         skip_serializing_if = "crate::request::is_false",
@@ -15,34 +18,67 @@ pub struct GetAudioLinkParams {
 }
 
 impl GetAudioLinkParams {
+    /// Sets the audio bit rate for the link.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - Audio bit rate in kilobits per second (must be between 16 and 320).
     pub fn set_audio_bit_rate(&mut self, value: u16) {
         self.audio_bit_rate = Some(value);
     }
 
+    /// Sets the audio bit rate and returns the updated `GetAudioLinkParams` object.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - Audio bit rate in kilobits per second (must be between 16 and 320).
     pub fn with_audio_bit_rate(mut self, value: u16) -> Self {
         self.set_audio_bit_rate(value);
         self
     }
 
+    /// Sets the `force_download` flag.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - Boolean indicating whether the file should be forced to download.
     pub fn set_force_download(&mut self, value: bool) {
         self.force_download = value;
     }
 
+    /// Sets the `force_download` flag and returns the updated `GetAudioLinkParams` object.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - Boolean indicating whether the file should be forced to download.
     pub fn with_force_download(mut self, value: bool) -> Self {
         self.set_force_download(value);
         self
     }
 }
 
+/// Struct representing the parameters used when making a request to get an audio link.
 #[derive(serde::Serialize)]
 struct Params<'a> {
+    /// The identifier for the file being requested.
     #[serde(flatten)]
     identifier: FileIdentifier<'a>,
+
+    /// The parameters controlling how the audio link should be generated.
     #[serde(flatten)]
     params: GetAudioLinkParams,
 }
 
 impl crate::Client {
+    /// Gets an audio link using only the file identifier, without additional parameters.
+    ///
+    /// # Arguments
+    ///
+    /// * `identifier` - The identifier of the file.
+    ///
+    /// # Returns
+    ///
+    /// A result containing the `StreamingLinkList` with the generated audio links.
     pub async fn get_audio_link(
         &self,
         identifier: impl Into<FileIdentifier<'_>>,
@@ -51,6 +87,16 @@ impl crate::Client {
             .await
     }
 
+    /// Gets an audio link using both the file identifier and additional parameters.
+    ///
+    /// # Arguments
+    ///
+    /// * `identifier` - The identifier of the file.
+    /// * `params` - The parameters to customize the audio link (e.g., audio bit rate, force download).
+    ///
+    /// # Returns
+    ///
+    /// A result containing the `StreamingLinkList` with the generated audio links.
     pub async fn get_audio_link_with_params(
         &self,
         identifier: impl Into<FileIdentifier<'_>>,

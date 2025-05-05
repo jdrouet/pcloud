@@ -2,15 +2,50 @@ use crate::folder::{FolderIdentifier, ToFolderIdentifier};
 
 use super::{File, FileIdentifier, FileResponse};
 
+/// Parameters required to move a file to a new folder.
+///
+/// This structure is serialized and sent to the `renamefile` endpoint.
+/// It flattens both the source file identifier and the target folder identifier
+/// into the request payload.
 #[derive(serde::Serialize)]
 struct FileMoveParams<'a> {
+    /// The file to move (by path or file ID).
     #[serde(flatten)]
     from: FileIdentifier<'a>,
+
+    /// The target folder to move the file into.
     #[serde(flatten)]
     to: ToFolderIdentifier<'a>,
 }
 
 impl crate::Client {
+    /// Moves a file to a different folder on pCloud.
+    ///
+    /// This function calls the `renamefile` API endpoint to move the specified file
+    /// to a new folder. The file is identified either by its file ID or by path.
+    ///
+    /// # Arguments
+    ///
+    /// * `file` - A value that can be converted into a [`FileIdentifier`] (e.g., file ID or path).
+    /// * `to_folder` - A value that can be converted into a [`FolderIdentifier`] representing the destination folder.
+    ///
+    /// # Returns
+    ///
+    /// On success, returns a [`File`] struct containing metadata about the moved file.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`crate::Error`] if the file or folder is not found, or if the API request fails.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// # async fn example(client: &pcloud::Client) -> Result<(), pcloud::Error> {
+    /// let file = client.move_file(12345678u64, "/new/folder").await?;
+    /// println!("Moved file name: {}", file.base.name);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn move_file(
         &self,
         file: impl Into<FileIdentifier<'_>>,

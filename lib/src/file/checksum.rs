@@ -1,5 +1,9 @@
 use super::{File, FileIdentifier};
 
+/// Represents the checksum information for a file stored on pCloud.
+///
+/// This struct includes various checksum types (MD5, SHA-1, SHA-256) as well
+/// as metadata about the file itself.
 #[derive(Debug, serde::Deserialize)]
 pub struct FileChecksum {
     pub md5: Option<String>,
@@ -9,6 +13,29 @@ pub struct FileChecksum {
 }
 
 impl crate::Client {
+    /// Retrieves the checksums and metadata for a file on pCloud.
+    ///
+    /// This function calls the `checksumfile` endpoint and returns a
+    /// [`FileChecksum`] struct containing the MD5, SHA-1, and SHA-256 hashes,
+    /// as well as basic metadata for the specified file.
+    ///
+    /// # Arguments
+    ///
+    /// * `identifier` - A type that can be converted into a [`FileIdentifier`] used to identify the file (e.g., by file ID or path).
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`crate::Error`] if the request fails or if the file cannot be found.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// # async fn example(client: &pcloud::Client) -> Result<(), pcloud::Error> {
+    /// let checksum = client.get_file_checksum("myfolder/myfile.txt").await?;
+    /// println!("SHA-1: {}", checksum.sha1);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn get_file_checksum(
         &self,
         identifier: impl Into<FileIdentifier<'_>>,

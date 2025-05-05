@@ -2,15 +2,49 @@ use std::borrow::Cow;
 
 use super::{File, FileIdentifier, FileResponse};
 
+/// Parameters used to rename a file on pCloud.
+///
+/// This structure is serialized for the `renamefile` API endpoint.
+/// It includes the file identifier and the new name for the file.
 #[derive(serde::Serialize)]
 struct FileRenameParams<'a> {
+    /// The file to rename, identified by file ID or path.
     #[serde(flatten)]
     identifier: FileIdentifier<'a>,
+
+    /// The new name to assign to the file.
     #[serde(rename = "toname")]
     to_name: Cow<'a, str>,
 }
 
 impl crate::Client {
+    /// Renames a file on pCloud.
+    ///
+    /// This function calls the `renamefile` API endpoint to change the name of a file.
+    /// The file can be specified by its ID or path, and the new name must be a string.
+    ///
+    /// # Arguments
+    ///
+    /// * `identifier` - A value convertible into a [`FileIdentifier`] representing the file to rename.
+    /// * `name` - The new name to assign to the file.
+    ///
+    /// # Returns
+    ///
+    /// On success, returns a [`File`] struct containing metadata about the renamed file.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`crate::Error`] if the file doesn't exist or if the API request fails.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// # async fn example(client: &pcloud::Client) -> Result<(), pcloud::Error> {
+    /// let renamed = client.rename_file(12345678u64, "new_name.txt").await?;
+    /// println!("Renamed file: {:?}", renamed.base.name);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn rename_file<'a>(
         &self,
         identifier: impl Into<FileIdentifier<'a>>,

@@ -44,6 +44,12 @@ impl Default for FileIdentifier<'_> {
     }
 }
 
+impl<'a> From<Cow<'a, str>> for FileIdentifier<'a> {
+    fn from(value: Cow<'a, str>) -> Self {
+        Self::Path(value)
+    }
+}
+
 impl<'a> From<&'a str> for FileIdentifier<'a> {
     fn from(value: &'a str) -> Self {
         Self::Path(Cow::Borrowed(value))

@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0](https://github.com/jdrouet/pcloud/compare/pcloud-v3.0.0...pcloud-v3.1.0) - 2025-05-07
+
+### Added
+
+- add from cow_str for identifiers
+
+### Other
+
+- make file length optional in MultiFileUpload ([#109](https://github.com/jdrouet/pcloud/pull/109))
+- comment all fuctions
+
 ## [3.0.0](https://github.com/jdrouet/pcloud/compare/pcloud-v2.0.0...pcloud-v3.0.0) - 2025-05-03
 
 ### Added

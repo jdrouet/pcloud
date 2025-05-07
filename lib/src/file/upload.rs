@@ -34,7 +34,7 @@ impl MultiFileUpload {
     /// * `filename` - The name to assign to the uploaded file.
     /// * `length` - The size of the file in bytes.
     /// * `stream` - A `TryStream` of bytes representing the file content.
-    pub fn with_stream_entry<F, S>(mut self, filename: F, length: u64, stream: S) -> Self
+    pub fn with_stream_entry<F, S>(mut self, filename: F, length: Option<u64>, stream: S) -> Self
     where
         F: Into<String>,
         S: futures_core::stream::TryStream + Send + Sync + 'static,
@@ -52,7 +52,7 @@ impl MultiFileUpload {
     /// * `filename` - The name to assign to the uploaded file.
     /// * `length` - The size of the file in bytes.
     /// * `stream` - A `TryStream` of bytes representing the file content.
-    pub fn add_stream_entry<F, S>(&mut self, filename: F, length: u64, stream: S)
+    pub fn add_stream_entry<F, S>(&mut self, filename: F, length: Option<u64>, stream: S)
     where
         F: Into<String>,
         S: futures_core::stream::TryStream + Send + Sync + 'static,
@@ -72,7 +72,7 @@ impl MultiFileUpload {
     /// * `filename` - The name to assign to the uploaded file.
     /// * `length` - The size of the file in bytes.
     /// * `body` - A `reqwest::Body` representing the file data.
-    pub fn with_body_entry<F, B>(mut self, filename: F, length: u64, body: B) -> Self
+    pub fn with_body_entry<F, B>(mut self, filename: F, length: Option<u64>, body: B) -> Self
     where
         F: Into<String>,
         B: Into<reqwest::Body>,
@@ -88,22 +88,26 @@ impl MultiFileUpload {
     /// * `filename` - The name to assign to the uploaded file.
     /// * `length` - The size of the file in bytes.
     /// * `body` - A `reqwest::Body` containing the file content.
-    pub fn add_body_entry<F, B>(&mut self, filename: F, length: u64, body: B)
+    pub fn add_body_entry<F, B>(&mut self, filename: F, length: Option<u64>, body: B)
     where
         F: Into<String>,
         B: Into<reqwest::Body>,
     {
-        let mut headers = reqwest::header::HeaderMap::with_capacity(1);
-        let content_length = length.to_string();
-        headers.append(
-            reqwest::header::CONTENT_LENGTH,
-            reqwest::header::HeaderValue::from_str(&content_length)
-                .expect("content-length must be a valid number"),
-        );
+        let part = if let Some(length) = length {
+            let mut headers = reqwest::header::HeaderMap::with_capacity(1);
+            let content_length = length.to_string();
+            headers.append(
+                reqwest::header::CONTENT_LENGTH,
+                reqwest::header::HeaderValue::from_str(&content_length)
+                    .expect("content-length must be a valid number"),
+            );
 
-        let part = reqwest::multipart::Part::stream_with_length(body, length)
-            .file_name(filename.into())
-            .headers(headers);
+            reqwest::multipart::Part::stream_with_length(body, length)
+                .file_name(filename.into())
+                .headers(headers)
+        } else {
+            reqwest::multipart::Part::stream(body).file_name(filename.into())
+        };
 
         self.parts.push(part);
     }
@@ -231,7 +235,7 @@ mod tests {
         //
         let file = tokio::fs::File::open("./readme.md").await.unwrap();
         let length = std::fs::metadata("./readme.md").unwrap().len();
-        let files = MultiFileUpload::default().with_body_entry("big-file.bin", length, file);
+        let files = MultiFileUpload::default().with_body_entry("big-file.bin", Some(length), file);
         let result = client.upload_files(0, files).await.unwrap();
         //
         assert_eq!(result.len(), 1);

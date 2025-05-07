@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1](https://github.com/jdrouet/pcloud/compare/pcloud-cli-v1.2.0...pcloud-cli-v1.2.1) - 2025-05-07
+
+### Other
+
+- updated the following local packages: pcloud
+
 ## [1.2.0](https://github.com/jdrouet/pcloud/compare/pcloud-cli-v1.1.0...pcloud-cli-v1.2.0) - 2025-05-03
 
 ### Added

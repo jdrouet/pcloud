@@ -44,11 +44,7 @@ async fn complete() {
     // create file in folder
     let filename = create_filename("bin");
     let filecontent = create_file(1024 * 1024 * 10); // 10Mo
-    let files = MultiFileUpload::default().with_body_entry(
-        filename.as_str(),
-        filecontent.len() as u64,
-        filecontent,
-    );
+    let files = MultiFileUpload::default().with_body_entry(filename.as_str(), None, filecontent);
     let mut files = client.upload_files(folder.folder_id, files).await.unwrap();
     let file = files.pop().unwrap();
     // get file info

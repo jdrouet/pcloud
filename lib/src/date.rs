@@ -35,3 +35,33 @@ where
         .map(|fixed| fixed.into())
         .map_err(serde::de::Error::custom)
 }
+
+pub mod optional {
+    use super::*;
+
+    pub fn serialize<S>(value: &Option<DateTime<Utc>>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if let Some(value) = value {
+            super::serialize(value, serializer)
+        } else {
+            serializer.serialize_none()
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<DateTime<Utc>>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = Option::<String>::deserialize(deserializer)?;
+        if let Some(value) = value {
+            DateTime::parse_from_rfc2822(&value)
+                .map(|fixed| fixed.into())
+                .map(Some)
+                .map_err(serde::de::Error::custom)
+        } else {
+            Ok(None)
+        }
+    }
+}

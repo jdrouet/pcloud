@@ -28,6 +28,8 @@ async fn complete() {
     let renamed_name = create_folder();
     let child_name = create_folder();
     let client = ClientBuilder::from_env().build().unwrap();
+    // fetches the user informations
+    let _info = client.user_info().await.unwrap();
     // create folder
     let folder = client.create_folder(ROOT, &folder_name).await.unwrap();
     // rename folder

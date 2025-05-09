@@ -1,8 +1,11 @@
 #![cfg(feature = "protected")]
 
+use std::panic;
+
 use pcloud::builder::ClientBuilder;
 use pcloud::file::upload::MultiFileUpload;
 use pcloud::folder::ROOT;
+use pcloud::Credentials;
 use rand::distr::Alphanumeric;
 use rand::Rng;
 
@@ -27,11 +30,27 @@ async fn complete() {
     let folder_name = create_folder();
     let renamed_name = create_folder();
     let child_name = create_folder();
-    let client = ClientBuilder::from_env().build().unwrap();
+
+    let credentials = Credentials::from_env();
+    let Credentials::UsernamePassword { username, password } = credentials else {
+        panic!("expect username and password");
+    };
+
+    let client = pcloud::Client::default();
+    // creates a digest
+    let digest = client.get_digest().await.unwrap();
+
+    let credentials = Credentials::username_password_digest(username, digest.value, password);
+    let client = client.with_credentials(credentials);
+
     // fetches the user informations
     let _info = client.user_info().await.unwrap();
-    // creates a digest
-    let _digest = client.get_digest().await.unwrap();
+
+    let token = client.get_token().await.unwrap();
+    let client = client.with_credentials(Credentials::authorization(token));
+
+    // fetches the user informations
+    let _info = client.user_info().await.unwrap();
     // create folder
     let folder = client.create_folder(ROOT, &folder_name).await.unwrap();
     // rename folder

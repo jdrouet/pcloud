@@ -36,6 +36,7 @@ mod request;
 
 // Re-exporting the reqwest crate for convenient access
 pub use reqwest;
+use sha1::Digest;
 
 /// The default user agent used by the HTTP client, derived from crate name and version.
 const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
@@ -87,8 +88,16 @@ impl Region {
 pub enum Credentials {
     /// Uses a personal access token.
     AccessToken { access_token: String },
+    /// Uses an authorization token.
+    Authorization { auth: String },
     /// Uses a username and password for authentication.
     UsernamePassword { username: String, password: String },
+    /// Uses a username and password for authentication.
+    UsernamePasswordDigest {
+        username: String,
+        digest: String,
+        passworddigest: String,
+    },
     /// Without authentication, used for getting a digest
     Anonymous,
 }
@@ -101,11 +110,52 @@ impl Credentials {
         }
     }
 
+    /// Creates credentials using an authorization token.
+    pub fn authorization(value: impl Into<String>) -> Self {
+        Self::Authorization { auth: value.into() }
+    }
+
     /// Creates credentials using a username and password.
     pub fn username_password(username: impl Into<String>, password: impl Into<String>) -> Self {
         Self::UsernamePassword {
             username: username.into(),
             password: password.into(),
+        }
+    }
+
+    pub fn username_password_digest(
+        username: impl Into<String>,
+        digest: impl Into<String>,
+        password: impl AsRef<[u8]>,
+    ) -> Self {
+        let username = username.into();
+        let digest = digest.into();
+
+        let mut hasher = sha1::Sha1::default();
+        hasher.update(username.to_lowercase().as_bytes());
+        let username_hash = hasher.finalize();
+
+        let username_hash = username_hash
+            .iter()
+            .map(|byte| format!("{:02x}", byte))
+            .collect::<String>();
+
+        let mut hasher = sha1::Sha1::default();
+        hasher.update(password.as_ref());
+        hasher.update(username_hash.as_bytes());
+        hasher.update(digest.as_bytes());
+        let password_hash = hasher.finalize();
+        let password_hash_slice = password_hash.as_slice();
+
+        let passworddigest = password_hash_slice
+            .iter()
+            .map(|byte| format!("{:02x}", byte))
+            .collect::<String>();
+
+        Self::UsernamePasswordDigest {
+            username,
+            digest,
+            passworddigest,
         }
     }
 
@@ -195,6 +245,17 @@ impl Client {
                 .user_agent(USER_AGENT)
                 .build()?,
         })
+    }
+
+    /// Update the credentials of the client
+    pub fn set_credentials(&mut self, credentials: Credentials) {
+        self.credentials = credentials;
+    }
+
+    /// Take ownership of the client and update the credentials
+    pub fn with_credentials(mut self, credentials: Credentials) -> Self {
+        self.set_credentials(credentials);
+        self
     }
 }
 

@@ -26,6 +26,7 @@ reqwest = { default-features = false, features = [
 ], version = "0.12" }
 serde = { features = ["derive"], version = "1.0" }
 serde_json = { version = "1.0" }
+sha1 = { version = "0.10" }
 thiserror = "2.0"
 tracing = { version = "0.1" }
 

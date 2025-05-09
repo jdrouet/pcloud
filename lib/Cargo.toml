@@ -32,6 +32,6 @@ tracing = { version = "0.1" }
 [dev-dependencies]
 mockito = { version = "1.5" }
 rand = { version = "0.9" }
-tokio = { version = "1.43", features = ["macros", "rt"] }
+tokio = { version = "1.43", features = ["macros", "rt", "rt-multi-thread"] }
 tokio-test = { version = "0.4" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

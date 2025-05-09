@@ -18,12 +18,15 @@ It offers a set of tools and utilities to facilitate operations with files, fold
 Below is an example of how to use the library to interact with the pCloud API:
 
 ```rust
-use pcloud::Client;
+use pcloud::{Client, Credentials, Region};
 use pcloud::file::FileIdentifier;
 
 #[tokio::main]
 async fn main() {
-    let client = Client::new("your-api-key");
+    let client = Client::builder()
+        .with_credentials(Credentials::access_token("token"))
+        .build()
+        .unwrap();
 
     // Get file link with file id
     match client.get_file_link(12345).await {

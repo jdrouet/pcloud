@@ -30,6 +30,8 @@ async fn complete() {
     let client = ClientBuilder::from_env().build().unwrap();
     // fetches the user informations
     let _info = client.user_info().await.unwrap();
+    // creates a digest
+    let _digest = client.get_digest().await.unwrap();
     // create folder
     let folder = client.create_folder(ROOT, &folder_name).await.unwrap();
     // rename folder

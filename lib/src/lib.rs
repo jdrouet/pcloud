@@ -89,6 +89,8 @@ pub enum Credentials {
     AccessToken { access_token: String },
     /// Uses a username and password for authentication.
     UsernamePassword { username: String, password: String },
+    /// Without authentication, used for getting a digest
+    Anonymous,
 }
 
 impl Credentials {
@@ -105,6 +107,11 @@ impl Credentials {
             username: username.into(),
             password: password.into(),
         }
+    }
+
+    /// Creates an anonymous credential
+    pub fn anonymous() -> Self {
+        Self::Anonymous
     }
 }
 
@@ -123,7 +130,7 @@ impl Credentials {
     /// match Credentials::from_env() {
     ///     Some(Credentials::AccessToken { .. }) => println!("uses an access token"),
     ///     Some(Credentials::UsernamePassword { .. }) => println!("uses a username and a password"),
-    ///     None => eprintln!("no credentials provided"),
+    ///     _ => eprintln!("no credentials provided"),
     /// }
     /// ```
     pub fn from_env() -> Option<Self> {
@@ -153,6 +160,16 @@ pub struct Client {
     base_url: Cow<'static, str>,
     credentials: Credentials,
     inner: reqwest::Client,
+}
+
+impl Default for Client {
+    fn default() -> Self {
+        Self {
+            base_url: crate::EU_REGION.into(),
+            credentials: Credentials::Anonymous,
+            inner: reqwest::Client::default(),
+        }
+    }
 }
 
 impl Client {

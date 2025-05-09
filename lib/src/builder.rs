@@ -3,9 +3,6 @@ use std::borrow::Cow;
 /// Errors that may occur during client configuration and building.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    /// Returned when no credentials were provided to the builder.
-    #[error("credentials not specified")]
-    MissingCredentials,
     /// Returned when the underlying HTTP client could not be built.
     #[error("unable to build reqwest client")]
     Reqwest(#[from] reqwest::Error),
@@ -19,7 +16,7 @@ pub enum Error {
 pub struct ClientBuilder {
     base_url: Cow<'static, str>,
     client_builder: Option<reqwest::ClientBuilder>,
-    credentials: Option<crate::Credentials>,
+    credentials: crate::Credentials,
 }
 
 impl Default for ClientBuilder {
@@ -32,7 +29,7 @@ impl Default for ClientBuilder {
         Self {
             base_url: Cow::Borrowed(crate::EU_REGION),
             client_builder: None,
-            credentials: None,
+            credentials: crate::Credentials::Anonymous,
         }
     }
 }
@@ -49,7 +46,7 @@ impl ClientBuilder {
             .map(|region| Cow::Borrowed(region.base_url()))
             .or_else(|| std::env::var("PCLOUD_BASE_URL").ok().map(Cow::Owned))
             .unwrap_or(Cow::Borrowed(crate::EU_REGION));
-        let credentials = crate::Credentials::from_env();
+        let credentials = crate::Credentials::from_env().unwrap_or(crate::Credentials::Anonymous);
 
         Self {
             base_url,
@@ -95,7 +92,7 @@ impl ClientBuilder {
 
     /// Sets the credentials for API authentication.
     pub fn set_credentials(&mut self, credentials: crate::Credentials) {
-        self.credentials = Some(credentials);
+        self.credentials = credentials;
     }
 
     /// Sets the credentials and returns the modified builder.
@@ -111,14 +108,13 @@ impl ClientBuilder {
     /// Returns [`Error::MissingCredentials`] if no credentials were set.
     /// Returns [`Error::Reqwest`] if the HTTP client could not be built.
     pub fn build(self) -> Result<crate::Client, Error> {
-        let credentials = self.credentials.ok_or(Error::MissingCredentials)?;
         let builder = self
             .client_builder
             .unwrap_or_default()
             .user_agent(crate::USER_AGENT);
         Ok(crate::Client {
             base_url: self.base_url,
-            credentials,
+            credentials: self.credentials,
             inner: builder.build()?,
         })
     }

@@ -118,31 +118,31 @@ impl Credentials {
 impl Credentials {
     /// Creates a credential based on the environment variables
     ///
-    /// When `PCLOUD_ACCESS_TOKEN` is set, a `Some(Credentials::AccessToken)` will be created.
+    /// When `PCLOUD_ACCESS_TOKEN` is set, a `Credentials::AccessToken` will be created.
     ///
-    /// When `PCLOUD_USERNAME` and `PCLOUD_PASSWORD` are set, a `Some(Credentials::UsernamePassword)` will be created.
+    /// When `PCLOUD_USERNAME` and `PCLOUD_PASSWORD` are set, a `Credentials::UsernamePassword` will be created.
     ///
-    /// If none are set, `None` is returned.
+    /// If none are set, `Credentials::Anonymous` is returned.
     ///
     /// ```rust
     /// use pcloud::Credentials;
     ///
     /// match Credentials::from_env() {
-    ///     Some(Credentials::AccessToken { .. }) => println!("uses an access token"),
-    ///     Some(Credentials::UsernamePassword { .. }) => println!("uses a username and a password"),
+    ///     Credentials::AccessToken { .. } => println!("uses an access token"),
+    ///     Credentials::UsernamePassword { .. } => println!("uses a username and a password"),
     ///     _ => eprintln!("no credentials provided"),
     /// }
     /// ```
-    pub fn from_env() -> Option<Self> {
+    pub fn from_env() -> Self {
         if let Ok(access_token) = std::env::var("PCLOUD_ACCESS_TOKEN") {
-            Some(Self::AccessToken { access_token })
+            Self::AccessToken { access_token }
         } else if let (Ok(username), Ok(password)) = (
             std::env::var("PCLOUD_USERNAME"),
             std::env::var("PCLOUD_PASSWORD"),
         ) {
-            Some(Self::UsernamePassword { username, password })
+            Self::UsernamePassword { username, password }
         } else {
-            None
+            Self::Anonymous
         }
     }
 }

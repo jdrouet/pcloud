@@ -46,7 +46,7 @@ impl ClientBuilder {
             .map(|region| Cow::Borrowed(region.base_url()))
             .or_else(|| std::env::var("PCLOUD_BASE_URL").ok().map(Cow::Owned))
             .unwrap_or(Cow::Borrowed(crate::EU_REGION));
-        let credentials = crate::Credentials::from_env().unwrap_or(crate::Credentials::Anonymous);
+        let credentials = crate::Credentials::from_env();
 
         Self {
             base_url,

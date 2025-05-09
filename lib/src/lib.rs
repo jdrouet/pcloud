@@ -18,6 +18,10 @@ pub mod file;
 // or manipulating folders in the system.
 pub mod folder;
 
+/// Module handling general operations
+/// https://docs.pcloud.com/methods/general/
+pub mod general;
+
 // Module for working with streams, likely including streaming files or media
 // content, such as audio and video, over the network or from storage.
 pub mod stream;

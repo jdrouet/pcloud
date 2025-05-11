@@ -31,7 +31,7 @@ assets = [
 protected = []
 
 [dependencies]
-pcloud = { path = "../lib", version = "4.0" }
+pcloud = { workspace = true }
 #
 anyhow = "1.0"
 clap = { version = "4.5", features = ["derive"] }

@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [4.0.0](https://github.com/jdrouet/pcloud/compare/pcloud-v3.1.0...pcloud-v4.0.0) - 2025-05-11
+## [4.0.0-alpha.1](https://github.com/jdrouet/pcloud/compare/pcloud-v3.1.0...pcloud-v4.0.0-alpha.1) - 2025-05-11
 
 ### Added
 

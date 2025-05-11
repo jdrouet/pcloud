@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.0-alpha.1](https://github.com/jdrouet/pcloud/compare/pcloud-v3.1.0...pcloud-v4.0.0-alpha.1) - 2025-05-11
+
+### Added
+
+- make Credentials clonable
+- create function to get token
+- from_env return anonymous if nothing specified
+- add getdigest method
+- add command for user_info ([#110](https://github.com/jdrouet/pcloud/pull/110))
+
 ## [3.1.0](https://github.com/jdrouet/pcloud/compare/pcloud-v3.0.0...pcloud-v3.1.0) - 2025-05-07
 
 ### Added

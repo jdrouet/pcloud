@@ -83,7 +83,7 @@ impl Region {
 }
 
 /// Authentication credentials used for pCloud API requests.
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 #[serde(untagged)]
 pub enum Credentials {
     /// Uses a personal access token.

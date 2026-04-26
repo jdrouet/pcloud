@@ -1260,7 +1260,7 @@ dependencies = [
 
 [[package]]
 name = "pcloud"
-version = "4.0.0-alpha.1"
+version = "4.0.0-alpha.2"
 dependencies = [
  "bytes",
  "chrono",
@@ -1280,7 +1280,7 @@ dependencies = [
 
 [[package]]
 name = "pcloud-cli"
-version = "1.2.2"
+version = "1.3.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -1300,7 +1300,7 @@ dependencies = [
 
 [[package]]
 name = "pcloud-http-server"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "axum",
  "clap",

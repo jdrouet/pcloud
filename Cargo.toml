@@ -2,4 +2,4 @@
 members = ["./cli", "./http-server", "./lib"]
 
 [workspace.dependencies]
-pcloud = { path = "./lib", version = "4.0.0-alpha.1" }
+pcloud = { path = "./lib", version = "4.0.0-alpha.2" }

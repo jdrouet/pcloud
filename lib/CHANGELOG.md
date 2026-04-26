@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.0-alpha.2](https://github.com/jdrouet/pcloud/compare/pcloud-v4.0.0-alpha.1...pcloud-v4.0.0-alpha.2) - 2026-04-26
+
+### Added
+
+- add oauth login flow with local http listener ([#119](https://github.com/jdrouet/pcloud/pull/119))
+
+### Other
+
+- *(deps)* bump all dependencies ([#116](https://github.com/jdrouet/pcloud/pull/116))
+
 ## [4.0.0-alpha.1](https://github.com/jdrouet/pcloud/compare/pcloud-v3.1.0...pcloud-v4.0.0-alpha.1) - 2025-05-11
 
 ### Added

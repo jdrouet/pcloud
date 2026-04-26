@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.7](https://github.com/jdrouet/pcloud/compare/pcloud-http-server-v0.2.6...pcloud-http-server-v0.2.7) - 2026-04-26
+
+### Other
+
+- *(deps)* bump all dependencies ([#116](https://github.com/jdrouet/pcloud/pull/116))
+
 ## [0.2.6](https://github.com/jdrouet/pcloud/compare/pcloud-http-server-v0.2.5...pcloud-http-server-v0.2.6) - 2025-05-11
 
 ### Other

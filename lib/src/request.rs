@@ -56,6 +56,25 @@ impl crate::Client {
         read_response(res).await
     }
 
+    /// Sends a GET request without attaching the client's credentials.
+    ///
+    /// Used by endpoints that authenticate via the request parameters themselves
+    /// (such as the OAuth2 token exchange), where the client's stored credentials
+    /// are irrelevant and would risk leaking unwanted query parameters.
+    #[tracing::instrument(name = "get-unauth", skip(self, params))]
+    pub(crate) async fn get_request_unauthenticated<
+        T: serde::de::DeserializeOwned,
+        P: serde::Serialize,
+    >(
+        &self,
+        method: &str,
+        params: P,
+    ) -> Result<T, Error> {
+        let uri = self.build_url(method);
+        let res = self.inner.get(uri).query(&params).send().await?;
+        read_response(res).await
+    }
+
     /// Sends a PUT request with query parameters and a binary payload, and deserializes the response into type `T`.
     ///
     /// # Arguments

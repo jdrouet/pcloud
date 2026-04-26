@@ -34,7 +34,7 @@ protected = []
 pcloud = { workspace = true }
 #
 anyhow = "1.0"
-clap = { version = "4.6", features = ["derive"] }
+clap = { version = "4.6", features = ["derive", "env"] }
 # clap-verbosity-flag = { version = "1.0.1" }
 dirs = { version = "6.0" }
 futures = { version = "0.3" }
@@ -42,7 +42,7 @@ human-number = "0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
 sha1_smol = "1.0"
-tokio = { version = "1.52", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.52", features = ["io-util", "macros", "net", "rt-multi-thread"] }
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 

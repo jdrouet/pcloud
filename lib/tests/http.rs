@@ -1,8 +1,5 @@
 #![cfg(feature = "protected")]
 
-use std::panic;
-
-use pcloud::builder::ClientBuilder;
 use pcloud::file::upload::MultiFileUpload;
 use pcloud::folder::ROOT;
 use pcloud::Credentials;
@@ -42,9 +39,6 @@ async fn complete() {
 
     let credentials = Credentials::username_password_digest(username, digest.value, password);
     let client = client.with_credentials(credentials);
-
-    // fetches the user informations
-    let _info = client.user_info().await.unwrap();
 
     let token = client.get_token().await.unwrap();
     let client = client.with_credentials(Credentials::authorization(token));

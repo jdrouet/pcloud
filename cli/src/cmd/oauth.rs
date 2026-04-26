@@ -7,7 +7,8 @@ use tokio::net::TcpListener;
 
 const RCLONE_CLIENT_ID: &str = "DnONSzyJXpm";
 const RCLONE_CLIENT_SECRET: &str = "oboe7MzS0dcs95oU3sRmxIRu8";
-const REDIRECT_HOST: &str = "127.0.0.1";
+const BIND_HOST: &str = "127.0.0.1";
+const REDIRECT_HOST: &str = "localhost";
 const REDIRECT_PORT: u16 = 53682;
 const AUTHORIZE_URL: &str = "https://my.pcloud.com/oauth2/authorize";
 
@@ -31,10 +32,10 @@ pub(crate) struct Command {
 
 impl Command {
     pub(crate) async fn execute(self, _client: &pcloud::Client) -> anyhow::Result<()> {
-        let bind_addr = (REDIRECT_HOST, REDIRECT_PORT);
+        let bind_addr = (BIND_HOST, REDIRECT_PORT);
         let listener = TcpListener::bind(bind_addr)
             .await
-            .with_context(|| format!("unable to bind {REDIRECT_HOST}:{REDIRECT_PORT}"))?;
+            .with_context(|| format!("unable to bind {BIND_HOST}:{REDIRECT_PORT}"))?;
 
         let auth_url = format!(
             "{AUTHORIZE_URL}?client_id={client_id}&response_type=code&redirect_uri=http%3A%2F%2F{REDIRECT_HOST}%3A{REDIRECT_PORT}%2F",

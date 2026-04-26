@@ -7,10 +7,15 @@ use crate::{Credentials, Error};
 async fn read_response<T: serde::de::DeserializeOwned>(res: reqwest::Response) -> Result<T, Error> {
     let status = res.status();
     tracing::debug!("responded with status {status:?}");
-    res.json::<Response<T>>()
-        .await
-        .map_err(Error::from)
-        .and_then(Response::payload)
+    let body = res.bytes().await?;
+    match serde_json::from_slice::<Response<T>>(&body) {
+        Ok(parsed) => parsed.payload(),
+        Err(err) => {
+            let preview = String::from_utf8_lossy(&body);
+            tracing::error!("failed to decode response: {err} body={preview}");
+            Err(Error::from(err))
+        }
+    }
 }
 
 impl crate::Client {
@@ -53,6 +58,25 @@ impl crate::Client {
             })
             .send()
             .await?;
+        read_response(res).await
+    }
+
+    /// Sends a GET request without attaching the client's credentials.
+    ///
+    /// Used by endpoints that authenticate via the request parameters themselves
+    /// (such as the OAuth2 token exchange), where the client's stored credentials
+    /// are irrelevant and would risk leaking unwanted query parameters.
+    #[tracing::instrument(name = "get-unauth", skip(self, params))]
+    pub(crate) async fn get_request_unauthenticated<
+        T: serde::de::DeserializeOwned,
+        P: serde::Serialize,
+    >(
+        &self,
+        method: &str,
+        params: P,
+    ) -> Result<T, Error> {
+        let uri = self.build_url(method);
+        let res = self.inner.get(uri).query(&params).send().await?;
         read_response(res).await
     }
 

@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use rand::distr::Alphanumeric;
-use rand::Rng;
+use rand::RngExt;
 
 pub fn init() {
     let filter = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".into());

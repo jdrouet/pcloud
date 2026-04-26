@@ -7,7 +7,7 @@ use pcloud::file::upload::MultiFileUpload;
 use pcloud::folder::ROOT;
 use pcloud::Credentials;
 use rand::distr::Alphanumeric;
-use rand::Rng;
+use rand::RngExt;
 
 mod common;
 

@@ -205,10 +205,7 @@ mod tests {
             params.get("hostname").map(String::as_str),
             Some("eapi.pcloud.com")
         );
-        assert_eq!(
-            params.get("extra").map(String::as_str),
-            Some("hello world")
-        );
+        assert_eq!(params.get("extra").map(String::as_str), Some("hello world"));
     }
 
     #[test]

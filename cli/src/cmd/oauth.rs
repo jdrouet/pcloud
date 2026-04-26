@@ -6,7 +6,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
 const RCLONE_CLIENT_ID: &str = "DnONSzyJXpm";
-const RCLONE_CLIENT_SECRET: &str = "oboe7MzS0dcs95oU3sRmxIRu8";
+const RCLONE_CLIENT_SECRET: &str = "RUqH9GooHqkC4IFkifsD1haRu9fy";
 const BIND_HOST: &str = "127.0.0.1";
 const REDIRECT_HOST: &str = "localhost";
 const REDIRECT_PORT: u16 = 53682;

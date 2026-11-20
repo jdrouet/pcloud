@@ -54,7 +54,7 @@ COPY --from=cli-bin-builder /code/target/release/pcloud-cli /pcloud-cli
 
 ENTRYPOINT ["/pcloud-cli"]
 
-FROM rust:${RUST_VERSION}-bullseye AS deb-builder
+FROM rust:${RUST_VERSION}-bookworm AS deb-builder
 
 RUN --mount=type=cache,sharing=locked,id=apt-list,target=/var/lib/apt \
   --mount=type=cache,sharing=locked,id=apt-cache,target=/var/cache/apt \

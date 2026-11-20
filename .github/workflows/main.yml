@@ -51,15 +51,16 @@ jobs:
           toolchain: stable
           override: true
       - uses: taiki-e/install-action@nextest
-      - uses: actions-rs/cargo@v1
-        env:
-          PCLOUD_USERNAME: "${{secrets.PCLOUD_USERNAME}}"
-          PCLOUD_PASSWORD: "${{secrets.PCLOUD_PASSWORD}}"
-          PCLOUD_REGION: "${{secrets.PCLOUD_REGION}}"
-          PCLOUD_TIMEOUT: "30000" # timeout to 30s
-        with:
-          command: nextest
-          args: run --features protected --retries 5
+      # Secrets are empty on Dependabot and fork PRs; the live pCloud tests need them.
+      - if: env.PCLOUD_USERNAME == ''
+        run: cargo nextest run
+      - if: env.PCLOUD_USERNAME != ''
+        run: cargo nextest run --features protected --retries 5
+    env:
+      PCLOUD_USERNAME: "${{secrets.PCLOUD_USERNAME}}"
+      PCLOUD_PASSWORD: "${{secrets.PCLOUD_PASSWORD}}"
+      PCLOUD_REGION: "${{secrets.PCLOUD_REGION}}"
+      PCLOUD_TIMEOUT: "30000" # timeout to 30s
 
   dependencies:
     name: Check dependencies

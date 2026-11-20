@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM rust:slim-bullseye AS fetcher
+FROM --platform=$BUILDPLATFORM rust:slim-bookworm AS fetcher
 
 WORKDIR /code/cli
 RUN cargo init
@@ -18,7 +18,7 @@ COPY lib/Cargo.toml /code/lib/Cargo.toml
 RUN mkdir -p /code/.cargo \
     && cargo vendor > /code/.cargo/config
 
-FROM rust:slim-bullseye AS builder
+FROM rust:slim-bookworm AS builder
 
 RUN apt-get update && apt-get install -y gcc pkg-config
 
@@ -43,13 +43,13 @@ FROM --platform=$BUILDPLATFORM scratch AS artifact
 COPY --from=builder /code/target/release/pcloud-cli-* /
 COPY --from=builder /code/target/release/pcloud-http-server-* /
 
-FROM debian:bullseye-slim AS cli-image
+FROM debian:bookworm-slim AS cli-image
 
 COPY --from=builder /code/target/release/pcloud-cli /usr/bin/pcloud-cli
 
 ENTRYPOINT ["/usr/bin/pcloud-cli"]
 
-FROM debian:bullseye-slim AS http-server-image
+FROM debian:bookworm-slim AS http-server-image
 
 COPY --from=builder /code/target/release/pcloud-http-server /usr/bin/pcloud-http-server
 
